@@ -115,7 +115,13 @@ def ensure_members(conn: Connection, fetcher: Fetcher, bioguide_ids: Sequence[st
     log.info("members.backfilling", count=len(missing))
     tally = SyncTally()
     _ingest_member_details(conn, fetcher, missing, tally)
-    conn.commit()
+    # Deliberately NOT committed here. This runs in the MIDDLE of writing a vote
+    # or a bill — between the parent row and its children — so committing would
+    # split that write in half. It did exactly that once: a failing roll call
+    # later in the run rolled back vote 119/1/116's casts while its already
+    # committed vote row survived, leaving a roll call reporting 349-42 with no
+    # positions behind it. The caller owns the transaction; the rows below are
+    # visible to the rest of it without a commit.
     return repo.existing_member_ids(conn, wanted)
 
 

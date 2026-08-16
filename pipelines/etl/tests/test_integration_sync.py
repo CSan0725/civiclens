@@ -539,3 +539,49 @@ def test_speaker_election_is_skipped_without_aborting_the_run(conn: Connection) 
     ).one()
     assert state.last_status == "ok"
     assert "119/1/2" in state.message
+
+
+@respx.mock
+def test_a_failing_roll_call_leaves_no_half_written_vote(conn: Connection) -> None:
+    """A vote row and its casts must land together or not at all.
+
+    `ensure_members` used to commit mid-write — between the vote row and its
+    casts — so a later rollback could leave a roll call reporting 349-42 with
+    zero positions behind it. That is what happened to 119/1/116 on the first
+    Neon run. This drives the same shape: the member backfill runs (a cast
+    names someone not yet stored), then the cast write fails.
+    """
+    from sqlalchemy.exc import DBAPIError
+
+    from loaders.sync_state import SyncTally
+    from sources import congress_gov as cg
+    from sources.congress_gov_sync import sync_one_house_vote
+
+    _mock_member_routes()
+    respx.get(f"{API}/house-vote/119/1/240").mock(
+        return_value=httpx.Response(200, json=load_json("house_vote_detail_119_1_240.json"))
+    )
+    members = load_json("house_vote_members_119_1_240.json")
+    # An impossible position value: passes the enum mapping, fails at the DB.
+    members["houseRollCallVoteMemberVotes"]["results"][0]["voteState"] = "TOO_LONG"
+    respx.get(f"{API}/house-vote/119/1/240/members").mock(
+        return_value=httpx.Response(200, json=members)
+    )
+
+    with cg.open_fetcher() as fetcher:
+        try:
+            sync_one_house_vote(
+                conn, fetcher, congress=119, session=1, roll_number=240, tally=SyncTally()
+            )
+        except DBAPIError:
+            conn.rollback()
+        else:  # pragma: no cover - the CHECK constraint should reject it
+            conn.commit()
+
+    orphans = conn.execute(
+        text(
+            "SELECT count(*) FROM vote v WHERE NOT EXISTS "
+            "(SELECT 1 FROM vote_cast c WHERE c.vote_id = v.id)"
+        )
+    ).scalar_one()
+    assert orphans == 0, "the vote row must not survive its own failed cast write"
