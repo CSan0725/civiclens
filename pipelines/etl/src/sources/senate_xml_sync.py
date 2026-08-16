@@ -18,7 +18,7 @@ from loaders.sync_state import SyncTally, sync_run
 from provenance.record import ProvenanceEntry, record_provenance
 from provenance.snapshot import write_snapshot
 from sources import legislators, senate_xml
-from sources.base import CongressNo, SourceSystem, normalize_bill_type
+from sources.base import CongressNo, SourceError, SourceSystem, normalize_bill_type
 from sources.congress_gov_sync import ensure_members
 
 log = get_logger(__name__)
@@ -73,20 +73,33 @@ def sync_senate_votes(
         if limit is not None:
             rolls = rolls[:limit]
 
+        skipped: list[str] = []
         for roll_number in rolls:
-            result = senate_xml.fetch_vote(
-                fetcher, congress=congress, session=session, roll_number=roll_number
-            )
-            load_senate_vote(
-                conn,
-                payload=result.payload,
-                source_url=result.source_url,
-                retrieved=result,
-                lis_crosswalk=lis_crosswalk,
-                tally=tally,
-                member_fetcher=member_fetcher,
-            )
-        conn.commit()
+            natural = f"{congress}/{session}/{roll_number}"
+            try:
+                result = senate_xml.fetch_vote(
+                    fetcher, congress=congress, session=session, roll_number=roll_number
+                )
+                load_senate_vote(
+                    conn,
+                    payload=result.payload,
+                    source_url=result.source_url,
+                    retrieved=result,
+                    lis_crosswalk=lis_crosswalk,
+                    tally=tally,
+                    member_fetcher=member_fetcher,
+                )
+                # Commit per roll call — see the same reasoning in
+                # congress_gov_sync.sync_house_votes.
+                conn.commit()
+            except SourceError as exc:
+                conn.rollback()
+                skipped.append(natural)
+                log.warning("senate_votes.skipped", vote=natural, error=str(exc))
+
+        if skipped:
+            tally.note(f"skipped {len(skipped)} roll call(s): {', '.join(skipped)}")
+            log.warning("senate_votes.skipped_summary", count=len(skipped), votes=skipped)
     return tally
 
 

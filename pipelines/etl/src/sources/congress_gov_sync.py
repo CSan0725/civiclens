@@ -25,11 +25,36 @@ from loaders.sync_state import SyncTally, sync_run
 from provenance.record import ProvenanceEntry, record_provenance
 from provenance.snapshot import write_snapshot
 from sources import congress_gov as cg
-from sources.base import CongressNo, FetchResult, SourceSystem, normalize_bill_type
+from sources.base import (
+    CongressNo,
+    FetchResult,
+    SourceError,
+    SourceSystem,
+    normalize_bill_type,
+)
 
 log = get_logger(__name__)
 
 SOURCE = SourceSystem.CONGRESS_GOV
+
+# Why a roll call can be unparseable, and why that is not a bug to "fix" by
+# coercing it:
+#
+# The Election of the Speaker is a recorded House vote where members call out a
+# CANDIDATE NAME, not Yea/Nay. Roll call 119/1/2 records
+# {'Johnson (LA)': 218, 'Jeffries': 215, 'Emmer': 1}. The `vote_position` enum
+# has no honest home for that, and inventing one would be exactly the
+# interpretation PRD FC-4 forbids.
+#
+# Until the schema can hold a raw position (a nullable `position` plus
+# `raw_position TEXT` would do it — a change that also touches the PRD §11
+# participation-rate maths, so it needs a deliberate decision), these roll
+# calls are skipped, named in the log, and recorded in
+# `dataset_sync_state.message` so the gap is visible rather than silent.
+_SKIP_NOTE = (
+    "Most commonly the Election of the Speaker, where members vote by candidate "
+    "name; representing it needs a schema change (see congress_gov_sync)."
+)
 
 
 def _archive(entity: str, entity_id: str, result: FetchResult) -> str | None:
@@ -314,17 +339,37 @@ def sync_house_votes(
                 log.info("house_votes.skipped_existing", skipped=before - len(listed))
 
         log.info("house_votes.to_collect", count=len(listed), congress=congress)
+
+        skipped: list[str] = []
         for v in listed:
-            sync_one_house_vote(
-                conn,
-                fetcher,
-                congress=v["congress_no"],
-                session=v["session"],
-                roll_number=v["roll_number"],
-                tally=tally,
+            natural = f"{v['congress_no']}/{v['session']}/{v['roll_number']}"
+            try:
+                sync_one_house_vote(
+                    conn,
+                    fetcher,
+                    congress=v["congress_no"],
+                    session=v["session"],
+                    roll_number=v["roll_number"],
+                    tally=tally,
+                )
+                tally.observe(v.get("update_date"))
+                # Commit per roll call rather than once at the end: a single
+                # unparseable vote must not discard everything collected before
+                # it, and progress survives a mid-run failure.
+                conn.commit()
+            except SourceError as exc:
+                # One malformed roll call must not abort the nightly run
+                # forever. See _SKIP_NOTE for what actually hits this.
+                conn.rollback()
+                skipped.append(natural)
+                log.warning("house_votes.skipped", vote=natural, error=str(exc))
+
+        if skipped:
+            tally.note(
+                f"skipped {len(skipped)} roll call(s) with positions outside the "
+                f"vote_position enum: {', '.join(skipped)}. {_SKIP_NOTE}"
             )
-            tally.observe(v.get("update_date"))
-        conn.commit()
+            log.warning("house_votes.skipped_summary", count=len(skipped), votes=skipped)
     return tally
 
 

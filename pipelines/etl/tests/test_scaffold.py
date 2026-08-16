@@ -163,3 +163,15 @@ def test_congress_defaults_to_the_sitting_one() -> None:
     args = build_parser().parse_args(["members"])
     assert args.congress is None  # resolved in main()
     assert current_congress() >= 119
+
+
+def test_sync_tally_notes_surface_partial_results() -> None:
+    """A skipped roll call must stay visible after the CI logs expire."""
+    from loaders.sync_state import SyncTally
+
+    tally = SyncTally()
+    assert tally.notes == []
+    tally.note("skipped 1 roll call(s): 119/1/2")
+    tally.add("vote", 3)
+    assert tally.rows_upserted == 3
+    assert tally.notes == ["skipped 1 roll call(s): 119/1/2"]

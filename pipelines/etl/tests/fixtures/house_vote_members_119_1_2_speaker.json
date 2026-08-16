@@ -1,0 +1,46 @@
+{
+ "houseRollCallVoteMemberVotes": {
+  "congress": 119,
+  "identifier": 119120252,
+  "result": "Johnson (LA)",
+  "results": [
+   {
+    "bioguideID": "A000148",
+    "firstName": "Jake",
+    "lastName": "Auchincloss",
+    "voteCast": "Jeffries",
+    "voteParty": "D",
+    "voteState": "MA"
+   },
+   {
+    "bioguideID": "M001184",
+    "firstName": "Thomas",
+    "lastName": "Massie",
+    "voteCast": "Emmer",
+    "voteParty": "R",
+    "voteState": "KY"
+   },
+   {
+    "bioguideID": "A000055",
+    "firstName": "Robert",
+    "lastName": "Aderholt",
+    "voteCast": "Johnson (LA)",
+    "voteParty": "R",
+    "voteState": "AL"
+   }
+  ],
+  "rollCallNumber": 2,
+  "sessionNumber": 1,
+  "sourceDataURL": "https://clerk.house.gov/evs/2025/roll002.xml",
+  "startDate": "2025-01-03T14:33:00-05:00",
+  "updateDate": "2025-06-24T08:44:27-04:00",
+  "voteQuestion": "Election of the Speaker",
+  "voteType": "Yea-and-Nay"
+ },
+ "request": {
+  "congress": "119",
+  "contentType": "application/json",
+  "format": "json",
+  "session": "1"
+ }
+}

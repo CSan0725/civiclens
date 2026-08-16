@@ -29,11 +29,21 @@ class SyncTally:
     rows_upserted: int = 0
     data_current_as_of: datetime | None = None
     detail: dict[str, int] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)
 
     def add(self, table: str, rows: int) -> None:
         if rows:
             self.rows_upserted += rows
             self.detail[table] = self.detail.get(table, 0) + rows
+
+    def note(self, message: str) -> None:
+        """Record something the run wants surfaced even on success.
+
+        Lands in `dataset_sync_state.message`, so a partial result — e.g. roll
+        calls skipped because their positions do not fit the enum — is visible
+        in the database long after the CI logs have expired.
+        """
+        self.notes.append(message)
 
     def observe(self, moment: datetime | None) -> None:
         """Track the newest upstream timestamp seen during the run.
@@ -76,6 +86,8 @@ def _write(
         values["rows_upserted"] = tally.rows_upserted
         if tally.data_current_as_of is not None:
             values["data_current_as_of"] = tally.data_current_as_of
+        if tally.notes and not message:
+            values["message"] = " | ".join(tally.notes)[:2000]
 
     stmt = pg_insert(table).values(values)
     conn.execute(
@@ -130,4 +142,5 @@ def sync_run(conn: Connection, dataset: str, *, source_system: str) -> Iterator[
             dataset=dataset,
             rows_upserted=tally.rows_upserted,
             detail=tally.detail,
+            notes=tally.notes or None,
         )

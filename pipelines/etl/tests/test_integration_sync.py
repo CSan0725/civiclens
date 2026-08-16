@@ -456,3 +456,86 @@ def test_snapshot_skips_gracefully_without_r2_credentials() -> None:
         )
         is None
     )
+
+
+# ---------------------------------------------------------------------------
+# Speaker elections — positions that do not fit the enum
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_speaker_election_is_skipped_without_aborting_the_run(conn: Connection) -> None:
+    """The Election of the Speaker records CANDIDATE NAMES, not Yea/Nay.
+
+    Roll call 119/1/2 has {'Johnson (LA)': 218, 'Jeffries': 215, 'Emmer': 1}.
+    `vote_position` has no honest home for that and the parser refuses to guess
+    (PRD FC-4). Before this was handled, one such roll call aborted the entire
+    nightly run — permanently, since it would be retried every night.
+
+    The run must now skip it, keep every other roll call, and leave the gap
+    visible in dataset_sync_state.
+    """
+    from sources import congress_gov as cg
+    from sources.congress_gov_sync import sync_house_votes
+
+    _mock_member_routes()
+
+    # A listing with the Speaker election first, then an ordinary roll call.
+    listing = load_json("house_vote_list.json")
+    listing["houseRollCallVotes"] = [
+        {
+            "congress": 119,
+            "sessionNumber": 1,
+            "rollCallNumber": 2,
+            "updateDate": "2025-01-03T00:00:00Z",
+        },
+        {
+            "congress": 119,
+            "sessionNumber": 1,
+            "rollCallNumber": 240,
+            "updateDate": "2025-09-09T00:00:00Z",
+        },
+    ]
+    listing["pagination"] = {"count": 2}
+    # Specific routes first: respx matches in registration order, and the
+    # listing route below is a prefix of every detail URL.
+    respx.get(f"{API}/house-vote/119/1/2/members").mock(
+        return_value=httpx.Response(200, json=load_json("house_vote_members_119_1_2_speaker.json"))
+    )
+    respx.get(f"{API}/house-vote/119/1/2").mock(
+        return_value=httpx.Response(200, json=load_json("house_vote_detail_119_1_2_speaker.json"))
+    )
+    respx.get(f"{API}/house-vote/119/1/240/members").mock(
+        return_value=httpx.Response(200, json=load_json("house_vote_members_119_1_240.json"))
+    )
+    respx.get(f"{API}/house-vote/119/1/240").mock(
+        return_value=httpx.Response(200, json=load_json("house_vote_detail_119_1_240.json"))
+    )
+    respx.get(url__startswith=f"{API}/house-vote/119/1?").mock(
+        return_value=httpx.Response(200, json=listing)
+    )
+
+    with cg.open_fetcher() as fetcher:
+        tally = sync_house_votes(conn, fetcher, congress=119, session=1)
+
+    # The ordinary roll call survived; the Speaker election did not land.
+    rolls = conn.execute(text("SELECT roll_number FROM vote ORDER BY roll_number")).scalars().all()
+    assert rolls == [240], "the good roll call must still be collected"
+
+    # No orphaned vote row and no partial casts from the failed one.
+    orphans = conn.execute(
+        text(
+            "SELECT count(*) FROM vote v WHERE NOT EXISTS "
+            "(SELECT 1 FROM vote_cast c WHERE c.vote_id = v.id)"
+        )
+    ).scalar_one()
+    assert orphans == 0, "a skipped roll call must not leave a vote row with no casts"
+
+    # And the gap is recorded where it outlives the CI logs.
+    assert tally.notes, "the skip must be noted"
+    assert "119/1/2" in " ".join(tally.notes)
+    state = conn.execute(
+        text("SELECT last_status, message FROM dataset_sync_state WHERE dataset='house_votes'")
+    ).one()
+    assert state.last_status == "ok"
+    assert "119/1/2" in state.message
