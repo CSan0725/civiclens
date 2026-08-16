@@ -1,0 +1,140 @@
+name: verify-senate-live
+
+# One-off access probe, NOT a collection job.
+#
+# senate.gov sits behind Akamai, which returned 403 to this project's honest
+# User-Agent from the development network during P1 verification, while
+# accepting a browser UA. The default was deliberately left honest (see
+# docs/P1-source-verification.md, Finding 7), on the theory that the block may
+# be IP-related and a US-hosted runner would be allowed through.
+#
+# This workflow settles that question. It fetches ONE real roll call through
+# the exact code path the collector uses — same module, same client, same
+# default User-Agent — parses it, and prints the counts.
+#
+# It deliberately does NOT write to the database. This measures reachability,
+# not ingestion, so it needs no secrets and no service container.
+#
+# Manual dispatch only: nothing here should run on a schedule or on push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      congress:
+        description: Congress number
+        required: false
+        default: "119"
+      session:
+        description: Session (1 or 2)
+        required: false
+        default: "2"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipelines/etl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipelines/etl/uv.lock
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Probe senate.gov through the collector
+        env:
+          CONGRESS: ${{ inputs.congress }}
+          SESSION: ${{ inputs.session }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import sys
+
+          from common.logging import configure_logging
+          from common.settings import get_settings
+          from sources import legislators, senate_xml
+          from sources.base import SourceError
+
+          configure_logging("INFO")
+          congress = int(os.environ["CONGRESS"])
+          session = int(os.environ["SESSION"])
+          settings = get_settings()
+
+          print(f"congress={congress} session={session}")
+          print(f"User-Agent in use: {settings.senate_user_agent!r}")
+          print("(this is the shipped default unless SENATE_USER_AGENT is set)")
+          print()
+
+          try:
+              with senate_xml.open_fetcher() as fetcher:
+                  menu = senate_xml.fetch_vote_menu(
+                      fetcher, congress=congress, session=session
+                  )
+                  print(f"MENU  {menu.status_code}  {len(menu.payload):,} bytes  {menu.source_url}")
+
+                  listed = senate_xml.parse_vote_menu(menu.payload)
+                  print(f"MENU  parsed {len(listed)} roll calls")
+                  if not listed:
+                      print("::error::menu parsed but contained no roll calls")
+                      sys.exit(1)
+
+                  newest = max(listed, key=lambda v: v["roll_number"])
+                  roll = int(newest["roll_number"])
+                  print(f"MENU  newest roll call: #{roll} — {newest.get('question')}")
+                  print()
+
+                  vote = senate_xml.fetch_vote(
+                      fetcher, congress=congress, session=session, roll_number=roll
+                  )
+                  print(f"VOTE  {vote.status_code}  {len(vote.payload):,} bytes  {vote.source_url}")
+
+              row = senate_xml.parse_vote(vote.payload, source_url=vote.source_url)
+              print(
+                  "VOTE  parsed: "
+                  f"{row['congress_no']}-{row['session']} roll {row['roll_number']} "
+                  f"on {row['vote_date']} — {row['result']!r} "
+                  f"({row['yea_count']}-{row['nay_count']}, {row['required_majority']} required)"
+              )
+
+              with legislators.open_fetcher() as cw_fetcher:
+                  crosswalk = legislators.load_lis_crosswalk(cw_fetcher)
+              print(f"CROSSWALK  {len(crosswalk)} lis_id -> bioguide_id entries")
+
+              casts, unresolved = senate_xml.parse_vote_members(
+                  vote.payload,
+                  vote_id=0,
+                  congress_no=row["congress_no"],
+                  source_url=vote.source_url,
+                  lis_crosswalk=crosswalk,
+              )
+              positions: dict[str, int] = {}
+              for c in casts:
+                  positions[c["position"]] = positions.get(c["position"], 0) + 1
+
+              print(f"CASTS  resolved {len(casts)}, unresolved {len(unresolved)}")
+              print(f"CASTS  positions: {positions}")
+              if unresolved:
+                  print(f"CASTS  unresolved lis ids: {sorted(set(unresolved))}")
+
+              print()
+              print("RESULT: senate.gov is REACHABLE from this runner with the honest User-Agent.")
+              print("Nothing was written to a database — this probe is read-only.")
+
+          except SourceError as exc:
+              message = str(exc)
+              print()
+              if "403" in message:
+                  print("RESULT: senate.gov returned 403 — the WAF rejects this User-Agent here too.")
+                  print("Do NOT spoof a browser UA without an explicit decision; see")
+                  print("docs/P1-source-verification.md (Finding 7).")
+              else:
+                  print("RESULT: senate.gov request failed for a reason other than the WAF.")
+              print(f"::error::{message[:500]}")
+              sys.exit(1)
+          PY
