@@ -50,9 +50,11 @@ jobs:
       LIMIT_ARG: ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v5
+      # Exact pin: setup-uv stopped publishing major and minor tags at
+      # v8, so `@v10` does not resolve. Bump this line deliberately.
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-dependency-glob: pipelines/etl/uv.lock

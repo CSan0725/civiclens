@@ -54,9 +54,11 @@ jobs:
       CIVICLENS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civiclens_test?sslmode=disable
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v5
+      # Exact pin: setup-uv stopped publishing major and minor tags at
+      # v8, so `@v10` does not resolve. Bump this line deliberately.
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-dependency-glob: pipelines/etl/uv.lock
@@ -78,8 +80,8 @@ jobs:
         run: uv run mypy
 
       # The integration tests write to the real schema, so it has to exist.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
