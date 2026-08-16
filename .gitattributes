@@ -1,0 +1,9 @@
+# Normalise to LF in the repository. Development happens on Windows but CI and
+# every deploy target are Linux, so CRLF in the index would show up as spurious
+# diffs and as failures in the `git diff --exit-code` schema-drift gate.
+* text=auto eol=lf
+
+# Lockfiles are generated; keep them out of diff review and language stats.
+pnpm-lock.yaml linguist-generated=true -diff
+pipelines/etl/uv.lock linguist-generated=true -diff
+apps/web/src/db/generated/*.ts linguist-generated=true

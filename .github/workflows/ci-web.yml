@@ -1,0 +1,51 @@
+name: ci-web
+
+# Path-filtered per Deployment-Architecture-Report §4: only the affected
+# workspace runs. Deployment is NOT wired up yet — that lands with the Vercel
+# connection in a later step.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/ci-web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/ci-web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @civiclens/web run lint
+
+      - name: Typecheck
+        run: pnpm --filter @civiclens/web run typecheck

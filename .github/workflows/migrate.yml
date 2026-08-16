@@ -1,0 +1,74 @@
+name: migrate
+
+# Applies pending migrations to a real database.
+#
+# MANUAL DISPATCH ONLY, on purpose. Deployment-Architecture-Report §4: a
+# dedicated migration job — not the app deploy, not the ETL — owns this, and it
+# must run BEFORE the app deploys and before any ETL job, so neither meets a
+# schema that has not been applied yet.
+#
+# Prerequisites:
+#   - Repository environment `production` (or `staging`) exists, ideally with a
+#     required reviewer.
+#   - Secret DATABASE_URL_UNPOOLED is set on that environment. Use the DIRECT
+#     Neon endpoint: DDL must not go through PgBouncer transaction pooling.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: environment
+        required: true
+        default: production
+      dry_run:
+        description: Only report pending migrations, do not apply them
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: migrate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify target is configured
+        run: |
+          if [ -z "$DATABASE_URL_UNPOOLED" ]; then
+            echo "::error::Secret DATABASE_URL_UNPOOLED is not set on environment '${{ inputs.environment }}'."
+            exit 1
+          fi
+
+      - name: Provide empty dotenv
+        run: touch .env
+
+      - name: Pending migrations
+        run: pnpm --filter @civiclens/db run status
+
+      - name: Apply
+        if: ${{ !inputs.dry_run }}
+        run: pnpm --filter @civiclens/db run up
+
+      - name: Final status
+        if: ${{ !inputs.dry_run }}
+        run: pnpm --filter @civiclens/db run status

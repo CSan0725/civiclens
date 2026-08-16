@@ -1,0 +1,53 @@
+# --- dependencies ---
+node_modules/
+.pnpm-store/
+.venv/
+__pycache__/
+*.py[cod]
+
+# --- build output ---
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# --- turbo ---
+.turbo/
+
+# --- env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- generated artifacts (see root CLAUDE.md 생성물 git 정책) ---
+# apps/web/src/db/generated/{schema,relations}.ts are NOT ignored on purpose:
+# Deployment-Architecture-Report §3/§4 requires the drizzle-kit pull output to
+# be committed so CI can `git diff --exit-code` it and fail on schema drift.
+# Both files are byte-deterministic across runs (verified).
+#
+# The rest of drizzle-kit pull's output is not: it also emits a snapshot .sql
+# with a RANDOM generated filename plus a meta/ journal, neither of which the
+# app consumes and both of which would break the drift check.
+apps/web/src/db/generated/*.sql
+apps/web/src/db/generated/meta/
+data/
+logs/
+output/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# --- tooling ---
+.tools/
+coverage/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- editors ---
+.idea/
+.vscode/*
+!.vscode/extensions.json

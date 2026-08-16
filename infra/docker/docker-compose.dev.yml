@@ -1,0 +1,32 @@
+# Local development database.
+#
+# Production is Neon (Deployment-Architecture-Report Stack A). This exists so
+# migrations and queries can be developed and tested offline against the same
+# Postgres major version and the same PostGIS build.
+#
+#   docker compose -f infra/docker/docker-compose.dev.yml up -d
+#   pnpm db:up
+#
+# Port 55432 rather than 5432, to avoid colliding with any Postgres already
+# installed on the host.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: civiclens-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: civiclens
+    ports:
+      - "55432:5432"
+    volumes:
+      - civiclens-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d civiclens"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  civiclens-pgdata:

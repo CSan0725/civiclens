@@ -1,0 +1,33 @@
+{
+  "name": "civiclens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CivicLens — neutral, source-traceable US Congress data platform",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rimraf node_modules",
+    "db:up": "pnpm --filter @civiclens/db run up",
+    "db:down": "pnpm --filter @civiclens/db run down",
+    "db:status": "pnpm --filter @civiclens/db run status",
+    "db:pull": "pnpm --filter @civiclens/web run db:pull"
+  },
+  "devDependencies": {
+    "turbo": "2.10.10",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "esbuild",
+      "@tailwindcss/oxide",
+      "unrs-resolver"
+    ]
+  }
+}

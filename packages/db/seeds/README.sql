@@ -1,0 +1,8 @@
+-- Seed data for local development.
+--
+-- Empty by design: every row in this database comes from an official source
+-- via the ETL (PRD FC-1), and fabricated legislators or votes in a dev
+-- database are exactly the kind of thing that leaks into a screenshot.
+--
+-- To get real data locally, run the collectors against a local Postgres once
+-- they exist (P1), or restore a dump.

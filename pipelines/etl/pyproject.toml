@@ -1,0 +1,87 @@
+[project]
+name = "civiclens-etl"
+version = "0.1.0"
+description = "CivicLens ETL — collects US Congress data from official public-domain sources into Postgres/PostGIS."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    # HTTP: Congress.gov / GovInfo / FEC / Census REST APIs
+    "httpx>=0.28,<1.0",
+    "tenacity>=9.0",
+    # XML: senate.gov roll calls, clerk.house.gov roll calls, GovInfo granules
+    "lxml>=5.3",
+    # DB: SQLAlchemy Core + psycopg3 (NOT the ORM — see
+    # Deployment-Architecture-Report §2b: ETL is bulk upsert/COPY-heavy)
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    # Config + validation of parsed source payloads
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "python-dotenv>=1.0",
+    # Structured job logs (NFR-9 관측성)
+    "structlog>=24.4",
+    # Provenance snapshots -> Cloudflare R2 (S3-compatible)
+    "boto3>=1.35",
+]
+
+[project.scripts]
+civiclens-etl = "common.cli:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "pytest>=8.3",
+    "types-boto3>=1.35",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The Deployment-Architecture-Report §3 tree puts the packages directly under
+# `src/`, so each is a top-level import (`from sources import congress_gov`).
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/common",
+    "src/sources",
+    "src/loaders",
+    "src/geo",
+    "src/provenance",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+    "TID", # tidy imports
+]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["common", "sources", "loaders", "geo", "provenance"]
+strict = true
+warn_unused_ignores = true
+# Every source module is a signature-and-TODO stub in P0; empty bodies are the
+# point, not an oversight.
+disallow_empty_bodies = false
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

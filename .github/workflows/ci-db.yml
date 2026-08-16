@@ -1,0 +1,93 @@
+name: ci-db
+
+# Migration validation (Deployment-Architecture-Report §4: "packages/db/
+# migrations/** triggers migration validation").
+#
+# Applies every migration to a throwaway PostGIS instance, rolls the whole
+# thing back, re-applies it, then regenerates the Drizzle types and fails on
+# drift. This is the type-sync gate the architecture report calls for; it lives
+# here rather than in ci-web because it needs a live database.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/db/**"
+      - "apps/web/drizzle.config.ts"
+      - "apps/web/src/db/**"
+      - ".github/workflows/ci-db.yml"
+  pull_request:
+    paths:
+      - "packages/db/**"
+      - "apps/web/drizzle.config.ts"
+      - "apps/web/src/db/**"
+      - ".github/workflows/ci-db.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civiclens
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d civiclens"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/civiclens?sslmode=disable
+      DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/civiclens?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # dbmate reads --env-file ../../.env relative to packages/db; in CI the
+      # values come from the job env instead, so give it an empty file to find.
+      - name: Provide empty dotenv
+        run: touch .env
+
+      - name: Apply migrations
+        run: pnpm --filter @civiclens/db run up
+
+      - name: Show status
+        run: pnpm --filter @civiclens/db run status
+
+      # A migration that cannot be rolled back is a migration that cannot be
+      # reverted in an incident.
+      - name: Roll back and re-apply
+        run: |
+          pnpm --filter @civiclens/db run down
+          pnpm --filter @civiclens/db run up
+
+      - name: Regenerate Drizzle types
+        run: pnpm --filter @civiclens/web run db:pull
+
+      - name: Fail on schema drift
+        run: |
+          if ! git diff --exit-code -- apps/web/src/db/generated/schema.ts apps/web/src/db/generated/relations.ts; then
+            echo "::error::Drizzle types are out of date. Run 'pnpm --filter @civiclens/web run db:pull' and commit the result."
+            exit 1
+          fi

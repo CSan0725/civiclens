@@ -1,0 +1,50 @@
+name: ci-etl
+
+# Path-filtered per Deployment-Architecture-Report §4.
+# Lint, typecheck and unit tests only — no network, no database.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pipelines/etl/**"
+      - ".github/workflows/ci-etl.yml"
+  pull_request:
+    paths:
+      - "pipelines/etl/**"
+      - ".github/workflows/ci-etl.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-etl-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: pipelines/etl
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipelines/etl/uv.lock
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
+      - name: mypy
+        run: uv run mypy
+
+      - name: pytest
+        run: uv run pytest -q

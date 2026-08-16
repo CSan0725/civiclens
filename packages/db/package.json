@@ -1,0 +1,19 @@
+{
+  "name": "@civiclens/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CivicLens database schema — the single source of truth. Plain-SQL migrations owned by dbmate; TS and Python both introspect the live DB.",
+  "scripts": {
+    "up": "dbmate --env-file ../../.env --env DATABASE_URL_UNPOOLED --migrations-dir ./migrations --no-dump-schema up",
+    "down": "dbmate --env-file ../../.env --env DATABASE_URL_UNPOOLED --migrations-dir ./migrations --no-dump-schema down",
+    "status": "dbmate --env-file ../../.env --env DATABASE_URL_UNPOOLED --migrations-dir ./migrations status",
+    "new": "dbmate --migrations-dir ./migrations new",
+    "drop": "dbmate --env-file ../../.env --env DATABASE_URL_UNPOOLED --migrations-dir ./migrations drop",
+    "dump": "dbmate --env-file ../../.env --env DATABASE_URL_UNPOOLED --migrations-dir ./migrations --schema-file ./schema.sql dump",
+    "lint": "echo \"@civiclens/db: no JS to lint (SQL-only package)\"",
+    "typecheck": "echo \"@civiclens/db: no TS to typecheck (SQL-only package)\""
+  },
+  "devDependencies": {
+    "dbmate": "2.35.0"
+  }
+}
