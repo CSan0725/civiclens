@@ -3,8 +3,14 @@
 Next.js 16 (App Router, RSC) + TypeScript + Tailwind 4 + shadcn/ui, reading
 Postgres through Drizzle.
 
-**P0 status:** every route in PRD §10 exists and renders a placeholder. No data
-fetching, no real components. The interface is P5.
+**Status:** the dashboard (`/`) and member profiles (`/members/[bioguide]`)
+render real data from Postgres. The other ten routes in PRD §10 exist as
+placeholders.
+
+Both live pages are `dynamic = "force-dynamic"`: they read Postgres, and
+`next build` must stay database-free because ci-web builds without a
+`DATABASE_URL`. Swap in `export const revalidate` once the build environment
+has a read-only connection.
 
 ## Commands
 
@@ -16,6 +22,19 @@ pnpm typecheck
 pnpm db:pull        # regenerate Drizzle types from the live database
 pnpm db:check       # verify the committed types still match the database
 ```
+
+### Running against another database for one command
+
+`DATABASE_URL` is the only switch. To view production data without putting a
+credential in the working tree:
+
+```bash
+DATABASE_URL="<neon pooled url>" pnpm --filter @civiclens/web dev
+```
+
+Use the **pooled** (`-pooler`) host: this app opens a connection per request.
+Nothing is written to `.env`, which stays pointed at the local Docker
+container.
 
 ## Database access
 

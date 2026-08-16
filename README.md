@@ -61,7 +61,27 @@ pnpm --filter @civiclens/web run db:pull    # generate Drizzle types from the li
 pnpm dev                                    # http://localhost:3000
 ```
 
-Every route renders a "Coming soon" placeholder — the interface is P5.
+The dashboard (`/`) and member profiles (`/members/[bioguide]`) render real
+collected data. The other ten routes are still placeholders — see
+[Where this stands](#where-this-stands).
+
+### Pointing the app at a different database
+
+The app reads `DATABASE_URL` and nothing else, so the same build serves the
+local Docker Postgres or Neon. To look at production data WITHOUT writing a
+credential to disk, set it for that one command only:
+
+```bash
+DATABASE_URL="<neon pooled url>" pnpm --filter @civiclens/web dev
+```
+
+Use the **pooled** (`-pooler`) Neon host here: the app opens a connection per
+request and PgBouncer is what keeps that from exhausting Postgres. The
+unpooled host is for migrations and the ETL.
+
+Nothing is written to `.env` by that command, and `.env` stays pointed at the
+local container — which is the point. Neon credentials belong in GitHub
+Actions secrets, not in a developer's working tree.
 
 ### Collecting data
 
@@ -106,7 +126,7 @@ Milestones follow `PRD-US-Political-Tracker-v1.md` §14.
 | P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | Not started |
 | P3 | GovInfo Congressional Record speeches + full-text search | Not started |
 | P4 | Census geocoding, district boundaries, MapLibre, FEC candidates | Not started |
-| P5 | Dashboard, profiles, search, rankings — the real interface | Not started |
+| P5 | Dashboard, profiles, search, rankings — the real interface | **Dashboard + member profile done**; 10 routes still placeholders |
 | P6 | Consistency, freshness, observability, accessibility | Not started |
 
 ### What P1 delivered
@@ -195,12 +215,33 @@ this logic.
   stays invisible to users until Voteview cross-checking runs in P2 (PRD FC-3).
 - **No real UI.** Routes are still placeholders; the interface is P5.
 
+### What the interface shows today
+
+A deliberately thin slice of P5 — two pages against real data, rather than a
+half-built version of all twelve:
+
+- **`/`** — freshness line, recently passed bills, recent roll calls with
+  tallies, recent legislative actions, and a members sample.
+- **`/members/[bioguide]`** — unified profile header with a neutral party chip,
+  and tabs for overview, sponsorship, voting history, speeches and committees.
+  Unknown Bioguide IDs 404.
+
+Two things it deliberately does **not** do:
+
+- **No participation percentage.** Collection covers a bounded slice of roll
+  calls, so a rate computed against that denominator would understate every
+  member. Raw counts are shown instead, with the reason stated on the page.
+- **No score, rating or ranking of any kind** (PRD N1/FC-4).
+
+Sections with no data yet — speeches, committee membership — say so explicitly
+rather than being hidden, so "not collected" can never read as "nothing to
+report".
+
 ### To continue
 
-1. A scheduled collection workflow (cron over the existing P1 jobs). Senate
-   access is confirmed, so this is now unblocked.
-2. P2: Clerk XML backfill 1990–2016 + Voteview reconciliation, which is what
-   flips `is_published` and makes anything user-visible.
+1. P2: Clerk XML backfill 1990–2016 + Voteview reconciliation, which is what
+   flips `is_published` and makes votes publishable.
+2. The remaining ten routes, and search.
 
 ## Confirmed decisions
 
