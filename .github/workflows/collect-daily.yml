@@ -1,0 +1,139 @@
+name: collect-daily
+
+# Daily incremental collection into the Neon database.
+#
+# PRD §7 schedule: 표결·액션 = 일 단위 (votes and actions, daily).
+# The roster moves far more slowly and runs weekly in collect-weekly.yml.
+#
+# This runs the SAME jobs and the same code path as the local P1 verification
+# and as verify-senate-live — `civiclens-etl` with real arguments. Nothing here
+# reimplements collection logic; the workflow only schedules it.
+#
+# Senate collection lives here rather than on a developer machine on purpose:
+# senate.gov's WAF answers 403 to our User-Agent from some networks but 200
+# from a GitHub runner, which verify-senate-live confirmed with the shipped
+# default UA. See docs/P1-source-verification.md, Finding 7.
+
+on:
+  schedule:
+    # 05:17 UTC ≈ 01:17 US Eastern, after the legislative day has closed.
+    # Deliberately not on the hour: GitHub delays schedules that land on
+    # popular round times.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      congress:
+        description: Congress to collect (blank = whichever is sitting today)
+        required: false
+        default: ""
+      bill_limit:
+        description: Max bills per run
+        required: false
+        default: "150"
+      vote_limit:
+        description: Max roll calls per chamber/session per run
+        required: false
+        default: "50"
+
+concurrency:
+  group: collect-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # 6h is the hosted-runner hard cap; this should finish in minutes, so a
+    # much lower timeout turns a hang into a fast, visible failure.
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: pipelines/etl
+
+    env:
+      # The ETL reads DATABASE_URL, and must get the DIRECT (unpooled) Neon
+      # endpoint: bulk upserts must not go through PgBouncer transaction
+      # pooling. The pooled string is for the web app, not for this.
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      CONGRESS_GOV_API_KEY: ${{ secrets.CONGRESS_GOV_API_KEY }}
+      ETL_LOG_LEVEL: INFO
+      CONGRESS_ARG: ${{ inputs.congress && format('--congress {0}', inputs.congress) || '' }}
+      BILL_LIMIT: ${{ inputs.bill_limit || '150' }}
+      VOTE_LIMIT: ${{ inputs.vote_limit || '50' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipelines/etl/uv.lock
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Verify secrets are present
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL_UNPOOLED secret is not set."; exit 1
+          fi
+          if [ -z "$CONGRESS_GOV_API_KEY" ]; then
+            echo "::error::CONGRESS_GOV_API_KEY secret is not set."; exit 1
+          fi
+
+      # Bills before votes: a roll call links to its bill by natural key, and
+      # a bill that is not yet stored leaves vote.bill_id NULL.
+      #
+      # `--limit` is the incremental strategy. The bill list is sorted by
+      # updateDate descending, so the most recently changed bills come first
+      # and a bounded run covers everything that moved. Upserts are idempotent,
+      # so re-seeing an unchanged bill is harmless. Limitation: if more than
+      # BILL_LIMIT bills change in one day, the tail waits for tomorrow —
+      # raise the limit or wire `--since` if that starts happening.
+      - name: Bills, actions and sponsorships
+        run: uv run civiclens-etl bills $CONGRESS_ARG --limit "$BILL_LIMIT"
+
+      - name: House roll calls
+        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber house --limit "$VOTE_LIMIT"
+
+      # Senate is a separate step so a senate.gov outage does not mask a
+      # successful House run in the logs.
+      - name: Senate roll calls
+        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber senate --limit "$VOTE_LIMIT"
+
+      - name: Report freshness
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import os, psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as c, c.cursor() as cur:
+              cur.execute("""
+                  select dataset, last_status, rows_upserted, last_success_at, data_current_as_of
+                  from dataset_sync_state order by dataset
+              """)
+              print(f"{'dataset':<14}{'status':<9}{'rows':>7}  last_success_at")
+              for d, st, rows, ok_at, cur_at in cur.fetchall():
+                  print(f"{d:<14}{st or '-':<9}{rows if rows is not None else 0:>7}  {ok_at}")
+              cur.execute("""
+                  select 'member', count(*) from member
+                  union all select 'bill', count(*) from bill
+                  union all select 'bill_action', count(*) from bill_action
+                  union all select 'sponsorship', count(*) from sponsorship
+                  union all select 'vote', count(*) from vote
+                  union all select 'vote_cast', count(*) from vote_cast
+                  union all select 'provenance', count(*) from provenance
+                  order by 1
+              """)
+              print("\nrow counts:")
+              for t, n in cur.fetchall():
+                  print(f"  {t:<14}{n:>9,d}")
+          PY
+
+      - name: Open an issue on failure
+        if: failure()
+        uses: ./.github/actions/report-etl-failure
+        with:
+          job-name: daily

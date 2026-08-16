@@ -130,3 +130,36 @@ def test_sync_tally_counts_per_table() -> None:
     tally.add("member", 2)
     assert tally.rows_upserted == 10
     assert tally.detail == {"member": 5, "term": 5}
+
+
+@pytest.mark.parametrize(
+    ("today", "expected"),
+    [
+        # 119th convenes 2025-01-03 and runs through 2027-01-02.
+        ((2025, 1, 3), 119),
+        ((2025, 6, 1), 119),
+        ((2026, 8, 16), 119),
+        ((2026, 12, 31), 119),
+        # The first two days of an odd year still belong to the outgoing Congress.
+        ((2027, 1, 1), 119),
+        ((2027, 1, 2), 119),
+        ((2027, 1, 3), 120),
+        ((2028, 5, 5), 120),
+    ],
+)
+def test_current_congress(today: tuple[int, int, int], expected: int) -> None:
+    """The cron workflows rely on this: a hard-coded Congress would silently
+    start collecting the wrong one in January 2027."""
+    from datetime import date
+
+    from common.cli import current_congress
+
+    assert current_congress(date(*today)) == expected
+
+
+def test_congress_defaults_to_the_sitting_one() -> None:
+    from common.cli import build_parser, current_congress
+
+    args = build_parser().parse_args(["members"])
+    assert args.congress is None  # resolved in main()
+    assert current_congress() >= 119

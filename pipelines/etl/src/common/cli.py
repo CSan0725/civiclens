@@ -5,7 +5,7 @@ Deployment-Architecture-Report §4:
 
     members       weekly    Congress.gov roster -> member, term            [P1]
     bills         daily     Congress.gov bills, actions, cosponsors        [P1]
-    votes         daily     House 2023~ (Congress.gov) + Senate XML        [P1]
+    votes         daily     House 2017~ (Congress.gov) + Senate XML        [P1]
     speeches      daily     GovInfo Congressional Record granules          [P3]
     candidates    weekly    openFEC candidates + totals                    [P4]
     boundaries    manual    Census TIGER/CB -> district (+ TopoJSON to R2) [P4]
@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from datetime import date
 
 from common.logging import configure_logging, get_logger
 from common.settings import get_settings
@@ -27,7 +28,7 @@ from common.settings import get_settings
 JOBS: dict[str, str] = {
     "members": "Congress.gov roster -> member, term (weekly) [P1]",
     "bills": "Congress.gov bills, actions, cosponsors (daily) [P1]",
-    "votes": "House 2023~ + Senate roll calls -> vote, vote_cast (daily) [P1]",
+    "votes": "House 2017~ + Senate roll calls -> vote, vote_cast (daily) [P1]",
     "speeches": "GovInfo Congressional Record granules -> speech (daily) [P3]",
     "candidates": "openFEC candidates + totals -> candidate, campaign_finance [P4]",
     "boundaries": "Census TIGER/CB -> district, TopoJSON -> R2 (per Congress) [P4]",
@@ -37,8 +38,21 @@ JOBS: dict[str, str] = {
 
 IMPLEMENTED = {"members", "bills", "votes"}
 
-# Congress in session as of this build. Overridable with --congress.
-DEFAULT_CONGRESS = 119
+
+def current_congress(today: date | None = None) -> int:
+    """The Congress sitting on a given date.
+
+    Computed rather than hard-coded so the scheduled collection workflows do
+    not silently start collecting the wrong Congress in January 2027.
+
+    Congress N convenes on 3 January of the odd year 1789 + 2*(N-1), so the
+    first two days of an odd year still belong to the outgoing Congress.
+    """
+    today = today or date.today()
+    congress = (today.year - 1789) // 2 + 1
+    if today.year % 2 == 1 and (today.month, today.day) < (1, 3):
+        congress -= 1
+    return congress
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,8 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--congress",
         type=int,
-        default=DEFAULT_CONGRESS,
-        help=f"Congress to collect (default: {DEFAULT_CONGRESS})",
+        default=None,
+        help="Congress to collect (default: whichever is sitting today)",
     )
     parser.add_argument(
         "--session",
@@ -88,6 +102,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.congress is None:
+        args.congress = current_congress()
     settings = get_settings()
     configure_logging(settings.etl_log_level)
     log = get_logger("cli")
