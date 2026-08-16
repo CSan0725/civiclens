@@ -38,12 +38,12 @@ Postgres FTS with GIN indexes performs well into the low millions of rows but de
 
 | Option | Long backfill (hours) | Daily incremental | Cost | Simplicity |
 |---|---|---|---|---|
-| **GitHub Actions (scheduled)** | Hard 6-hour per-job cap (official docs) — a problem for the full 1990–2022 Clerk backfill | Ideal for daily/weekly cron | Public repo: unlimited free minutes; private: 2,000 free Linux min/mo, then $0.006/min | Highest — no infra |
+| **GitHub Actions (scheduled)** | Hard 6-hour per-job cap (official docs) — a problem for the full 1990–2016 Clerk backfill | Ideal for daily/weekly cron | Public repo: unlimited free minutes; private: 2,000 free Linux min/mo, then $0.006/min | Highest — no infra |
 | **VPS + cron (Hetzner)** | No time limit — best for backfills | Fine | €5–17/mo flat | Medium (own the box) |
 | **Railway/Render/Fly workers** | Render Background Workers + built-in cron; Railway usage-based | Good | Render Starter $7/mo/service; Railway ~$5+/mo | Medium |
 | **Modal / Prefect / Dagster Cloud** | Good for orchestration | Good | Free tiers exist; overkill early | Lower for solo dev |
 
-**Recommendation:** Run **daily/weekly incremental jobs on GitHub Actions scheduled workflows** (free for public repos, which fits an open-source civic project). Run the **one-time 1990–2022 backfill on a temporary Hetzner VPS** (or locally), because GitHub Actions caps a single hosted-runner job at 6 hours ("Each job in a workflow can run for up to 6 hours of execution time. If a job reaches this limit, the job is terminated and fails." — GitHub Actions docs; note self-hosted runners allow up to 5 days). This keeps recurring infra at $0 while giving backfills unlimited runtime. Note GitHub Actions has no built-in failure alerting on scheduled jobs — add a Slack/email webhook on failure. When ETL grows beyond ~2,000 private-repo minutes/month or needs retries/orchestration, move to a Hetzner cron box or Render Background Workers.
+**Recommendation:** Run **daily/weekly incremental jobs on GitHub Actions scheduled workflows** (free for public repos, which fits an open-source civic project). Run the **one-time 1990–2016 backfill on a temporary Hetzner VPS** (or locally), because GitHub Actions caps a single hosted-runner job at 6 hours ("Each job in a workflow can run for up to 6 hours of execution time. If a job reaches this limit, the job is terminated and fails." — GitHub Actions docs; note self-hosted runners allow up to 5 days). This keeps recurring infra at $0 while giving backfills unlimited runtime. Note GitHub Actions has no built-in failure alerting on scheduled jobs — add a Slack/email webhook on failure. When ETL grows beyond ~2,000 private-repo minutes/month or needs retries/orchestration, move to a Hetzner cron box or Render Background Workers.
 
 #### 1c. Managed PostgreSQL with PostGIS
 
@@ -153,7 +153,7 @@ political-transparency/
 - **Who runs migrations:** A **dedicated migration job**, not the app deploy and not the ETL. On merge to `main`, run `atlas migrate apply` (or `dbmate up`) against production as an explicit, gated CI step **before** the app deploy and before ETL jobs run. This ordering (DB → schema types → apps) prevents the app or ETL from hitting a schema they expect but that isn't applied yet.
 - **Type-sync gate:** After migrations, regenerate TS/Python types and `git diff --exit-code` to fail the build on uncommitted drift.
 - **Scheduled ETL:** Separate `schedule:` cron workflows for votes/bills (daily), roster (weekly), boundaries (per-Congress/manual dispatch). Add failure alerting (Slack/email) since GitHub Actions won't notify on scheduled-job failure. Use `--fast` incremental patterns (as unitedstates/congress does) to only reprocess changed objects.
-- **Backfill:** Run the 1990–2022 Clerk/Voteview backfill as a manual `workflow_dispatch` on a self-hosted runner or a temporary VPS, not on hosted runners (6-hour job cap).
+- **Backfill:** Run the 1990–2016 Clerk/Voteview backfill as a manual `workflow_dispatch` on a self-hosted runner or a temporary VPS, not on hosted runners (6-hour job cap).
 
 ### 5. Reference Points from Comparable Civic-Tech Projects
 
@@ -164,12 +164,12 @@ political-transparency/
 - **OpenGov** (commercial gov-tech, for contrast): TypeScript/React frontend, polyglot backends, PostgreSQL on AWS. Confirms Postgres as the civic-data default even at commercial scale.
 
 ### 6. Data source specifics that shape the design
-- **Congress.gov API:** 5,000 requests/hour (raised from 1,000 in March 2024). Comfortable for daily incrementals; use the GovInfo/GPO bulk data repository for large historical pulls rather than hammering the API.
+- **Congress.gov API:** documented at 5,000 requests/hour (raised from 1,000 in March 2024), but the live response header reports `X-Ratelimit-Limit: 20000` (measured 2026-08-16). The client reads the header rather than hard-coding either figure. Comfortable for daily incrementals; use the GovInfo/GPO bulk data repository for large historical pulls rather than hammering the API.
 - **GovInfo:** Bulk data repository is the right source for large Congressional Record text volumes and bill status XML — download newly-updated files only (the unitedstates/congress GovInfo fetcher pattern).
 
 ## Recommendations
 
-**Stage 0 — Launch (0 traffic, solo dev):** Ship **Stack A**. Vercel (Hobby if non-commercial, else Pro), Neon Free/Launch with PostGIS, GitHub Actions cron on a public repo, Cloudflare R2 for snapshots. Monorepo with pnpm+Turborepo+uv. **Atlas (or dbmate) owns the schema in `packages/db`**; Drizzle introspects on the TS side; SQLAlchemy Core + psycopg3 on the ETL side. Partition VoteCast by `congress_no`, GIN + `tsvector` + `pg_trgm` for search, static TopoJSON to R2/CDN for maps. Run the 1990–2022 backfill once on a temporary VPS. **~$0–25/mo.**
+**Stage 0 — Launch (0 traffic, solo dev):** Ship **Stack A**. Vercel (Hobby if non-commercial, else Pro), Neon Free/Launch with PostGIS, GitHub Actions cron on a public repo, Cloudflare R2 for snapshots. Monorepo with pnpm+Turborepo+uv. **Atlas (or dbmate) owns the schema in `packages/db`**; Drizzle introspects on the TS side; SQLAlchemy Core + psycopg3 on the ETL side. Partition VoteCast by `congress_no`, GIN + `tsvector` + `pg_trgm` for search, static TopoJSON to R2/CDN for maps. Run the 1990–2016 backfill once on a temporary VPS. **~$0–25/mo.**
 
 **Stage 1 — Steady traffic / always-warm DB:** When Neon's metered compute stays near always-on or cold starts hurt UX, move the DB to **DigitalOcean Managed Postgres ($15.15/mo flat)** or self-hosted Postgres on a Hetzner box. When ETL exceeds free GitHub Actions minutes or needs retries/orchestration, move ETL to a **Hetzner cron VPS or Render Background Workers**.
 

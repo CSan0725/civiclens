@@ -120,7 +120,7 @@ SELECT count(*) FROM provenance WHERE source_url LIKE '%api_key%';  -- 0
 
 ---
 
-## senate.gov roll-call XML — schema verified, access constrained
+## senate.gov roll-call XML — schema verified, access confirmed on CI
 
 No key. Host `www.senate.gov`, behind Akamai.
 
@@ -129,7 +129,7 @@ No key. Host `www.senate.gov`, behind Akamai.
 | `/legislative/LIS/roll_call_lists/vote_menu_{congress}_{session}.xml` | 200, 153 KB (231 votes in 119-2) |
 | `/legislative/LIS/roll_call_votes/vote{c}{s}/vote_{c}_{s}_{roll:05d}.xml` | 200, 29 KB |
 
-### Finding 7 — the WAF rejects the project's honest User-Agent
+### Finding 7 — the WAF rejects the honest User-Agent locally, but not on CI
 
 `www.senate.gov` returns **403 Access Denied** to
 `CivicLens/0.1 (open civic data; …)` from the development network, at every
@@ -146,11 +146,26 @@ so an honest UA has a real chance of working from a US-hosted GitHub Actions
 runner, and shipping browser impersonation by default is not something to do
 silently.
 
-**Consequence:** Senate collection cannot be smoke-tested live from this
-network. The parser and loader are verified end-to-end against captured
-fixtures instead (`test_load_senate_vote_from_fixture` writes a real roll call
-to Postgres). **A live Senate run still needs confirming from CI or a US
-network** — it is the one part of P1 not exercised against the live source.
+**RESOLVED on GitHub Actions (2026-08-16).** The `verify-senate-live` workflow
+ran the same collector code with the same shipped default User-Agent on an
+`ubuntu-latest` runner (run `31963136312`):
+
+```
+User-Agent in use: 'CivicLens/0.1 (open civic data; +https://github.com/)'
+MENU  200  153,178 bytes  vote_menu_119_2.xml   parsed 231 roll calls
+VOTE  200   29,769 bytes  vote_119_2_00231.xml
+      parsed 119-2 roll 231 — 'Cloture on the Motion to Proceed Rejected' (52-46, 3/5 required)
+CROSSWALK  328 lis_id -> bioguide_id entries
+CASTS  resolved 100, unresolved 0   positions: {'Yea': 52, 'Nay': 46, 'NotVoting': 2}
+```
+
+All 100 senators resolved with none left over, and the counted positions match
+the roll call's own 52-46 tally.
+
+**The block is network-scoped, not User-Agent-scoped.** No spoofing is needed
+and none was added. Scheduled Senate collection runs on GitHub Actions, not
+from a developer machine. `SENATE_USER_AGENT` stays as an override but the
+honest default is what works.
 
 ### Finding 8 — senators are identified by LIS ID, not Bioguide
 
@@ -221,10 +236,37 @@ Checks run against that data:
 
 ## Not verified
 
-- **A live Senate collection** (Finding 7). Parser and loader are fixture-verified.
+- **A full Senate collection run into a database.** Reachability and parsing
+  are confirmed live on CI (Finding 7), and the loader is fixture-verified
+  end to end, but no live Senate run has written rows to Postgres yet.
 - **Voteview reconciliation** — P2. Every `vote` row is written
   `is_published = false` and nothing is user-visible until that runs (PRD FC-3).
 - **Long-run rate-limit behaviour.** The largest run here was a few hundred
   requests, well inside the 20,000/hour budget. The backoff path is unit-tested
   but has not been triggered against the live API.
 - **GovInfo, FEC, Census, Clerk XML** — P2/P3/P4.
+
+---
+
+## GitHub Actions verification (2026-08-16)
+
+Everything above was measured from a developer machine. The repository was then
+pushed to GitHub and the same checks re-run on `ubuntu-latest`:
+
+| Workflow | Result | Time | Notes |
+|---|---|---|---|
+| `ci-web` | pass | 39s | lint, typecheck, `next build` |
+| `ci-etl` | pass | 70s | ruff, mypy, **76 tests** — same count as local, so the 8 DB-backed integration tests ran |
+| `ci-db` | pass | 43s | pulled `postgis/postgis:16-3.4`, applied 0001+0002 from empty, rolled back 0002, re-applied, drift check passed |
+| `verify-senate-live` | pass | ~40s | Finding 7 above |
+
+`ci-etl` failed on its first run with `pq: SSL is not enabled on the server`.
+dbmate's driver (lib/pq) defaults to `sslmode=require` and the service container
+serves plaintext; `ci-db` already carried `?sslmode=disable` in its URL and
+passed on the same runner, so `ci-etl` was the only workflow affected. Local
+runs never saw it because the developer `.env` carries `sslmode=disable`. Fixed
+in commit `89ad906`.
+
+One known limitation: `ci-db` rolls back only the most recent migration
+(dbmate's `down` semantics), so it proves 0002 is reversible but not 0001. The
+full 0001 round trip was verified locally during P0.

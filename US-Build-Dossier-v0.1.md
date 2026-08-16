@@ -1,6 +1,11 @@
 # 미국 정치 트래킹 플랫폼 — US 빌드 데이터소스 & 아키텍처 도시에 (v0.1)
 
 > POLIWIKI 벤치마크 · 원자료 제공 · 중립(성향 평가 없음) · 팩트체크 최우선
+>
+> **실측 정정 (P1, 2026-08-16):** 하원 표결 커버리지 2023~ → **2017~(115대)**,
+> Clerk 백필 1990~2022 → **1990~2016**, Congress.gov 레이트리밋 문서상 5,000 → **실측 20,000 req/h**.
+> senate.gov는 개발 네트워크에서 WAF 403이지만 GitHub Actions 러너에서는 정상.
+> 근거: `docs/P1-source-verification.md`.
 > 대상: 연방 의회(하원 435 + 상원 100) · 현직 + 지역구 + 최근 5년 후보자
 
 ---
@@ -14,10 +19,10 @@
 
 | 소스 | 커버 | 용도 | 갱신 | 비고 |
 |---|---|---|---|---|
-| **Congress.gov API** (`api.congress.gov/v3`) | 법안·의원·위원회·액션·요약·지명 | 핵심 1차. 법안 라이프사이클 전반 | 상시 | 5,000 req/h, API키, JSON/XML, 활발히 유지 |
-| **Congress.gov House Votes (베타)** | 하원 개별 표결 (2023~, 118대+) | 하원 의원별 찬반 | 상시 | member-votes 레벨 신규 제공 |
+| **Congress.gov API** (`api.congress.gov/v3`) | 법안·의원·위원회·액션·요약·지명 | 핵심 1차. 법안 라이프사이클 전반 | 상시 | 문서상 5,000 req/h·**실측 20,000 req/h**, API키, JSON/XML |
+| **Congress.gov House Votes (베타)** | 하원 개별 표결 (**2017~, 115대+** — 실측) | 하원 의원별 찬반 | 상시 | member-votes 레벨. 상원 표결 엔드포인트는 없음(404) |
 | **senate.gov XML** | 상원 개별 표결 (1989~) | 상원 의원별 찬반 | 상시 | roll_call_lists / 개별 vote XML |
-| **clerk.house.gov XML** | 하원 표결 (1990~2022) | 2023년 이전 하원 표결 백필 | 정적 | Congress.gov 베타가 못 덮는 구간 |
+| **clerk.house.gov XML** | 하원 표결 (**1990~2016**) | 2017년 이전 하원 표결 백필 | 정적 | Congress.gov 베타가 못 덮는 구간 |
 | **GovInfo API** (`api.govinfo.gov`) | Congressional Record(발언) 등 | 본회의/Extensions 발언 전문 | 상시 | 발언자·날짜·전문 granule |
 | **FEC API / openFEC** (`api.open.fec.gov`) | 연방 후보·정치자금 | 최근 5년 후보자, 자금 | 상시 | Form 2(출마 신고)로 후보 명단 확보 |
 | **Census Geocoder + TIGER/CB** | 주소→지역구, 경계 폴리곤 | 지도·"내 지역구" | 연 1회+ | 재구획 반영, 의회별 버전 관리 필요 |
@@ -156,8 +161,8 @@ Provenance        # entity, field, source_url, retrieved_at, checksum
 | 항목 | 소스 | 시작연도 | 신선도 | 팩트신뢰 |
 |---|---|---|---|---|
 | 법안·액션 | Congress.gov | 1973~ | 상시 | ★★★ 공식 |
-| 하원 개별표결 | Congress.gov 베타 | 2023~ | 상시 | ★★★ 공식 |
-| 하원 개별표결(과거) | Clerk XML | 1990~2022 | 정적 | ★★★ 공식 |
+| 하원 개별표결 | Congress.gov 베타 | **2017~** | 상시 | ★★★ 공식 |
+| 하원 개별표결(과거) | Clerk XML | **1990~2016** | 정적 | ★★★ 공식 |
 | 상원 개별표결 | senate.gov XML | 1989~ | 상시 | ★★★ 공식 |
 | 본회의 발언 | GovInfo(CR) | 1990s~ | 수일 지연 | ★★★ 공식 |
 | 의회 밖 발언 | 공식 성명/뉴스 | 실시간~ | 시간 | ★~★★ 링크 |
@@ -175,7 +180,7 @@ Provenance        # entity, field, source_url, retrieved_at, checksum
 - 랭킹: 출석률·표결참여율(중립 가드레일 적용)
 
 **주요 리스크**
-- 하원 표결 API가 **베타 + 2023~만** → 과거는 Clerk XML 백필 이중경로 필요.
+- 하원 표결 API가 **베타 + 2017~만**(실측; 당초 2023~로 가정) → 과거는 Clerk XML 백필 이중경로 필요.
 - 뉴스 계층의 중립·저작권 관리 → 링크·헤드라인만, 전문 재현 금지.
 - 재구획으로 인한 경계·의원 매핑 버전 관리 복잡도.
 - FEC 후보 누락(군소후보) → 커버리지 한계 명시.

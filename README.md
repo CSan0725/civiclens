@@ -6,14 +6,13 @@ public-domain sources. It provides raw records with a link back to the source
 for every fact, and **does not rate, score, or evaluate** legislators or
 legislation.
 
-> **Status: P1 (core data collection) complete for the House.** Members, bills,
-> actions, sponsorships and House roll calls are collected live from
-> Congress.gov into Postgres. The Senate parser is complete and
-> fixture-verified, but senate.gov's WAF blocks this project's User-Agent from
-> the development network, so a live Senate run is still unconfirmed. **Nothing
-> is user-visible yet**: every vote is held `is_published = false` until
-> Voteview reconciliation runs in P2, and the interface is P5. See
-> [Where this stands](#where-this-stands).
+> **Status: P1 (core data collection) complete, and verified on CI.** Members,
+> bills, actions, sponsorships and House roll calls are collected live from
+> Congress.gov into Postgres. Senate access is confirmed working from GitHub
+> Actions with the shipped User-Agent — the 403 seen locally is network-scoped,
+> not User-Agent-scoped. **Nothing is user-visible yet**: every vote is held
+> `is_published = false` until Voteview reconciliation runs in P2, and the
+> interface is P5. See [Where this stands](#where-this-stands).
 
 `CivicLens` is a working name.
 
@@ -103,7 +102,7 @@ Milestones follow `PRD-US-Political-Tracker-v1.md` §14.
 | | Milestone | Status |
 |---|---|---|
 | **P0** | Repo, CI, DB schema, ETL skeleton | **Done** |
-| **P1** | Members, bills, actions, votes | **Done for the House; Senate parser done, live access unconfirmed** |
+| **P1** | Members, bills, actions, votes (House 2017~, Senate) | **Done**, green on GitHub Actions |
 | P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | Not started |
 | P3 | GovInfo Congressional Record speeches + full-text search | Not started |
 | P4 | Census geocoding, district boundaries, MapLibre, FEC candidates | Not started |
@@ -125,6 +124,11 @@ endpoint-by-endpoint evidence.
   end. Live access is blocked from the development network (below).
 - Rate-limit awareness read from the response header, bounded retry with
   backoff, `provenance` on every fact, and `dataset_sync_state` freshness.
+
+Verified on GitHub Actions as well as locally — `ci-web`, `ci-etl` and `ci-db`
+are all green on `ubuntu-latest`, with `ci-etl` running the same 76 tests and
+`ci-db` applying both migrations to a fresh PostGIS container, rolling back and
+re-applying.
 
 Verified against a real dev Postgres, not mocks:
 
@@ -148,17 +152,37 @@ Three bugs surfaced by doing this rather than by reading the schema:
    "view original source" link. Now redacted before storing or logging, with
    regression tests.
 
-### Known gap: Senate collection is not live-verified
+### Resolved: Senate access works from CI, with the honest User-Agent
 
 `www.senate.gov` sits behind Akamai and returns **403** to this project's
-honest User-Agent from the development network, at every path. There is no
-`robots.txt`, and the data is public domain. Congress.gov has no Senate vote
+User-Agent from the development network, at every path — which is why P1 could
+only fixture-verify the Senate collector. Congress.gov has no Senate vote
 endpoint (`/senate-vote` 404s), so senate.gov is the only official source.
 
-The default User-Agent stays honest and `SENATE_USER_AGENT` overrides it — a
-deliberate choice not to ship browser impersonation silently, and the block may
-be IP-related, in which case a US-hosted runner will work. Until that is
-confirmed, the Senate path is verified against captured fixtures only.
+The `verify-senate-live` workflow settled it. Running the **same collector code
+with the same shipped default User-Agent** on a GitHub Actions `ubuntu-latest`
+runner:
+
+```
+User-Agent in use: 'CivicLens/0.1 (open civic data; +https://github.com/)'
+MENU  200  153,178 bytes   parsed 231 roll calls
+VOTE  200   29,769 bytes   119-2 roll 231 — 'Cloture on the Motion to Proceed Rejected' (52-46, 3/5 required)
+CASTS resolved 100, unresolved 0   positions: {'Yea': 52, 'Nay': 46, 'NotVoting': 2}
+```
+
+All 100 senators resolved through the LIS→Bioguide crosswalk with none left
+over, and the counted positions match the roll call's own 52-46 tally.
+
+**So the block is network-scoped, not User-Agent-scoped.** No User-Agent
+spoofing is needed, and none was added — `SENATE_USER_AGENT` still exists as an
+override but the honest default is what works. **Scheduled Senate collection
+therefore runs on GitHub Actions, not from a developer machine.**
+
+`verify-senate-live.yml` stays as a manual (`workflow_dispatch`) reachability
+probe; it writes nothing to a database. The recurring collection workflow is
+*not* built yet — when it is, it should schedule the existing P1 jobs
+(`civiclens-etl votes --chamber senate`) on cron rather than duplicate any of
+this logic.
 
 ### What P1 deliberately did not do
 
@@ -173,7 +197,8 @@ confirmed, the Senate path is verified against captured fixtures only.
 
 ### To continue
 
-1. Confirm a live Senate run from CI or a US network (see the gap above).
+1. A scheduled collection workflow (cron over the existing P1 jobs). Senate
+   access is confirmed, so this is now unblocked.
 2. P2: Clerk XML backfill 1990–2016 + Voteview reconciliation, which is what
    flips `is_published` and makes anything user-visible.
 
@@ -189,6 +214,12 @@ Settled before implementation; the open questions in PRD §17 were resolved as:
 | Deployment | Stack A — Vercel + Neon Postgres/PostGIS + GitHub Actions + Cloudflare R2 |
 | ETL orchestration | GitHub Actions cron (the historical backfill runs off-runner; a hosted job is capped at 6 hours) |
 | Migrations | dbmate — plain SQL, minimal dependencies |
+
+**Measured, not assumed.** Congress.gov documents a 5,000 req/hour limit; the
+live response header reports `X-Ratelimit-Limit: 20000`. The client hard-codes
+neither and reads `X-Ratelimit-Remaining` at runtime. Where a live service
+contradicts the design documents, the live service wins — the differences are
+listed in [`docs/P1-source-verification.md`](docs/P1-source-verification.md).
 
 ## Design documents
 

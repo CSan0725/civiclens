@@ -60,7 +60,8 @@ CLI 기반 구현에 바로 투입 가능한 수준의 제품 요구사항 정�
 - 지도 "내 지역구" + 대표 3인 + 최근 5년 후보
 - **공식 발언만** (Congressional Record / GovInfo) — 뉴스 없음
 - 출석률·표결참여율 랭킹
-- **하원 표결: 2023~ 공식 API + Clerk XML 백필(1990s~2022) 포함** ✅
+- **하원 표결: 2017~(115대) 공식 API + Clerk XML 백필(1990~2016) 포함** ✅
+  - ~~2023~ 공식 API + Clerk XML 백필(1990s~2022)~~ — 착수 전 기재값. P1 실측(2026-08-16) 결과 House Votes 베타는 115대(2017)부터 제공되어 백필 구간이 6년 축소. §5 각주 참조.
 - 상원 표결: senate.gov XML
 
 ### v2
@@ -135,9 +136,9 @@ CLI 기반 구현에 바로 투입 가능한 수준의 제품 요구사항 정�
 
 | 계층 | 소스 | 항목 | 라이선스 |
 |---|---|---|---|
-| 1차 | Congress.gov API | 법안·의원·위원회·액션·하원표결(2023~) | 퍼블릭 도메인 |
+| 1차 | Congress.gov API | 법안·의원·위원회·액션·하원표결(**2017~**, 각주 1) | 퍼블릭 도메인 |
 | 1차 | senate.gov XML | 상원 개별표결(1989~) | 퍼블릭 도메인 |
-| 1차 | Clerk XML | 하원 개별표결(1990~2022) **백필** | 퍼블릭 도메인 |
+| 1차 | Clerk XML | 하원 개별표결(**1990~2016**) **백필** | 퍼블릭 도메인 |
 | 1차 | GovInfo API | Congressional Record 발언 | 퍼블릭 도메인 |
 | 1차 | FEC / openFEC | 후보·정치자금 | 퍼블릭 도메인 |
 | 1차 | Census Geocoder + TIGER/CB | 주소→지역구, 경계 | 퍼블릭 도메인 |
@@ -146,6 +147,22 @@ CLI 기반 구현에 바로 투입 가능한 수준의 제품 요구사항 정�
 | v2 | GDELT 등 | 뉴스 언급 탐지 | §12 준수 |
 
 제외: GovTrack **API**(2026 여름 종료) — 데이터 의존 금지, 웹은 UX 참고만.
+
+> **실측 정정 (P1, 2026-08-16)** — 아래 세 항목은 본 문서 작성 시점의 기재값과 실제 서비스 응답이 달라
+> 실측 기준으로 정정한다. 근거·재현 방법은 `docs/P1-source-verification.md`.
+>
+> 1. **하원 표결 커버리지: 2023~ → 2017~(115대).** 회기별 실측 건수 115대 1,210 / 116대 954 /
+>    117대 998 / 118대 1,241 / 119대 645 = 5,048건으로, 전체 컬렉션이 보고하는 총계와 정확히 일치.
+>    따라서 Clerk XML 백필 구간은 1990~2022가 아니라 **1990~2016**.
+> 2. **senate.gov 접근성.** 스키마는 실물 확인 완료. 다만 Akamai WAF가 일부 네트워크(개발 로컬)에서
+>    본 프로젝트 User-Agent에 403을 반환한다. **GitHub Actions 러너에서는 동일 UA로 정상 200**
+>    (231건 롤콜 파싱, 상원의원 100명 전원 매핑, 미해결 0) — 차단은 UA가 아니라 네트워크 기준.
+>    → 정기 상원 수집은 GitHub Actions에서 실행한다. UA 스푸핑 불필요.
+> 3. **Congress.gov 레이트리밋: 문서상 5,000 req/h, 실측 응답 헤더 `X-Ratelimit-Limit: 20000`.**
+>    코드는 두 숫자 중 어느 쪽도 하드코딩하지 않고 응답 헤더(`X-Ratelimit-Remaining`)를 읽어 동작한다.
+>
+> 또한 상원 표결은 Congress.gov API에 **엔드포인트가 존재하지 않는다**(`/senate-vote` 404 확인).
+> senate.gov XML이 유일한 공식 경로라는 본문 서술은 실측으로 재확인됨.
 
 ---
 
@@ -278,8 +295,8 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 ## 14. 로드맵 / 마일스톤
 
 - **P0 셋업:** 레포·CI·DB 스키마·Congress.gov/FEC 키·기본 ETL 골격.
-- **P1 코어 데이터:** 의원·법안·액션·표결(하원 2023~ + 상원) 수집·정규화.
-- **P2 백필:** Clerk XML(1990~2022) + Voteview 대조 파이프라인.
+- **P1 코어 데이터:** 의원·법안·액션·표결(하원 2017~ + 상원) 수집·정규화.
+- **P2 백필:** Clerk XML(1990~2016) + Voteview 대조 파이프라인.
 - **P3 발언:** GovInfo Congressional Record 수집 + FTS.
 - **P4 지도/지역구:** Census Geocoder + 경계 + MapLibre + 후보(FEC 5년).
 - **P5 프런트:** 대시보드·프로필·검색·랭킹.
@@ -293,7 +310,7 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 | 리스크 | 완화 |
 |---|---|
-| 하원 표결 API 베타 + 2023~ 한정 | Clerk XML 백필 이중경로(P2) |
+| 하원 표결 API 베타 + 2017~ 한정(실측; 당초 2023~로 가정) | Clerk XML 백필 이중경로(P2), 구간 1990~2016 |
 | 재구획 경계·매핑 복잡 | District에 congress_no 버전링 |
 | FEC 후보 누락(군소) | 커버리지 한계 명시 |
 | fec_id ↔ bioguide 매핑 난이도 | 매핑 테이블 + 수기 보정 큐 |
@@ -304,8 +321,8 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 ## 16. 착수 전 검증 체크리스트 (CLI 작업 직전)
 
-- [ ] Congress.gov API 키 발급 + House Votes 베타 엔드포인트 응답 확인(2023~)
-- [ ] senate.gov XML 최신 회기 스키마 확인
+- [x] Congress.gov API 키 발급 + House Votes 베타 엔드포인트 응답 확인 — **2017~(115대)** 확인(2026-08-16)
+- [x] senate.gov XML 최신 회기 스키마 확인 — 119대 2세션 실물 확인. 단 senate.gov는 WAF로 일부 네트워크에서 403; GitHub Actions 러너에서는 정상(각주 2)
 - [ ] Clerk XML(하원, ~2022) 접근·스키마 확인
 - [ ] GovInfo API 키 + Congressional Record granule 파싱 확인
 - [ ] FEC API 키 + 후보 5년 필터 확인
@@ -328,8 +345,8 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 - 의원: Congress.gov `/member` → Member/Term
 - 법안: Congress.gov `/bill/{congress}/{type}/{number}` (+ actions, summaries, cosponsors) → Bill/BillAction/Sponsorship
-- 하원표결(2023~): Congress.gov House Votes 베타 → Vote/VoteCast
-- 하원표결(~2022): Clerk XML → Vote/VoteCast
+- 하원표결(2017~): Congress.gov House Votes 베타 → Vote/VoteCast
+- 하원표결(~2016): Clerk XML → Vote/VoteCast
 - 상원표결: senate.gov XML → Vote/VoteCast
 - 발언: GovInfo Congressional Record granule → Speech
 - 후보/자금: FEC `/candidates`, `/candidate/{id}/totals` → Candidate/CampaignFinance
