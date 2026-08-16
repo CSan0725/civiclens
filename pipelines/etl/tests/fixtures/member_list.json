@@ -1,0 +1,74 @@
+{
+ "members": [
+  {
+   "bioguideId": "G000607",
+   "depiction": {
+    "imageUrl": "https://www.congress.gov/img/member/6a29d4f81c6ce0de6fbae1f7_200.jpg"
+   },
+   "district": 1,
+   "name": "Gallagher, James",
+   "partyName": "Republican",
+   "state": "California",
+   "terms": {
+    "item": [
+     {
+      "chamber": "House of Representatives",
+      "startYear": 2026
+     }
+    ]
+   },
+   "updateDate": "2026-08-16T07:40:46Z",
+   "url": "https://api.congress.gov/v3/member/G000607?format=json"
+  },
+  {
+   "bioguideId": "M001246",
+   "depiction": {
+    "attribution": "Image courtesy of the Member",
+    "imageUrl": "https://www.congress.gov/img/member/69eb9743277642362f6112ce_200.jpg"
+   },
+   "district": 11,
+   "name": "Mejia, Analilia",
+   "partyName": "Democratic",
+   "state": "New Jersey",
+   "terms": {
+    "item": [
+     {
+      "chamber": "House of Representatives",
+      "startYear": 2026
+     }
+    ]
+   },
+   "updateDate": "2026-08-16T07:40:46Z",
+   "url": "https://api.congress.gov/v3/member/M001246?format=json"
+  },
+  {
+   "bioguideId": "F000485",
+   "depiction": {
+    "attribution": "Image courtesy of the Member",
+    "imageUrl": "https://www.congress.gov/img/member/69eb95e5277642362f6112c5_200.jpg"
+   },
+   "district": 14,
+   "name": "Fuller, Clay",
+   "partyName": "Republican",
+   "state": "Georgia",
+   "terms": {
+    "item": [
+     {
+      "chamber": "House of Representatives",
+      "startYear": 2026
+     }
+    ]
+   },
+   "updateDate": "2026-08-16T07:40:46Z",
+   "url": "https://api.congress.gov/v3/member/F000485?format=json"
+  }
+ ],
+ "pagination": {
+  "count": 537,
+  "next": "https://api.congress.gov/v3/member/congress/119?currentMember=true&offset=3&limit=3&format=json"
+ },
+ "request": {
+  "contentType": "application/json",
+  "format": "json"
+ }
+}

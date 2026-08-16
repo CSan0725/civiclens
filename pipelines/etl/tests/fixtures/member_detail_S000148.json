@@ -1,0 +1,110 @@
+{
+ "member": {
+  "addressInformation": {
+   "city": "Washington",
+   "district": "DC",
+   "officeAddress": "322 Hart Senate Office Building  Washington, DC 20510",
+   "phoneNumber": "(202) 224-6542",
+   "zipCode": 20515
+  },
+  "bioguideId": "S000148",
+  "birthYear": "1950",
+  "cosponsoredLegislation": {
+   "count": 8115,
+   "url": "https://api.congress.gov/v3/member/S000148/cosponsored-legislation"
+  },
+  "currentMember": true,
+  "depiction": {
+   "attribution": "<a href=\"http://www.senate.gov/artandhistory/history/common/generic/Photo_Collection_of_the_Senate_Historical_Office.htm\">Courtesy U.S. Senate Historical Office</a>",
+   "imageUrl": "https://www.congress.gov/img/member/s000148_200.jpg"
+  },
+  "directOrderName": "Charles E. Schumer",
+  "firstName": "Charles",
+  "honorificName": "Mr.",
+  "invertedOrderName": "Schumer, Charles E.",
+  "lastName": "Schumer",
+  "leadership": [
+   {
+    "congress": 116,
+    "type": "Democratic Leader"
+   },
+   {
+    "congress": 115,
+    "type": "Democratic Leader Chairman of the Conference"
+   },
+   {
+    "congress": 117,
+    "type": "Democratic Leader Chairman of the Conference"
+   },
+   {
+    "congress": 118,
+    "type": "Democratic Leader Chairman of the Conference"
+   },
+   {
+    "congress": 119,
+    "current": true,
+    "type": "Democratic Leader Chair of the Conference"
+   }
+  ],
+  "middleName": "E.",
+  "nickName": "Chuck",
+  "officialWebsiteUrl": "https://www.schumer.senate.gov/",
+  "partyHistory": [
+   {
+    "partyAbbreviation": "D",
+    "partyName": "Democratic",
+    "startYear": 1981
+   }
+  ],
+  "previousNames": [
+   {
+    "directOrderName": "Charles E. Schumer",
+    "firstName": "Charles",
+    "honorificName": "Mr.",
+    "invertedOrderName": "Schumer, Charles E.",
+    "lastName": "Schumer",
+    "middleName": "E.",
+    "startDate": "1981-01-03T05:00:00Z"
+   }
+  ],
+  "sponsoredLegislation": {
+   "count": 2453,
+   "url": "https://api.congress.gov/v3/member/S000148/sponsored-legislation"
+  },
+  "state": "New York",
+  "terms": [
+   {
+    "chamber": "Senate",
+    "congress": 117,
+    "endYear": 2023,
+    "memberType": "Senator",
+    "startYear": 2021,
+    "stateCode": "NY",
+    "stateName": "New York"
+   },
+   {
+    "chamber": "Senate",
+    "congress": 118,
+    "endYear": 2025,
+    "memberType": "Senator",
+    "startYear": 2023,
+    "stateCode": "NY",
+    "stateName": "New York"
+   },
+   {
+    "chamber": "Senate",
+    "congress": 119,
+    "memberType": "Senator",
+    "startYear": 2025,
+    "stateCode": "NY",
+    "stateName": "New York"
+   }
+  ],
+  "updateDate": "2026-03-08T10:32:37Z"
+ },
+ "request": {
+  "bioguideId": "s000148",
+  "contentType": "application/json",
+  "format": "json"
+ }
+}

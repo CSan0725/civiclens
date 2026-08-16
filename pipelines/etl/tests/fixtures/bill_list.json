@@ -1,0 +1,61 @@
+{
+ "bills": [
+  {
+   "congress": 119,
+   "introducedDate": "2025-01-03",
+   "latestAction": {
+    "actionDate": "2025-01-03",
+    "text": "Referred to the House Committee on the Judiciary."
+   },
+   "number": "134",
+   "originChamber": "House",
+   "originChamberCode": "H",
+   "title": "Protecting our Communities from Sexual Predators Act",
+   "type": "HR",
+   "updateDate": "2026-07-18",
+   "updateDateIncludingText": "2026-07-18",
+   "url": "https://api.congress.gov/v3/bill/119/hr/134?format=json"
+  },
+  {
+   "congress": 119,
+   "introducedDate": "2025-01-03",
+   "latestAction": {
+    "actionDate": "2025-01-03",
+    "text": "Referred to the House Committee on Ways and Means."
+   },
+   "number": "173",
+   "originChamber": "House",
+   "originChamberCode": "H",
+   "title": "High Rise Fire Sprinkler Incentive Act of 2025",
+   "type": "HR",
+   "updateDate": "2026-03-21",
+   "updateDateIncludingText": "2026-03-21",
+   "url": "https://api.congress.gov/v3/bill/119/hr/173?format=json"
+  },
+  {
+   "congress": 119,
+   "introducedDate": "2025-01-03",
+   "latestAction": {
+    "actionDate": "2025-01-16",
+    "text": "Received in the Senate and Read twice and referred to the Committee on Environment and Public Works."
+   },
+   "number": "144",
+   "originChamber": "House",
+   "originChamberCode": "H",
+   "title": "Tennessee Valley Authority Salary Transparency Act",
+   "type": "HR",
+   "updateDate": "2026-07-18",
+   "updateDateIncludingText": "2026-07-18",
+   "url": "https://api.congress.gov/v3/bill/119/hr/144?format=json"
+  }
+ ],
+ "pagination": {
+  "count": 18386,
+  "next": "https://api.congress.gov/v3/bill/119?offset=3&limit=3&format=json"
+ },
+ "request": {
+  "congress": "119",
+  "contentType": "application/json",
+  "format": "json"
+ }
+}

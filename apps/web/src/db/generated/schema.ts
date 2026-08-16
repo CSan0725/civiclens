@@ -33,12 +33,12 @@ export const member = pgTable("member", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("idx_member_name_trgm").using("gin", table.directOrderName.asc().nullsLast().op("gin_trgm_ops")),
-	index("idx_member_state_chamber").using("btree", table.state.asc().nullsLast().op("text_ops"), table.chamber.asc().nullsLast().op("text_ops")),
+	index("idx_member_state_chamber").using("btree", table.state.asc().nullsLast().op("enum_ops"), table.chamber.asc().nullsLast().op("text_ops")),
 	index("idx_member_status").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	check("member_bioguide_id_format", sql`bioguide_id ~ '^[A-Z][0-9]{6}$'::text`),
+	check("member_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
 	check("member_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
 	check("member_senate_has_no_district", sql`(chamber IS DISTINCT FROM 'senate'::chamber) OR (district IS NULL)`),
-	check("member_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
 ]);
 
 export const term = pgTable("term", {
@@ -56,7 +56,7 @@ export const term = pgTable("term", {
 	sourceUrl: text("source_url"),
 	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
-	index("idx_term_congress_chamber").using("btree", table.congressNo.asc().nullsLast().op("int2_ops"), table.chamber.asc().nullsLast().op("enum_ops")),
+	index("idx_term_congress_chamber").using("btree", table.congressNo.asc().nullsLast().op("enum_ops"), table.chamber.asc().nullsLast().op("int2_ops")),
 	index("idx_term_state_district").using("btree", table.congressNo.asc().nullsLast().op("int2_ops"), table.state.asc().nullsLast().op("text_ops"), table.district.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.bioguideId],
@@ -64,12 +64,12 @@ export const term = pgTable("term", {
 			name: "term_bioguide_id_fkey"
 		}).onDelete("cascade"),
 	unique("term_natural_key").on(table.bioguideId, table.congressNo, table.chamber),
-	check("term_chamber_not_joint", sql`chamber <> 'joint'::chamber`),
 	check("term_congress_range", sql`(congress_no >= 1) AND (congress_no <= 200)`),
-	check("term_dates_ordered", sql`(end_date IS NULL) OR (start_date IS NULL) OR (end_date >= start_date)`),
+	check("term_chamber_not_joint", sql`chamber <> 'joint'::chamber`),
+	check("term_state_len", sql`char_length(state) = 2`),
 	check("term_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
 	check("term_senate_class_range", sql`(senate_class IS NULL) OR ((senate_class >= 1) AND (senate_class <= 3))`),
-	check("term_state_len", sql`char_length(state) = 2`),
+	check("term_dates_ordered", sql`(end_date IS NULL) OR (start_date IS NULL) OR (end_date >= start_date)`),
 ]);
 
 export const committee = pgTable("committee", {
@@ -146,9 +146,9 @@ export const billAction = pgTable("bill_action", {
 	sourceUrl: text("source_url"),
 	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
-	index("idx_bill_action_bill_date").using("btree", table.billId.asc().nullsLast().op("date_ops"), table.actionDate.desc().nullsFirst().op("int8_ops")),
+	index("idx_bill_action_bill_date").using("btree", table.billId.asc().nullsLast().op("date_ops"), table.actionDate.desc().nullsFirst().op("date_ops")),
 	index("idx_bill_action_date").using("btree", table.actionDate.desc().nullsFirst().op("date_ops")),
-	uniqueIndex("idx_bill_action_natural_key").using("btree", sql`bill_id`, sql`action_date`, sql`COALESCE(action_code, ''::text)`, sql`md5(text)`),
+	uniqueIndex("idx_bill_action_natural_key").using("btree", sql`bill_id`, sql`action_date`, sql`COALESCE(action_time, '00:00:00'::time without time zone)`, sql`COALESCE(action_code, ''::text)`, sql`COALESCE(committee_id, ''::text)`, sql`COALESCE(source_system, ''::text)`, sql`md5(text)`),
 	foreignKey({
 			columns: [table.billId],
 			foreignColumns: [bill.id],
@@ -190,9 +190,9 @@ export const vote = pgTable("vote", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("idx_vote_bill").using("btree", table.billId.asc().nullsLast().op("int8_ops")),
-	index("idx_vote_congress_chamber").using("btree", table.congressNo.asc().nullsLast().op("int2_ops"), table.chamber.asc().nullsLast().op("enum_ops")),
+	index("idx_vote_congress_chamber").using("btree", table.congressNo.asc().nullsLast().op("enum_ops"), table.chamber.asc().nullsLast().op("enum_ops")),
 	index("idx_vote_date").using("btree", table.voteDate.desc().nullsFirst().op("date_ops")),
-	index("idx_vote_published").using("btree", table.isPublished.asc().nullsLast().op("date_ops"), table.voteDate.desc().nullsFirst().op("bool_ops")),
+	index("idx_vote_published").using("btree", table.isPublished.asc().nullsLast().op("bool_ops"), table.voteDate.desc().nullsFirst().op("date_ops")),
 	foreignKey({
 			columns: [table.billId],
 			foreignColumns: [bill.id],
@@ -200,10 +200,10 @@ export const vote = pgTable("vote", {
 		}).onDelete("set null"),
 	unique("vote_id_congress_key").on(table.id, table.congressNo),
 	unique("vote_natural_key").on(table.congressNo, table.chamber, table.session, table.rollNumber),
-	check("vote_chamber_not_joint", sql`chamber <> 'joint'::chamber`),
 	check("vote_congress_range", sql`(congress_no >= 1) AND (congress_no <= 200)`),
-	check("vote_roll_positive", sql`roll_number > 0`),
+	check("vote_chamber_not_joint", sql`chamber <> 'joint'::chamber`),
 	check("vote_session_range", sql`(session >= 1) AND (session <= 3)`),
+	check("vote_roll_positive", sql`roll_number > 0`),
 ]);
 
 export const speech = pgTable("speech", {
@@ -226,7 +226,7 @@ export const speech = pgTable("speech", {
 	searchTsv: tsvector("search_tsv").generatedAlwaysAs(sql`(setweight(to_tsvector('english'::regconfig, COALESCE(title, ''::text)), 'A'::"char") || setweight(to_tsvector('english'::regconfig, "left"(COALESCE(text, ''::text), 900000)), 'B'::"char"))`),
 }, (table) => [
 	index("idx_speech_date").using("btree", table.speechDate.desc().nullsFirst().op("date_ops")),
-	index("idx_speech_member_date").using("btree", table.bioguideId.asc().nullsLast().op("date_ops"), table.speechDate.desc().nullsFirst().op("date_ops")),
+	index("idx_speech_member_date").using("btree", table.bioguideId.asc().nullsLast().op("text_ops"), table.speechDate.desc().nullsFirst().op("text_ops")),
 	index("idx_speech_package").using("btree", table.packageId.asc().nullsLast().op("text_ops")),
 	index("idx_speech_search").using("gin", table.searchTsv.asc().nullsLast().op("tsvector_ops")),
 	foreignKey({
@@ -259,15 +259,15 @@ export const candidate = pgTable("candidate", {
 	index("idx_candidate_bioguide").using("btree", table.bioguideId.asc().nullsLast().op("text_ops")),
 	index("idx_candidate_election_years").using("gin", table.electionYears.asc().nullsLast().op("array_ops")),
 	index("idx_candidate_name_trgm").using("gin", table.name.asc().nullsLast().op("gin_trgm_ops")),
-	index("idx_candidate_office_state_district").using("btree", table.office.asc().nullsLast().op("enum_ops"), table.state.asc().nullsLast().op("enum_ops"), table.district.asc().nullsLast().op("int2_ops")),
+	index("idx_candidate_office_state_district").using("btree", table.office.asc().nullsLast().op("text_ops"), table.state.asc().nullsLast().op("int2_ops"), table.district.asc().nullsLast().op("enum_ops")),
 	foreignKey({
 			columns: [table.bioguideId],
 			foreignColumns: [member.bioguideId],
 			name: "candidate_bioguide_id_fkey"
 		}).onDelete("set null"),
+	check("candidate_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
 	check("candidate_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
 	check("candidate_match_method", sql`(bioguide_match_method IS NULL) OR (bioguide_match_method = ANY (ARRAY['exact'::text, 'fuzzy'::text, 'manual'::text]))`),
-	check("candidate_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
 ]);
 
 export const newsMention = pgTable("news_mention", {
@@ -289,18 +289,18 @@ export const newsMention = pgTable("news_mention", {
 	index("idx_news_mention_bill_published").using("btree", table.billId.asc().nullsLast().op("int8_ops"), table.publishedAt.desc().nullsFirst().op("int8_ops")),
 	index("idx_news_mention_member_published").using("btree", table.bioguideId.asc().nullsLast().op("text_ops"), table.publishedAt.desc().nullsFirst().op("timestamptz_ops")),
 	foreignKey({
-			columns: [table.billId],
-			foreignColumns: [bill.id],
-			name: "news_mention_bill_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
 			columns: [table.bioguideId],
 			foreignColumns: [member.bioguideId],
 			name: "news_mention_bioguide_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.billId],
+			foreignColumns: [bill.id],
+			name: "news_mention_bill_id_fkey"
+		}).onDelete("cascade"),
 	unique("news_mention_url_key").on(table.url),
-	check("news_mention_has_subject", sql`(bioguide_id IS NOT NULL) OR (bill_id IS NOT NULL)`),
 	check("news_mention_snippet_len", sql`(snippet IS NULL) OR (char_length(snippet) <= 500)`),
+	check("news_mention_has_subject", sql`(bioguide_id IS NOT NULL) OR (bill_id IS NOT NULL)`),
 ]);
 
 export const provenance = pgTable("provenance", {
@@ -337,15 +337,15 @@ export const voteReconciliationFlag = pgTable("vote_reconciliation_flag", {
 	index("idx_vote_reconciliation_flag_open").using("btree", table.status.asc().nullsLast().op("text_ops"), table.detectedAt.desc().nullsFirst().op("text_ops")),
 	index("idx_vote_reconciliation_flag_vote").using("btree", table.voteId.asc().nullsLast().op("int8_ops")),
 	foreignKey({
-			columns: [table.bioguideId],
-			foreignColumns: [member.bioguideId],
-			name: "vote_reconciliation_flag_bioguide_id_fkey"
-		}).onDelete("set null"),
-	foreignKey({
 			columns: [table.voteId],
 			foreignColumns: [vote.id],
 			name: "vote_reconciliation_flag_vote_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.bioguideId],
+			foreignColumns: [member.bioguideId],
+			name: "vote_reconciliation_flag_bioguide_id_fkey"
+		}).onDelete("set null"),
 	check("vote_reconciliation_flag_status", sql`status = ANY (ARRAY['open'::text, 'resolved'::text, 'ignored'::text])`),
 ]);
 
@@ -374,7 +374,7 @@ export const sponsorship = pgTable("sponsorship", {
 	sourceUrl: text("source_url"),
 	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
-	index("idx_sponsorship_member_role").using("btree", table.bioguideId.asc().nullsLast().op("text_ops"), table.role.asc().nullsLast().op("enum_ops")),
+	index("idx_sponsorship_member_role").using("btree", table.bioguideId.asc().nullsLast().op("text_ops"), table.role.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.billId],
 			foreignColumns: [bill.id],
@@ -457,15 +457,15 @@ export const district = pgTable("district", {
 	index("idx_district_boundary").using("gist", table.boundary.asc().nullsLast().op("gist_geometry_ops_2d")),
 	index("idx_district_congress").using("btree", table.congressNo.asc().nullsLast().op("int2_ops")),
 	index("idx_district_current_member").using("btree", table.currentMemberBioguideId.asc().nullsLast().op("text_ops")),
-	index("idx_district_state").using("btree", table.congressNo.asc().nullsLast().op("text_ops"), table.state.asc().nullsLast().op("text_ops"), table.cdNumber.asc().nullsLast().op("int2_ops")),
+	index("idx_district_state").using("btree", table.congressNo.asc().nullsLast().op("text_ops"), table.state.asc().nullsLast().op("int2_ops"), table.cdNumber.asc().nullsLast().op("int2_ops")),
 	foreignKey({
 			columns: [table.currentMemberBioguideId],
 			foreignColumns: [member.bioguideId],
 			name: "district_current_member_bioguide_id_fkey"
 		}).onDelete("set null"),
 	primaryKey({ columns: [table.geoid, table.congressNo], name: "district_pkey"}),
+	check("district_state_len", sql`char_length(state) = 2`),
+	check("district_state_fips_len", sql`char_length(state_fips) = 2`),
 	check("district_cd_range", sql`(cd_number >= 0) AND (cd_number <= 60)`),
 	check("district_congress_range", sql`(congress_no >= 1) AND (congress_no <= 200)`),
-	check("district_state_fips_len", sql`char_length(state_fips) = 2`),
-	check("district_state_len", sql`char_length(state) = 2`),
 ]);

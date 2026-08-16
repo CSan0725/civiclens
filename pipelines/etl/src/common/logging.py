@@ -14,6 +14,13 @@ import structlog
 def configure_logging(level: str = "INFO") -> None:
     """Install a structlog pipeline over stdlib logging. Idempotent."""
     logging.basicConfig(format="%(message)s", level=getattr(logging, level.upper(), logging.INFO))
+
+    # httpx logs every request at INFO including the full URL, and Congress.gov
+    # carries `api_key` in the query string — that would print a live
+    # credential into CI logs on every call. Our own logging redacts; httpx's
+    # does not, so it is silenced below WARNING.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

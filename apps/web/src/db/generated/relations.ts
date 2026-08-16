@@ -79,24 +79,24 @@ export const candidateRelations = relations(candidate, ({one, many}) => ({
 }));
 
 export const newsMentionRelations = relations(newsMention, ({one}) => ({
-	bill: one(bill, {
-		fields: [newsMention.billId],
-		references: [bill.id]
-	}),
 	member: one(member, {
 		fields: [newsMention.bioguideId],
 		references: [member.bioguideId]
 	}),
+	bill: one(bill, {
+		fields: [newsMention.billId],
+		references: [bill.id]
+	}),
 }));
 
 export const voteReconciliationFlagRelations = relations(voteReconciliationFlag, ({one}) => ({
-	member: one(member, {
-		fields: [voteReconciliationFlag.bioguideId],
-		references: [member.bioguideId]
-	}),
 	vote: one(vote, {
 		fields: [voteReconciliationFlag.voteId],
 		references: [vote.id]
+	}),
+	member: one(member, {
+		fields: [voteReconciliationFlag.bioguideId],
+		references: [member.bioguideId]
 	}),
 }));
 

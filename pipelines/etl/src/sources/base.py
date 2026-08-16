@@ -7,9 +7,12 @@ snapshot (PRD NFR-3) and every stored fact can be traced back (PRD NFR-5).
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
+from typing import Any
 
 # A Congress number, e.g. 119 for the 2025-2027 Congress.
 CongressNo = int
@@ -49,6 +52,29 @@ class FetchResult:
     content_type: str
     status_code: int = 200
 
+    def json(self) -> dict[str, Any]:
+        """Parse the payload as a JSON object."""
+        parsed = json.loads(self.payload)
+        if not isinstance(parsed, dict):
+            raise SourceError(
+                f"{self.source_url} returned JSON {type(parsed).__name__}, not an object"
+            )
+        return parsed
+
+    @classmethod
+    def from_file(cls, path: Path, *, source_url: str, retrieved_at: datetime) -> FetchResult:
+        """Build a result from a file on disk.
+
+        Used by tests to drive the parsers from captured fixtures, and to
+        reprocess an R2 snapshot without re-fetching.
+        """
+        return cls(
+            source_url=source_url,
+            retrieved_at=retrieved_at,
+            payload=path.read_bytes(),
+            content_type="application/json" if path.suffix == ".json" else "application/xml",
+        )
+
 
 class SourceError(RuntimeError):
     """Upstream returned something the collector cannot use."""
@@ -56,3 +82,92 @@ class SourceError(RuntimeError):
 
 class NotModifiedError(SourceError):
     """Upstream reports the resource is unchanged; the incremental run can skip it."""
+
+
+# --- shared normalisation ---------------------------------------------------
+#
+# Every mapping below was checked against live payloads; see
+# docs/P1-source-verification.md.
+
+_CHAMBER_BY_NAME = {
+    "house": Chamber.HOUSE,
+    "house of representatives": Chamber.HOUSE,
+    "senate": Chamber.SENATE,
+    "joint": Chamber.JOINT,
+}
+
+# Congress.gov House votes use "Not Voting"; senate.gov XML uses "Not Voting"
+# too, but also "Present" and, historically, "Absent".
+_POSITION_BY_TEXT = {
+    "yea": "Yea",
+    "yes": "Yea",
+    "aye": "Yea",
+    "nay": "Nay",
+    "no": "Nay",
+    "present": "Present",
+    "not voting": "NotVoting",
+    "notvoting": "NotVoting",
+    "absent": "NotVoting",
+    "excused": "NotVoting",
+}
+
+
+def chamber_from_name(name: str | None) -> Chamber | None:
+    """Map a chamber label from any source onto the `chamber` enum."""
+    if not name:
+        return None
+    return _CHAMBER_BY_NAME.get(name.strip().lower())
+
+
+def vote_position_from(text: str | None) -> str | None:
+    """Map a cast-vote label onto the `vote_position` enum.
+
+    Returns None for anything unrecognised: an unmapped position must surface
+    as a loud failure, never be silently coerced into a Yea or a Nay.
+    """
+    if not text:
+        return None
+    return _POSITION_BY_TEXT.get(text.strip().lower())
+
+
+def congress_for_year(year: int) -> CongressNo:
+    """Congress number covering a calendar year.
+
+    Congress N runs from 1789 + 2*(N-1). A January in an odd year still belongs
+    to the outgoing Congress until the new one convenes on the 3rd, which the
+    callers that need that precision handle themselves.
+    """
+    return (year - 1789) // 2 + 1
+
+
+# The eight members of the `bill_type` enum.
+BILL_TYPES = frozenset({"hr", "s", "hjres", "sjres", "hconres", "sconres", "hres", "sres"})
+
+
+def normalize_bill_type(value: str | None) -> str | None:
+    """Map any source's bill-type spelling onto the `bill_type` enum.
+
+    Sources disagree on punctuation and case for the same thing:
+    Congress.gov returns "HR", senate.gov XML returns "S." and "H.J.Res.".
+    Stripping dots, spaces and case reconciles all of them.
+
+    Returns None for anything that is not one of the eight enum members —
+    Senate roll calls also cover nominations and treaties, whose document types
+    ("PN", "TREATYDOC") are not bills at all and must not be coerced into one.
+    """
+    if not value:
+        return None
+    cleaned = value.replace(".", "").replace(" ", "").lower()
+    return cleaned if cleaned in BILL_TYPES else None
+
+
+def clean_text(value: str | None) -> str | None:
+    """Collapse whitespace in source text; return None for empty results.
+
+    Source XML indents element content, so raw `.text` carries newlines and
+    padding that would otherwise land in the database and in search vectors.
+    """
+    if value is None:
+        return None
+    collapsed = " ".join(value.split())
+    return collapsed or None

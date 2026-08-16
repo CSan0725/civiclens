@@ -1,0 +1,94 @@
+{
+ "bill": {
+  "actions": {
+   "count": 114,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/actions?format=json"
+  },
+  "amendments": {
+   "count": 14,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/amendments?format=json"
+  },
+  "cboCostEstimates": [
+   {
+    "description": "As Posted on the Website of the House Committee on Rules, September 16, 2025",
+    "pubDate": "2025-09-18T14:53:00Z",
+    "title": "H.R. 5371, Continuing Appropriations and Extensions Act, 2026",
+    "url": "https://www.cbo.gov/publication/61750"
+   },
+   {
+    "description": "As posted on the Senate Amendment Tracking System on November 10, 2025",
+    "pubDate": "2025-11-11T00:20:00Z",
+    "title": "Senate Amendment 3937 to H.R. 5371, the Continuing Appropriations, Agriculture, Legislative Branch, Military Construction and Veterans Affairs, and Extensions Act, 2026",
+    "url": "https://www.cbo.gov/publication/61747"
+   }
+  ],
+  "committees": {
+   "count": 2,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/committees?format=json"
+  },
+  "congress": 119,
+  "constitutionalAuthorityStatementText": "<pre>\n[Congressional Record Volume 171, Number 151 (Tuesday, September 16, 2025)]\n[House]\nFrom the Congressional Record Online through the Government Publishing Office [<a href=\"https://www.gpo.gov\">www.gpo.gov</a>]\nBy Mr. COLE:\nH.R. 5371.\nCongress has the power to enact this legislation pursuant\nto the following:\nThe principal constitutional authority for this legislation\nis clause 7 of section 9 of article I of the Constitution of\nthe United States (the appropriation power), which states:\n``No Money shall be drawn from the Treasury, but in\nConsequence of Appropriations made by Law . . . .'' In\naddition, clause 1 of section 8 of article I of the\nConstitution (the spending power) provides: ``The Congress\nshall have the Power . . . to pay the Debts and provide for\nthe common Defence and general Welfare of the United States .\n. . .'' Together, these specific constitutional provisions\nestablish the congressional power of the purse, granting\nCongress the authority to appropriate funds, to determine\ntheir purpose, amount, and period of availability, and to set\nforth terms and conditions governing their use.\n[Page H4363]\n</pre>",
+  "introducedDate": "2025-09-16",
+  "latestAction": {
+   "actionDate": "2025-11-12",
+   "text": "Became Public Law No: 119-37."
+  },
+  "laws": [
+   {
+    "number": "119-37",
+    "type": "Public Law"
+   }
+  ],
+  "legislationUrl": "https://www.congress.gov/bill/119th-congress/house-bill/5371",
+  "number": "5371",
+  "originChamber": "House",
+  "originChamberCode": "H",
+  "policyArea": {
+   "name": "Economics and Public Finance"
+  },
+  "relatedBills": {
+   "count": 16,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/relatedbills?format=json"
+  },
+  "sponsors": [
+   {
+    "bioguideId": "C001053",
+    "district": 4,
+    "firstName": "Tom",
+    "fullName": "Rep. Cole, Tom [R-OK-4]",
+    "isByRequest": "N",
+    "lastName": "Cole",
+    "party": "R",
+    "state": "OK",
+    "url": "https://api.congress.gov/v3/member/C001053?format=json"
+   }
+  ],
+  "subjects": {
+   "count": 493,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/subjects?format=json"
+  },
+  "summaries": {
+   "count": 3,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/summaries?format=json"
+  },
+  "textVersions": {
+   "count": 6,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/text?format=json"
+  },
+  "title": "Continuing Appropriations, Agriculture, Legislative Branch, Military Construction and Veterans Affairs, and Extensions Act, 2026",
+  "titles": {
+   "count": 24,
+   "url": "https://api.congress.gov/v3/bill/119/hr/5371/titles?format=json"
+  },
+  "type": "HR",
+  "updateDate": "2026-08-03T17:54:05Z",
+  "updateDateIncludingText": "2026-08-03T17:54:05Z"
+ },
+ "request": {
+  "billNumber": "5371",
+  "billType": "hr",
+  "congress": "119",
+  "contentType": "application/json",
+  "format": "json"
+ }
+}

@@ -82,12 +82,13 @@ jobs:
           pnpm --filter @civiclens/db run down
           pnpm --filter @civiclens/db run up
 
-      - name: Regenerate Drizzle types
-        run: pnpm --filter @civiclens/web run db:pull
-
+      # Compares the COMMITTED types against the live schema by shape (every
+      # table and column), not by byte-diffing regenerated files.
+      #
+      # `git diff --exit-code` on `drizzle-kit pull` output was the original
+      # plan and does not work: the generator is not deterministic across
+      # databases — it emits check constraints in catalog order and mismatches
+      # index operator classes to columns, so the diff is non-empty even when
+      # nothing drifted. See apps/web/scripts/check-schema-drift.mjs.
       - name: Fail on schema drift
-        run: |
-          if ! git diff --exit-code -- apps/web/src/db/generated/schema.ts apps/web/src/db/generated/relations.ts; then
-            echo "::error::Drizzle types are out of date. Run 'pnpm --filter @civiclens/web run db:pull' and commit the result."
-            exit 1
-          fi
+        run: pnpm --filter @civiclens/web run db:check

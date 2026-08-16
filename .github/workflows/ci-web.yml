@@ -3,6 +3,11 @@ name: ci-web
 # Path-filtered per Deployment-Architecture-Report §4: only the affected
 # workspace runs. Deployment is NOT wired up yet — that lands with the Vercel
 # connection in a later step.
+#
+# The build step exists to catch static-generation failures at PR time. Most of
+# this app's pages are prerendered (`next build` runs them), so a broken
+# server component fails the build rather than lint or tsc — neither of which
+# executes a page. `getDb()` is lazy precisely so the build needs no database.
 
 on:
   push:
@@ -49,3 +54,6 @@ jobs:
 
       - name: Typecheck
         run: pnpm --filter @civiclens/web run typecheck
+
+      - name: Build
+        run: pnpm --filter @civiclens/web run build

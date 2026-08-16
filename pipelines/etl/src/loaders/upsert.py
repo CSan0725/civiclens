@@ -32,7 +32,8 @@ def bulk_upsert(
     table: Table,
     rows: Sequence[dict[str, Any]],
     *,
-    conflict_columns: Sequence[str],
+    conflict_columns: Sequence[str] | None = None,
+    conflict_elements: Sequence[Any] | None = None,
     update_columns: Sequence[str] | None = None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
@@ -45,6 +46,11 @@ def bulk_upsert(
             Postgres builds one statement per batch.
         conflict_columns: the natural key, e.g. `("congress_no", "bill_type",
             "number")` for `bill`.
+        conflict_elements: SQL expressions to infer the arbiter index from,
+            instead of a column list. Required when the natural key is built
+            from expressions, which `bill_action`'s is: Postgres infers an
+            expression index only from a matching expression list, and
+            `ON CONFLICT ON CONSTRAINT` cannot name a bare UNIQUE INDEX.
         update_columns: columns to refresh on conflict. Defaults to every
             supplied column that is not part of the conflict key.
         batch_size: rows per statement.
@@ -53,30 +59,62 @@ def bulk_upsert(
         Number of rows sent. Postgres does not distinguish inserted from
         updated here, and for an idempotent pipeline the distinction does not
         change what happens next.
+
+    Raises:
+        ValueError: neither or both of `conflict_columns`/`conflict_elements`
+            given, or a batch carries the same conflict key twice. Postgres
+            answers the latter with "ON CONFLICT DO UPDATE command cannot
+            affect row a second time", which says nothing about which rows
+            collided; callers get a useful message instead.
     """
+    if (conflict_columns is None) == (conflict_elements is None):
+        raise ValueError("pass exactly one of conflict_columns or conflict_elements")
     if not rows:
         return 0
 
     supplied = list(rows[0].keys())
     if update_columns is None:
-        update_columns = [c for c in supplied if c not in set(conflict_columns)]
+        skip = set(conflict_columns or ())
+        update_columns = [c for c in supplied if c not in skip]
+
+    if conflict_columns is not None:
+        _assert_unique_keys(table.name, rows, conflict_columns)
 
     sent = 0
     for batch in _chunk(rows, batch_size):
         stmt = pg_insert(table).values(list(batch))
+        target: dict[str, Any] = {
+            "index_elements": list(conflict_columns)
+            if conflict_columns is not None
+            else list(conflict_elements or ())
+        }
         if update_columns:
             stmt = stmt.on_conflict_do_update(
-                index_elements=list(conflict_columns),
-                set_={c: stmt.excluded[c] for c in update_columns},
+                set_={c: stmt.excluded[c] for c in update_columns}, **target
             )
         else:
             # Nothing to refresh — the natural key IS the whole row.
-            stmt = stmt.on_conflict_do_nothing(index_elements=list(conflict_columns))
+            stmt = stmt.on_conflict_do_nothing(**target)
         conn.execute(stmt)
         sent += len(batch)
 
-    log.info("bulk_upsert", table=table.name, rows=sent)
+    log.debug("bulk_upsert", table=table.name, rows=sent)
     return sent
+
+
+def _assert_unique_keys(
+    table_name: str, rows: Sequence[dict[str, Any]], conflict_columns: Sequence[str]
+) -> None:
+    seen: dict[tuple[Any, ...], int] = {}
+    for index, row in enumerate(rows):
+        key = tuple(row.get(c) for c in conflict_columns)
+        if key in seen:
+            raise ValueError(
+                f"{table_name}: duplicate natural key "
+                f"{dict(zip(conflict_columns, key, strict=True))} "
+                f"at rows {seen[key]} and {index} of the same batch"
+            )
+        seen[key] = index
 
 
 def copy_rows(

@@ -1,0 +1,78 @@
+{
+ "bill": {
+  "actions": {
+   "count": 19,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/actions?format=json"
+  },
+  "committeeReports": [
+   {
+    "citation": "H. Rept. 119-238",
+    "url": "https://api.congress.gov/v3/committee-report/119/HRPT/238?format=json"
+   }
+  ],
+  "committees": {
+   "count": 2,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/committees?format=json"
+  },
+  "congress": 119,
+  "constitutionalAuthorityStatementText": "<pre>\n[Congressional Record Volume 171, Number 82 (Thursday, May 15, 2025)]\n[House]\nFrom the Congressional Record Online through the Government Publishing Office [<a href=\"https://www.gpo.gov\">www.gpo.gov</a>]\nBy Mr. ONDER:\nH.R. 3424.\nCongress has the power to enact this legislation pursuant\nto the following:\nclause 2 of section 3 of article 4 of the constitution\n[Page H2104]\n</pre>",
+  "cosponsors": {
+   "count": 2,
+   "countIncludingWithdrawnCosponsors": 2,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/cosponsors?format=json"
+  },
+  "introducedDate": "2025-05-15",
+  "latestAction": {
+   "actionDate": "2025-09-09",
+   "text": "Received in the Senate and Read twice and referred to the Committee on Environment and Public Works."
+  },
+  "legislationUrl": "https://www.congress.gov/bill/119th-congress/house-bill/3424",
+  "number": "3424",
+  "originChamber": "House",
+  "originChamberCode": "H",
+  "policyArea": {
+   "name": "Government Operations and Politics"
+  },
+  "sponsors": [
+   {
+    "bioguideId": "O000177",
+    "district": 3,
+    "firstName": "Robert",
+    "fullName": "Rep. Onder, Robert F. [R-MO-3]",
+    "isByRequest": "N",
+    "lastName": "Onder",
+    "middleName": "F.",
+    "party": "R",
+    "state": "MO",
+    "url": "https://api.congress.gov/v3/member/O000177?format=json"
+   }
+  ],
+  "subjects": {
+   "count": 3,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/subjects?format=json"
+  },
+  "summaries": {
+   "count": 1,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/summaries?format=json"
+  },
+  "textVersions": {
+   "count": 4,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/text?format=json"
+  },
+  "title": "SPACE Act of 2025",
+  "titles": {
+   "count": 11,
+   "url": "https://api.congress.gov/v3/bill/119/hr/3424/titles?format=json"
+  },
+  "type": "HR",
+  "updateDate": "2026-07-11T01:08:27Z",
+  "updateDateIncludingText": "2026-07-13T20:15:29Z"
+ },
+ "request": {
+  "billNumber": "3424",
+  "billType": "hr",
+  "congress": "119",
+  "contentType": "application/json",
+  "format": "json"
+ }
+}

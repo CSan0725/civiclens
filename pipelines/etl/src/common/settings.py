@@ -11,6 +11,8 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from common.useragent import USER_AGENT
+
 
 class Settings(BaseSettings):
     """Environment-backed settings for every ETL job."""
@@ -47,6 +49,16 @@ class Settings(BaseSettings):
         description="Politeness delay between upstream requests, in seconds.",
     )
     etl_log_level: str = "INFO"
+    etl_max_retries: int = Field(default=5, ge=0)
+
+    senate_user_agent: str = Field(
+        default=USER_AGENT,
+        description=(
+            "User-Agent for senate.gov only. Its Akamai WAF returns 403 to this "
+            "honest default from some networks; see docs/P1-source-verification.md "
+            "before overriding."
+        ),
+    )
     etl_backfill_from_congress: int = Field(
         default=101,
         ge=1,

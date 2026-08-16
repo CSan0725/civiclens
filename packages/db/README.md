@@ -40,14 +40,39 @@ pnpm db:up
 pnpm --filter @civiclens/web run db:pull    # regenerate Drizzle types, then commit
 ```
 
-`ci-db.yml` re-runs both and fails on any diff, so uncommitted drift breaks the
-build rather than surfacing at runtime.
+`ci-db.yml` applies the migrations to a throwaway PostGIS instance, rolls them
+back, re-applies them, then runs `pnpm --filter @civiclens/web run db:check` —
+a shape comparison between the committed Drizzle types and the live schema. So
+forgetting to regenerate breaks the build rather than surfacing at runtime.
+
+(The gate compares shape rather than byte-diffing regenerated files because
+`drizzle-kit pull` output is not deterministic across databases; see
+`apps/web/README.md`.)
 
 ## Migrations
 
 | File | Contents |
 |---|---|
 | `0001_init.sql` | Every entity in PRD §6, plus three tables described below. |
+| `0002_natural_key_fixes.sql` | Corrects two natural keys that live data proved wrong. |
+
+`0002` exists because P1 ran the collectors against the real Congress.gov API
+and found the P0 keys did not hold:
+
+* **`bill_action`** keyed on `(bill_id, action_date, action_code, md5(text))`.
+  Congress.gov publishes a referral once **per committee** — H.R. 3746 (118th)
+  repeats one 2023-05-29 referral 14 times, identical but for the committee —
+  and repeats floor actions within a day, distinguished only by `actionTime`.
+  The old key collapsed the 14 into 1 *and* made the batch upsert fail
+  outright. The key now includes `action_time`, `committee_id` and
+  `source_system`; verified against 739 actions across 15 bills.
+* **`provenance`** keyed on `(entity, entity_id, field, retrieved_at)` where
+  `field` is NULL for "this whole record". Two NULLs never compare equal, so
+  the constraint never matched, `ON CONFLICT` never fired, and every re-run
+  would have appended duplicate audit rows. Rebuilt with `NULLS NOT DISTINCT`.
+
+Both are worth reading before adding a natural key: a key that looks unique in
+the schema can still be wrong about the data.
 
 ### Design decisions worth knowing before you edit
 

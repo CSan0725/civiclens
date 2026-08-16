@@ -3,9 +3,12 @@
 Python pipeline that pulls US Congress data from official public-domain sources
 into the Postgres/PostGIS database defined by `packages/db`.
 
-**P0 status: scaffolding.** Every collector in `src/sources/` is a signature and
-a TODO. Nothing calls an external API yet — that starts in P1, once the API keys
-in `.env.example` are issued.
+**P1 status: Congress.gov and senate.gov implemented.** Members, bills,
+actions, sponsorships and House roll calls collect live. The Senate parser is
+complete but its live access is blocked from some networks — see
+[`docs/P1-source-verification.md`](../../docs/P1-source-verification.md).
+GovInfo (P3), FEC (P4), Census (P4), Clerk XML (P2) and Voteview (P2) remain
+signature-and-TODO stubs.
 
 ## Layout
 
@@ -13,6 +16,7 @@ in `.env.example` are issued.
 src/
   common/       settings, structured logging, HTTP client factory, CLI
   sources/      one module per upstream system (see src/sources/__init__.py)
+                <name>.py = fetch + pure parsers; <name>_sync.py = the job
   loaders/      SQLAlchemy Core + psycopg3 bulk upsert / COPY
   geo/          PostGIS geometry -> pre-simplified TopoJSON -> R2
   provenance/   raw-payload snapshots -> R2, pointer rows -> provenance table
@@ -30,13 +34,21 @@ cp .env.example .env    # then fill in DATABASE_URL and the API keys
 
 ```bash
 uv run civiclens-etl --help
-uv run civiclens-etl members --dry-run    # the only path that completes in P0
+uv run civiclens-etl members --congress 119 --limit 20
+uv run civiclens-etl bills   --congress 119 --limit 10
+uv run civiclens-etl votes   --congress 119 --chamber house --limit 5
+uv run civiclens-etl <job> --dry-run       # report without touching anything
 
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy
-uv run pytest
+uv run ruff check . && uv run ruff format --check . && uv run mypy
+uv run pytest                              # no network: fixtures only
+
+# integration tests also need a migrated database
+CIVICLENS_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:55432/civiclens_test \n  uv run pytest
 ```
+
+`--limit` bounds a run so a job can be smoke-tested without pulling a whole
+Congress. Every job is idempotent — re-running upserts in place, and the votes
+job skips roll calls already stored.
 
 ## Design notes
 
@@ -56,9 +68,21 @@ uv run pytest
   NOMINATE ideology columns are explicitly excluded on ingest — PRD N1 and FC-4
   forbid ideological scoring (`src/sources/voteview.py`).
 
-## Scheduling (P1+)
+## Layout of a collector
 
-Daily and weekly jobs run on GitHub Actions cron. The one-time 1990–2022 House
-backfill does **not**: a single hosted-runner job is capped at 6 hours, so run
-`civiclens-etl backfill` on a temporary VPS or locally
-(`Deployment-Architecture-Report.md` §1b, §4).
+Each source is split in two so the parsers stay testable:
+
+- `sources/<name>.py` — fetch helpers and **pure** parse functions that take a
+  payload and return dicts keyed by database column. No database, no network.
+- `sources/<name>_sync.py` — the job: fetch, parse, upsert through
+  `loaders/repository.py`, record provenance, update `dataset_sync_state`.
+
+`loaders/repository.py` holds every table's natural key, so both collectors
+write votes by exactly one code path and idempotency lives in one place.
+
+## Scheduling (P2+)
+
+Daily and weekly jobs run on GitHub Actions cron. The one-time House backfill
+(1990–2016 — see the P1 coverage finding) does **not**: a single hosted-runner
+job is capped at 6 hours, so run `civiclens-etl backfill` on a temporary VPS or
+locally (`Deployment-Architecture-Report.md` §1b, §4).

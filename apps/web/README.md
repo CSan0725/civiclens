@@ -14,6 +14,7 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm db:pull        # regenerate Drizzle types from the live database
+pnpm db:check       # verify the committed types still match the database
 ```
 
 ## Database access
@@ -53,10 +54,24 @@ type in `src/db/types.ts`. Without it the generated file does not compile. The
 script fails loudly on any *other* unparsed type rather than emitting broken
 TypeScript.
 
-`schema.ts` and `relations.ts` are committed; `ci-db.yml` regenerates them and
-fails on drift. The `.sql` snapshot and `meta/` journal drizzle-kit also emits
-are git-ignored — the snapshot filename is randomised per run, which would
-break that check.
+`schema.ts` and `relations.ts` are committed. The `.sql` snapshot and `meta/`
+journal drizzle-kit also emits are git-ignored — the snapshot filename is
+randomised per run.
+
+### The drift gate is semantic, not a byte-diff
+
+`pnpm db:check` (`scripts/check-schema-drift.mjs`) compares the **committed**
+types against a live database by shape: every table, every column. `ci-db.yml`
+runs it.
+
+It does not `git diff` regenerated output, because `drizzle-kit pull` is not
+deterministic across databases. Regenerating the same schema from two Postgres
+instances differs in at least two ways: check constraints and imports come out
+in catalog (OID) order, and index operator classes get mismatched to columns —
+`idx_term_congress_chamber` alternates between `.op("int2_ops"), .op("enum_ops")`
+and the reverse. A byte gate would fail on every CI run regardless of drift,
+which is worse than no gate. The shape check is stable and still catches the
+thing that matters: a migration landed and nobody regenerated the types.
 
 ## Design system
 

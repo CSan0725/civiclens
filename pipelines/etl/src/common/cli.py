@@ -3,17 +3,16 @@
 Job names mirror the roadmap in PRD §14 and the schedules in
 Deployment-Architecture-Report §4:
 
-    members       weekly    Congress.gov roster -> member, term
-    bills         daily     Congress.gov bills, actions, cosponsors
-    votes         daily     Congress.gov (House 2023~) + senate.gov XML
-    speeches      daily     GovInfo Congressional Record granules
-    candidates    weekly    openFEC candidates + totals
-    boundaries    manual    Census TIGER/CB -> district (+ TopoJSON to R2)
-    backfill      manual    clerk.house.gov 1990-2022 House roll calls
-    reconcile     daily     Voteview cross-check -> reconciliation flags
+    members       weekly    Congress.gov roster -> member, term            [P1]
+    bills         daily     Congress.gov bills, actions, cosponsors        [P1]
+    votes         daily     House 2023~ (Congress.gov) + Senate XML        [P1]
+    speeches      daily     GovInfo Congressional Record granules          [P3]
+    candidates    weekly    openFEC candidates + totals                    [P4]
+    boundaries    manual    Census TIGER/CB -> district (+ TopoJSON to R2) [P4]
+    backfill      manual    clerk.house.gov 1990-2016 House roll calls     [P2]
+    reconcile     daily     Voteview cross-check -> reconciliation flags   [P2]
 
-Every job is a stub in P0; `--dry-run` is the only path that currently
-completes, and it just reports what would run.
+Only the P1 jobs are implemented. The rest report what milestone owns them.
 """
 
 from __future__ import annotations
@@ -26,15 +25,20 @@ from common.logging import configure_logging, get_logger
 from common.settings import get_settings
 
 JOBS: dict[str, str] = {
-    "members": "Congress.gov roster -> member, term (weekly)",
-    "bills": "Congress.gov bills, actions, cosponsors (daily)",
-    "votes": "House 2023~ + Senate roll calls -> vote, vote_cast (daily)",
-    "speeches": "GovInfo Congressional Record granules -> speech (daily)",
-    "candidates": "openFEC candidates + totals -> candidate, campaign_finance (weekly)",
-    "boundaries": "Census TIGER/CB -> district, TopoJSON -> R2 (per Congress)",
-    "backfill": "clerk.house.gov 1990-2022 House roll calls (manual, long-running)",
-    "reconcile": "Voteview cross-check -> vote_reconciliation_flag (daily)",
+    "members": "Congress.gov roster -> member, term (weekly) [P1]",
+    "bills": "Congress.gov bills, actions, cosponsors (daily) [P1]",
+    "votes": "House 2023~ + Senate roll calls -> vote, vote_cast (daily) [P1]",
+    "speeches": "GovInfo Congressional Record granules -> speech (daily) [P3]",
+    "candidates": "openFEC candidates + totals -> candidate, campaign_finance [P4]",
+    "boundaries": "Census TIGER/CB -> district, TopoJSON -> R2 (per Congress) [P4]",
+    "backfill": "clerk.house.gov House roll calls (manual, long-running) [P2]",
+    "reconcile": "Voteview cross-check -> vote_reconciliation_flag (daily) [P2]",
 }
+
+IMPLEMENTED = {"members", "bills", "votes"}
+
+# Congress in session as of this build. Overridable with --congress.
+DEFAULT_CONGRESS = 119
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,8 +52,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--congress",
         type=int,
+        default=DEFAULT_CONGRESS,
+        help=f"Congress to collect (default: {DEFAULT_CONGRESS})",
+    )
+    parser.add_argument(
+        "--session",
+        type=int,
         default=None,
-        help="limit the run to one Congress (e.g. 119)",
+        help="limit to one session (1 or 2); votes only",
+    )
+    parser.add_argument(
+        "--chamber",
+        choices=("house", "senate", "both"),
+        default="both",
+        help="which chamber the votes job should collect (default: both)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="stop after N records — use this for smoke runs",
     )
     parser.add_argument(
         "--since",
@@ -74,7 +96,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "etl.start",
         job=args.job,
         congress=args.congress,
-        since=args.since,
+        session=args.session,
+        chamber=args.chamber,
+        limit=args.limit,
         dry_run=args.dry_run,
     )
 
@@ -82,12 +106,61 @@ def main(argv: Sequence[str] | None = None) -> int:
         log.info("etl.dry_run", job=args.job, description=JOBS[args.job])
         return 0
 
-    log.error(
-        "etl.not_implemented",
-        job=args.job,
-        detail="P0 scaffolding only — collectors land in P1. Run with --dry-run.",
-    )
-    return 1
+    if args.job not in IMPLEMENTED:
+        log.error(
+            "etl.not_implemented",
+            job=args.job,
+            detail=f"{JOBS[args.job]} — not part of P1. Run with --dry-run.",
+        )
+        return 1
+
+    # Imported here so `--help` and the not-implemented path stay free of
+    # database and network dependencies.
+    from loaders.engine import get_engine
+    from sources import congress_gov as cg
+    from sources import senate_xml
+    from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
+    from sources.senate_xml_sync import sync_senate_votes
+
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            if args.job == "members":
+                with cg.open_fetcher() as fetcher:
+                    sync_members(conn, fetcher, congress=args.congress, limit=args.limit)
+
+            elif args.job == "bills":
+                with cg.open_fetcher() as fetcher:
+                    sync_bills(conn, fetcher, congress=args.congress, limit=args.limit)
+
+            elif args.job == "votes":
+                if args.chamber in ("house", "both"):
+                    with cg.open_fetcher() as fetcher:
+                        sync_house_votes(
+                            conn,
+                            fetcher,
+                            congress=args.congress,
+                            session=args.session,
+                            limit=args.limit,
+                        )
+                if args.chamber in ("senate", "both"):
+                    sessions = [args.session] if args.session else [1, 2]
+                    for session in sessions:
+                        with senate_xml.open_fetcher() as sfetcher, cg.open_fetcher() as mfetcher:
+                            sync_senate_votes(
+                                conn,
+                                sfetcher,
+                                congress=args.congress,
+                                session=session,
+                                limit=args.limit,
+                                member_fetcher=mfetcher,
+                            )
+    except Exception as exc:
+        log.error("etl.failed", job=args.job, error=f"{type(exc).__name__}: {exc}")
+        return 1
+
+    log.info("etl.done", job=args.job)
+    return 0
 
 
 if __name__ == "__main__":

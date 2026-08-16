@@ -1,0 +1,390 @@
+"""Congress.gov collection jobs: fetch -> parse -> upsert, with bookkeeping.
+
+Kept separate from `congress_gov` so the parsers there stay pure functions with
+no database or network dependency, which is what lets the test suite drive them
+from captured fixtures.
+
+Every job:
+  * writes through `loaders.repository`, so idempotency lives in one place;
+  * records `provenance` rows for the facts it wrote (PRD NFR-5);
+  * updates `dataset_sync_state` so the UI can show "last synced" (NFR-2/9);
+  * archives raw payloads to R2 when configured, and skips silently when not.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any
+
+from sqlalchemy import Connection
+
+from common.http import Fetcher
+from common.logging import get_logger
+from loaders import repository as repo
+from loaders.sync_state import SyncTally, sync_run
+from provenance.record import ProvenanceEntry, record_provenance
+from provenance.snapshot import write_snapshot
+from sources import congress_gov as cg
+from sources.base import CongressNo, FetchResult, SourceSystem, normalize_bill_type
+
+log = get_logger(__name__)
+
+SOURCE = SourceSystem.CONGRESS_GOV
+
+
+def _archive(entity: str, entity_id: str, result: FetchResult) -> str | None:
+    """Push a raw payload to R2. Returns None (no raise) when unconfigured."""
+    return write_snapshot(source=SOURCE, entity=entity, entity_id=entity_id, result=result)
+
+
+# ---------------------------------------------------------------------------
+# Members
+# ---------------------------------------------------------------------------
+
+
+def sync_members(
+    conn: Connection,
+    fetcher: Fetcher,
+    *,
+    congress: CongressNo | None = None,
+    current_only: bool = True,
+    limit: int | None = None,
+) -> SyncTally:
+    """Collect the roster into `member` and `term`.
+
+    Two passes by necessity: the roster endpoint carries only the full state
+    name and no congress numbers, so each member's detail record is fetched for
+    the two-letter `stateCode` and the per-Congress term history.
+    """
+    with sync_run(conn, "members", source_system=SOURCE.value) as tally:
+        bioguide_ids: list[str] = []
+        for page in cg.fetch_members(fetcher, congress=congress, current_only=current_only):
+            bioguide_ids.extend(cg.parse_members(page.json()))
+            if limit is not None and len(bioguide_ids) >= limit:
+                break
+        if limit is not None:
+            bioguide_ids = bioguide_ids[:limit]
+
+        log.info("members.discovered", count=len(bioguide_ids), congress=congress)
+        _ingest_member_details(conn, fetcher, bioguide_ids, tally)
+        conn.commit()
+    return tally
+
+
+def ensure_members(conn: Connection, fetcher: Fetcher, bioguide_ids: Sequence[str]) -> set[str]:
+    """Make sure every named member exists, fetching any that are missing.
+
+    Votes and cosponsorships reference members by FK, and a roll call from an
+    earlier Congress routinely names people who are no longer serving and so
+    are absent from a current-members roster sync. Fetching them on demand
+    keeps collection self-healing instead of dropping their votes.
+
+    Returns the set of IDs present after the call.
+    """
+    wanted = {b for b in bioguide_ids if b}
+    present = repo.existing_member_ids(conn, wanted)
+    missing = sorted(wanted - present)
+    if not missing:
+        return present
+
+    log.info("members.backfilling", count=len(missing))
+    tally = SyncTally()
+    _ingest_member_details(conn, fetcher, missing, tally)
+    conn.commit()
+    return repo.existing_member_ids(conn, wanted)
+
+
+def _ingest_member_details(
+    conn: Connection,
+    fetcher: Fetcher,
+    bioguide_ids: Sequence[str],
+    tally: SyncTally,
+) -> None:
+    members: list[dict[str, Any]] = []
+    terms: list[dict[str, Any]] = []
+    entries: list[ProvenanceEntry] = []
+
+    for bioguide_id in bioguide_ids:
+        result = cg.fetch_member_detail(fetcher, bioguide_id)
+        member, member_terms = cg.parse_member_detail(result.json())
+        members.append(member)
+        terms.extend(member_terms)
+        entries.append(
+            ProvenanceEntry(
+                entity="member",
+                entity_id=bioguide_id,
+                result=result,
+                r2_key=_archive("member", bioguide_id, result),
+            )
+        )
+
+    if not members:
+        return
+
+    tally.add("member", repo.upsert_members(conn, members))
+    # Terms must land after members: term.bioguide_id is an FK.
+    tally.add("term", repo.upsert_terms(conn, terms))
+    record_provenance(conn, entries, source=SOURCE)
+
+
+# ---------------------------------------------------------------------------
+# Bills
+# ---------------------------------------------------------------------------
+
+
+def sync_bills(
+    conn: Connection,
+    fetcher: Fetcher,
+    *,
+    congress: CongressNo,
+    limit: int | None = None,
+) -> SyncTally:
+    """Collect bills with their actions, cosponsors and latest summary."""
+    with sync_run(conn, "bills", source_system=SOURCE.value) as tally:
+        targets: list[tuple[str, int]] = []
+        for page in cg.fetch_bills(fetcher, congress=congress):
+            for b in page.json().get("bills", []):
+                targets.append((str(b["type"]).lower(), int(b["number"])))
+                tally.observe(cg._parse_datetime(b.get("updateDate")))
+            if limit is not None and len(targets) >= limit:
+                break
+        if limit is not None:
+            targets = targets[:limit]
+
+        log.info("bills.discovered", count=len(targets), congress=congress)
+        for bill_type, number in targets:
+            sync_one_bill(
+                conn, fetcher, congress=congress, bill_type=bill_type, number=number, tally=tally
+            )
+        conn.commit()
+    return tally
+
+
+def sync_one_bill(
+    conn: Connection,
+    fetcher: Fetcher,
+    *,
+    congress: CongressNo,
+    bill_type: str,
+    number: int,
+    tally: SyncTally,
+) -> int:
+    """Collect one bill and everything hanging off it. Returns its id."""
+    natural = f"{congress}/{bill_type}/{number}"
+
+    detail = cg.fetch_bill_detail(fetcher, congress=congress, bill_type=bill_type, number=number)
+    row = cg.parse_bill_detail(detail.json())
+
+    summary_pages = list(
+        cg.fetch_bill_subresource(
+            fetcher, congress=congress, bill_type=bill_type, number=number, resource="summaries"
+        )
+    )
+    for page in summary_pages:
+        summary = cg.parse_bill_summary(page.json())
+        if summary:
+            row["summary_text"] = summary
+            break
+
+    # The sponsor is an FK; a bill can be sponsored by someone the roster sync
+    # has not seen (a former member, or a rep in a Congress we did not sync).
+    if row.get("sponsor_bioguide_id"):
+        known = ensure_members(conn, fetcher, [row["sponsor_bioguide_id"]])
+        if row["sponsor_bioguide_id"] not in known:
+            log.warning("bill.sponsor_missing", bill=natural, bioguide=row["sponsor_bioguide_id"])
+            row["sponsor_bioguide_id"] = None
+
+    bill_id = repo.upsert_bill(conn, row)
+    tally.add("bill", 1)
+
+    entries: list[ProvenanceEntry] = [
+        ProvenanceEntry(
+            entity="bill",
+            entity_id=natural,
+            result=detail,
+            r2_key=_archive("bill", natural, detail),
+        )
+    ]
+
+    # --- actions (+ the committees they reference) ---
+    actions: list[dict[str, Any]] = []
+    committees: dict[str, dict[str, Any]] = {}
+    for page in cg.fetch_bill_subresource(
+        fetcher, congress=congress, bill_type=bill_type, number=number, resource="actions"
+    ):
+        page_actions, page_committees = cg.parse_bill_actions(
+            page.json(), bill_id=bill_id, source_url=page.source_url
+        )
+        actions.extend(page_actions)
+        for c in page_committees:
+            committees.setdefault(c["committee_id"], c)
+        entries.append(
+            ProvenanceEntry(entity="bill", entity_id=natural, field="actions", result=page)
+        )
+
+    if committees:
+        tally.add("committee", repo.upsert_committees(conn, list(committees.values())))
+    if actions:
+        tally.add("bill_action", repo.upsert_bill_actions(conn, actions))
+
+    # --- sponsorships ---
+    sponsorships: list[dict[str, Any]] = []
+    if row.get("sponsor_bioguide_id"):
+        sponsorships.append(
+            {
+                "bill_id": bill_id,
+                "bioguide_id": row["sponsor_bioguide_id"],
+                "role": "sponsor",
+                "sponsored_date": row.get("introduced_date"),
+                "withdrawn": False,
+                "withdrawn_date": None,
+                "source_url": detail.source_url,
+            }
+        )
+
+    for page in cg.fetch_bill_subresource(
+        fetcher, congress=congress, bill_type=bill_type, number=number, resource="cosponsors"
+    ):
+        sponsorships.extend(
+            cg.parse_bill_cosponsors(page.json(), bill_id=bill_id, source_url=page.source_url)
+        )
+        entries.append(
+            ProvenanceEntry(entity="bill", entity_id=natural, field="cosponsors", result=page)
+        )
+
+    if sponsorships:
+        known = ensure_members(conn, fetcher, [s["bioguide_id"] for s in sponsorships])
+        kept = [s for s in sponsorships if s["bioguide_id"] in known]
+        if len(kept) != len(sponsorships):
+            log.warning(
+                "bill.sponsorships_dropped", bill=natural, dropped=len(sponsorships) - len(kept)
+            )
+        tally.add("sponsorship", repo.upsert_sponsorships(conn, kept))
+
+    record_provenance(conn, entries, source=SOURCE)
+    tally.observe(cg._parse_datetime(detail.json().get("bill", {}).get("updateDate")))
+    return bill_id
+
+
+# ---------------------------------------------------------------------------
+# House votes
+# ---------------------------------------------------------------------------
+
+
+def sync_house_votes(
+    conn: Connection,
+    fetcher: Fetcher,
+    *,
+    congress: CongressNo,
+    session: int | None = None,
+    limit: int | None = None,
+    skip_existing: bool = True,
+) -> SyncTally:
+    """Collect House roll calls into `vote` and `vote_cast`.
+
+    Coverage note: the beta serves the 115th Congress onward. Requesting an
+    earlier Congress returns an empty list rather than an error, so a silent
+    no-op is the failure mode to watch for — hence the explicit guard.
+    """
+    if congress < cg.HOUSE_VOTE_EARLIEST_CONGRESS:
+        raise ValueError(
+            f"Congress.gov House votes start at the {cg.HOUSE_VOTE_EARLIEST_CONGRESS}th; "
+            f"{congress} needs the Clerk XML backfill (P2)"
+        )
+
+    with sync_run(conn, "house_votes", source_system=SOURCE.value) as tally:
+        listed: list[dict[str, Any]] = []
+        for page in cg.fetch_house_votes(fetcher, congress=congress, session=session):
+            listed.extend(cg.parse_house_vote_list(page.json()))
+            if limit is not None and len(listed) >= limit:
+                break
+        if limit is not None:
+            listed = listed[:limit]
+
+        if skip_existing:
+            keys = [(v["congress_no"], "house", v["session"], v["roll_number"]) for v in listed]
+            already = repo.existing_vote_keys(conn, keys)
+            before = len(listed)
+            listed = [
+                v
+                for v in listed
+                if (v["congress_no"], "house", v["session"], v["roll_number"]) not in already
+            ]
+            if before != len(listed):
+                log.info("house_votes.skipped_existing", skipped=before - len(listed))
+
+        log.info("house_votes.to_collect", count=len(listed), congress=congress)
+        for v in listed:
+            sync_one_house_vote(
+                conn,
+                fetcher,
+                congress=v["congress_no"],
+                session=v["session"],
+                roll_number=v["roll_number"],
+                tally=tally,
+            )
+            tally.observe(v.get("update_date"))
+        conn.commit()
+    return tally
+
+
+def sync_one_house_vote(
+    conn: Connection,
+    fetcher: Fetcher,
+    *,
+    congress: CongressNo,
+    session: int,
+    roll_number: int,
+    tally: SyncTally,
+) -> int:
+    """Collect one House roll call and every member's position on it."""
+    natural = f"{congress}/{session}/{roll_number}"
+
+    detail = cg.fetch_house_vote_detail(
+        fetcher, congress=congress, session=session, roll_number=roll_number
+    )
+    row = cg.parse_house_vote_detail(detail.json(), source_url=detail.source_url)
+
+    leg_type = row.pop("_legislation_type", None)
+    leg_number = row.pop("_legislation_number", None)
+    bill_type = normalize_bill_type(str(leg_type) if leg_type else None)
+    row["bill_id"] = None
+    if bill_type and leg_number:
+        try:
+            row["bill_id"] = repo.find_bill_id(
+                conn, congress_no=congress, bill_type=bill_type, number=int(leg_number)
+            )
+        except ValueError:
+            row["bill_id"] = None
+
+    vote_id = repo.upsert_vote(conn, row)
+    tally.add("vote", 1)
+
+    members = cg.fetch_house_vote_members(
+        fetcher, congress=congress, session=session, roll_number=roll_number
+    )
+    casts = cg.parse_house_vote_members(
+        members.json(), vote_id=vote_id, congress_no=congress, source_url=members.source_url
+    )
+
+    if casts:
+        known = ensure_members(conn, fetcher, [c["bioguide_id"] for c in casts])
+        kept = [c for c in casts if c["bioguide_id"] in known]
+        if len(kept) != len(casts):
+            log.warning("vote.casts_dropped", vote=natural, dropped=len(casts) - len(kept))
+        tally.add("vote_cast", repo.upsert_vote_casts(conn, kept))
+
+    record_provenance(
+        conn,
+        [
+            ProvenanceEntry(
+                entity="vote",
+                entity_id=natural,
+                result=detail,
+                r2_key=_archive("vote", natural, detail),
+            ),
+            ProvenanceEntry(entity="vote", entity_id=natural, field="members", result=members),
+        ],
+        source=SOURCE,
+    )
+    return vote_id

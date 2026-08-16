@@ -1,17 +1,25 @@
 name: ci-etl
 
 # Path-filtered per Deployment-Architecture-Report §4.
-# Lint, typecheck and unit tests only — no network, no database.
+#
+# NO LIVE UPSTREAM CALLS. Every HTTP request is intercepted by respx and served
+# from fixtures captured during P1 verification, so CI cannot be broken by an
+# upstream outage, a rate limit, or a WAF, and no API key is needed to run it.
+# The integration tests do need a real Postgres — partition routing, generated
+# tsvector columns and expression-index upserts are exactly the things a mock
+# would not catch — so a PostGIS service is provided and migrated.
 
 on:
   push:
     branches: [main]
     paths:
       - "pipelines/etl/**"
+      - "packages/db/migrations/**"
       - ".github/workflows/ci-etl.yml"
   pull_request:
     paths:
       - "pipelines/etl/**"
+      - "packages/db/migrations/**"
       - ".github/workflows/ci-etl.yml"
   workflow_dispatch:
 
@@ -19,13 +27,28 @@ concurrency:
   group: ci-etl-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: pipelines/etl
-
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civiclens_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d civiclens_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      CIVICLENS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civiclens_test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -35,16 +58,36 @@ jobs:
           cache-dependency-glob: pipelines/etl/uv.lock
 
       - name: Install
+        working-directory: pipelines/etl
         run: uv sync --frozen
 
       - name: Ruff (lint)
+        working-directory: pipelines/etl
         run: uv run ruff check .
 
       - name: Ruff (format)
+        working-directory: pipelines/etl
         run: uv run ruff format --check .
 
       - name: mypy
+        working-directory: pipelines/etl
         run: uv run mypy
 
+      # The integration tests write to the real schema, so it has to exist.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install migration tooling
+        run: pnpm install --frozen-lockfile
+      - name: Apply migrations to the test database
+        env:
+          DATABASE_URL_UNPOOLED: ${{ env.CIVICLENS_TEST_DATABASE_URL }}
+        run: |
+          touch .env
+          pnpm --filter @civiclens/db run up
+
       - name: pytest
+        working-directory: pipelines/etl
         run: uv run pytest -q

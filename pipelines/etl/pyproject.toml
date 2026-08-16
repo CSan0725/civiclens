@@ -35,6 +35,8 @@ dev = [
     "mypy>=1.14",
     "pytest>=8.3",
     "types-boto3>=1.35",
+    "respx>=0.23.1",
+    "lxml-stubs>=0.5.1",
 ]
 
 [build-system]

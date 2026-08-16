@@ -24,10 +24,27 @@ def test_every_source_module_imports() -> None:
     assert all(m.BASE_URL.startswith("https://") for m in modules if hasattr(m, "BASE_URL"))
 
 
-def test_collectors_are_declared_not_implemented() -> None:
-    """P0 contract: signatures exist, bodies do not."""
+def test_p1_collectors_are_implemented() -> None:
+    """P1 replaced the Congress.gov and senate.gov stubs with real collectors."""
+    for module, name in (
+        (congress_gov, "fetch_member_detail"),
+        (congress_gov, "fetch_house_vote_members"),
+        (senate_xml, "parse_vote"),
+    ):
+        assert callable(getattr(module, name))
+    assert congress_gov.parse_members({"members": []}) == []
+
+
+def test_later_milestone_collectors_are_still_stubs() -> None:
+    """P2/P3/P4 sources stay declared-but-unimplemented until their session."""
     with pytest.raises(NotImplementedError):
-        congress_gov.fetch_member_detail("P000197")
+        govinfo.fetch_granules("CREC-2025-01-01")
+    with pytest.raises(NotImplementedError):
+        fec.fetch_candidate_totals(fec_candidate_id="H0AL01234", cycle=2026)
+    with pytest.raises(NotImplementedError):
+        clerk_xml.fetch_year_index(2015)
+    with pytest.raises(NotImplementedError):
+        voteview.fetch_members_csv()
 
 
 def test_cli_parses_every_job() -> None:
@@ -86,3 +103,30 @@ def test_voteview_excludes_ideology_columns() -> None:
     """PRD N1/FC-4: NOMINATE scores must never enter the database."""
     assert "nominate_dim1" in voteview.EXCLUDED_COLUMNS
     assert "nominate_dim2" in voteview.EXCLUDED_COLUMNS
+
+
+def test_sync_tally_mixes_naive_and_aware_timestamps() -> None:
+    """Congress.gov gives bare dates in lists and full instants in details.
+
+    Comparing the two raised TypeError during the P1 live run; naive values are
+    now read as UTC.
+    """
+    from datetime import UTC, datetime
+
+    from loaders.sync_state import SyncTally
+
+    tally = SyncTally()
+    tally.observe(datetime(2026, 7, 18))  # noqa: DTZ001 — deliberately naive
+    tally.observe(datetime(2026, 7, 11, 1, 8, 27, tzinfo=UTC))
+    assert tally.data_current_as_of == datetime(2026, 7, 18, tzinfo=UTC)
+
+
+def test_sync_tally_counts_per_table() -> None:
+    from loaders.sync_state import SyncTally
+
+    tally = SyncTally()
+    tally.add("member", 3)
+    tally.add("term", 5)
+    tally.add("member", 2)
+    assert tally.rows_upserted == 10
+    assert tally.detail == {"member": 5, "term": 5}

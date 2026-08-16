@@ -1,0 +1,40 @@
+{
+ "cosponsors": [
+  {
+   "bioguideId": "P000614",
+   "district": 1,
+   "firstName": "Chris",
+   "fullName": "Rep. Pappas, Chris [D-NH-1]",
+   "isOriginalCosponsor": false,
+   "lastName": "Pappas",
+   "party": "D",
+   "sponsorshipDate": "2025-06-05",
+   "state": "NH",
+   "url": "https://api.congress.gov/v3/member/P000614?format=json"
+  },
+  {
+   "bioguideId": "L000599",
+   "district": 17,
+   "firstName": "Michael",
+   "fullName": "Rep. Lawler, Michael [R-NY-17]",
+   "isOriginalCosponsor": false,
+   "lastName": "Lawler",
+   "party": "R",
+   "sponsorshipDate": "2025-09-08",
+   "state": "NY",
+   "url": "https://api.congress.gov/v3/member/L000599?format=json"
+  }
+ ],
+ "pagination": {
+  "count": 2,
+  "countIncludingWithdrawnCosponsors": 2
+ },
+ "request": {
+  "billNumber": "3424",
+  "billType": "hr",
+  "billUrl": "https://api.congress.gov/v3/bill/119/hr/3424?format=json",
+  "congress": "119",
+  "contentType": "application/json",
+  "format": "json"
+ }
+}
