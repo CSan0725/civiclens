@@ -37,24 +37,16 @@ log = get_logger(__name__)
 
 SOURCE = SourceSystem.CONGRESS_GOV
 
-# Why a roll call can be unparseable, and why that is not a bug to "fix" by
-# coercing it:
+# Casts outside the vote_position enum are NO LONGER a reason to skip a roll
+# call. Migration 0003 added `vote_cast.raw_position`, so the Election of the
+# Speaker — where members vote by candidate name — is stored verbatim rather
+# than discarded (PRD FC-4).
 #
-# The Election of the Speaker is a recorded House vote where members call out a
-# CANDIDATE NAME, not Yea/Nay. Roll call 119/1/2 records
-# {'Johnson (LA)': 218, 'Jeffries': 215, 'Emmer': 1}. The `vote_position` enum
-# has no honest home for that, and inventing one would be exactly the
-# interpretation PRD FC-4 forbids.
-#
-# Until the schema can hold a raw position (a nullable `position` plus
-# `raw_position TEXT` would do it — a change that also touches the PRD §11
-# participation-rate maths, so it needs a deliberate decision), these roll
-# calls are skipped, named in the log, and recorded in
-# `dataset_sync_state.message` so the gap is visible rather than silent.
-_SKIP_NOTE = (
-    "Most commonly the Election of the Speaker, where members vote by candidate "
-    "name; representing it needs a schema change (see congress_gov_sync)."
-)
+# The skip path below now only catches genuinely malformed responses: a payload
+# whose shape the parser cannot read at all. Those still must not take the
+# nightly run down with them, so they are skipped, named in the log, and
+# recorded in `dataset_sync_state.message`.
+_SKIP_NOTE = "Malformed upstream payload — inspect the roll call before re-running."
 
 
 def _archive(entity: str, entity_id: str, result: FetchResult) -> str | None:
@@ -371,10 +363,7 @@ def sync_house_votes(
                 log.warning("house_votes.skipped", vote=natural, error=str(exc))
 
         if skipped:
-            tally.note(
-                f"skipped {len(skipped)} roll call(s) with positions outside the "
-                f"vote_position enum: {', '.join(skipped)}. {_SKIP_NOTE}"
-            )
+            tally.note(f"skipped {len(skipped)} roll call(s): {', '.join(skipped)}. {_SKIP_NOTE}")
             log.warning("house_votes.skipped_summary", count=len(skipped), votes=skipped)
     return tally
 
@@ -414,9 +403,14 @@ def sync_one_house_vote(
     members = cg.fetch_house_vote_members(
         fetcher, congress=congress, session=session, roll_number=roll_number
     )
-    casts = cg.parse_house_vote_members(
+    casts, raw_values = cg.parse_house_vote_members(
         members.json(), vote_id=vote_id, congress_no=congress, source_url=members.source_url
     )
+    if raw_values:
+        # Not an error — the Election of the Speaker records candidate names.
+        # Stored verbatim in raw_position; logged so the case stays findable.
+        log.info("vote.raw_positions", vote=natural, values=raw_values)
+        tally.note(f"{natural} recorded non-enum positions: {', '.join(raw_values)}")
 
     if casts:
         known = ensure_members(conn, fetcher, [c["bioguide_id"] for c in casts])

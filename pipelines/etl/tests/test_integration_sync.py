@@ -464,23 +464,19 @@ def test_snapshot_skips_gracefully_without_r2_credentials() -> None:
 
 
 @respx.mock
-def test_speaker_election_is_skipped_without_aborting_the_run(conn: Connection) -> None:
+def test_speaker_election_is_stored_with_raw_positions(conn: Connection) -> None:
     """The Election of the Speaker records CANDIDATE NAMES, not Yea/Nay.
 
-    Roll call 119/1/2 has {'Johnson (LA)': 218, 'Jeffries': 215, 'Emmer': 1}.
-    `vote_position` has no honest home for that and the parser refuses to guess
-    (PRD FC-4). Before this was handled, one such roll call aborted the entire
-    nightly run — permanently, since it would be retried every night.
-
-    The run must now skip it, keep every other roll call, and leave the gap
-    visible in dataset_sync_state.
+    Roll call 119/1/2 is {'Johnson (LA)': 218, 'Jeffries': 215, 'Emmer': 1}.
+    It used to abort the nightly run, then it was skipped; since migration 0003
+    it is STORED verbatim — position NULL, raw_position the source string
+    (PRD FC-4, "positions are recorded verbatim").
     """
     from sources import congress_gov as cg
     from sources.congress_gov_sync import sync_house_votes
 
     _mock_member_routes()
 
-    # A listing with the Speaker election first, then an ordinary roll call.
     listing = load_json("house_vote_list.json")
     listing["houseRollCallVotes"] = [
         {
@@ -518,27 +514,54 @@ def test_speaker_election_is_skipped_without_aborting_the_run(conn: Connection) 
     with cg.open_fetcher() as fetcher:
         tally = sync_house_votes(conn, fetcher, congress=119, session=1)
 
-    # The ordinary roll call survived; the Speaker election did not land.
+    # BOTH roll calls are now stored — nothing is skipped.
     rolls = conn.execute(text("SELECT roll_number FROM vote ORDER BY roll_number")).scalars().all()
-    assert rolls == [240], "the good roll call must still be collected"
+    assert rolls == [2, 240]
 
-    # No orphaned vote row and no partial casts from the failed one.
-    orphans = conn.execute(
+    speaker = conn.execute(
         text(
-            "SELECT count(*) FROM vote v WHERE NOT EXISTS "
-            "(SELECT 1 FROM vote_cast c WHERE c.vote_id = v.id)"
+            "SELECT c.position::text, c.raw_position FROM vote_cast c "
+            "JOIN vote v ON v.id = c.vote_id WHERE v.roll_number = 2"
         )
-    ).scalar_one()
-    assert orphans == 0, "a skipped roll call must not leave a vote row with no casts"
+    ).all()
+    assert speaker, "the Speaker election must have casts"
+    assert all(p is None for p, _ in speaker), "candidate names must not be coerced onto the enum"
+    assert {raw for _, raw in speaker} == {"Jeffries", "Emmer", "Johnson (LA)"}
 
-    # And the gap is recorded where it outlives the CI logs.
-    assert tally.notes, "the skip must be noted"
-    assert "119/1/2" in " ".join(tally.notes)
-    state = conn.execute(
-        text("SELECT last_status, message FROM dataset_sync_state WHERE dataset='house_votes'")
+    # The ordinary roll call is untouched by the change.
+    ordinary = conn.execute(
+        text(
+            "SELECT c.position::text, c.raw_position FROM vote_cast c "
+            "JOIN vote v ON v.id = c.vote_id WHERE v.roll_number = 240"
+        )
+    ).all()
+    assert all(raw is None for _, raw in ordinary)
+    assert {p for p, _ in ordinary} <= {"Yea", "Nay", "Present", "NotVoting"}
+
+    # Recorded so the case stays findable without grepping logs.
+    assert any("119/1/2" in n for n in tally.notes)
+    message = conn.execute(
+        text("SELECT message FROM dataset_sync_state WHERE dataset='house_votes'")
+    ).scalar_one()
+    assert "Johnson (LA)" in message
+
+    # Tally integrity holds for the Speaker election: it reports no yea/nay
+    # (votePartyTotal switches to [{candidate, total}]), and none were counted,
+    # so raw_position casts do not corrupt the reported-vs-counted check.
+    #
+    # Scoped to roll 2 on purpose: roll 240's member fixture is trimmed to a
+    # handful of members while its detail reports the real 397-1, so it cannot
+    # satisfy this check. The full-population version runs against Neon.
+    reported, counted_yea, counted_nay = conn.execute(
+        text(
+            "SELECT v.yea_count,"
+            "       count(*) FILTER (WHERE c.position='Yea'),"
+            "       count(*) FILTER (WHERE c.position='Nay') "
+            "FROM vote v JOIN vote_cast c ON c.vote_id = v.id "
+            "WHERE v.roll_number = 2 GROUP BY v.yea_count"
+        )
     ).one()
-    assert state.last_status == "ok"
-    assert "119/1/2" in state.message
+    assert (reported, counted_yea, counted_nay) == (0, 0, 0)
 
 
 @respx.mock

@@ -32,6 +32,10 @@ export * from "./generated/schema";
  * Always query this parent table, never a `vote_cast_c119` child: Postgres
  * prunes to the right partition from a `congress_no` predicate, and querying a
  * child directly silently scopes the result to one Congress.
+ *
+ * Reading a position: prefer `position`, fall back to `rawPosition`. Exactly
+ * one of them is set. Never coerce a `rawPosition` into a Yea or a Nay — see
+ * PRD §11 footnote 1.
  */
 export const voteCast = pgTable(
   "vote_cast",
@@ -40,7 +44,11 @@ export const voteCast = pgTable(
     voteId: bigint("vote_id", { mode: "number" }).notNull(),
     congressNo: smallint("congress_no").notNull(),
     bioguideId: text("bioguide_id").notNull(),
-    position: votePosition().notNull(),
+    // Nullable since migration 0003: a cast outside the enum (a candidate name
+    // in an Election of the Speaker) stores raw_position instead. A CHECK
+    // guarantees at least one of the two is present.
+    position: votePosition(),
+    rawPosition: text("raw_position"),
     party: text(),
     state: text(),
     sourceUrl: text("source_url"),

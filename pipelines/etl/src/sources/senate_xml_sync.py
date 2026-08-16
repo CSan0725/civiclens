@@ -151,7 +151,7 @@ def load_senate_vote(
     tally.add("vote", 1)
     tally.observe(row.get("vote_datetime"))
 
-    casts, unresolved = senate_xml.parse_vote_members(
+    casts, unresolved, raw_values = senate_xml.parse_vote_members(
         payload,
         vote_id=vote_id,
         congress_no=congress,
@@ -160,6 +160,9 @@ def load_senate_vote(
     )
     if unresolved:
         log.warning("senate_votes.unresolved_lis_ids", vote=natural, ids=sorted(set(unresolved)))
+    if raw_values:
+        log.info("senate_vote.raw_positions", vote=natural, values=raw_values)
+        tally.note(f"{natural} recorded non-enum positions: {', '.join(raw_values)}")
 
     if casts:
         bioguide_ids = [c["bioguide_id"] for c in casts]

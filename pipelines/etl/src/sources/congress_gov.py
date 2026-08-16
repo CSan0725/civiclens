@@ -498,24 +498,38 @@ def _majority_from_vote_type(vote_type: str | None) -> str | None:
 
 def parse_house_vote_members(
     payload: dict[str, Any], *, vote_id: int, congress_no: int, source_url: str
-) -> list[dict[str, Any]]:
-    """Build `vote_cast` rows.
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build `vote_cast` rows. Returns (rows, distinct non-enum cast strings).
 
     `congress_no` is carried on every row because vote_cast is partitioned by
     it — it is the partition key, not redundant denormalisation.
+
+    A cast outside the `vote_position` enum is stored verbatim in
+    `raw_position` with `position = NULL`, rather than being coerced or
+    dropped. The Election of the Speaker is the case that matters: members vote
+    by candidate name, and both forcing that into Yea/Nay and discarding the
+    roll call would misrepresent it (PRD FC-4). See migration 0003.
     """
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    raw_values: list[str] = []
 
     for r in payload["houseRollCallVoteMemberVotes"].get("results") or []:
         bioguide_id = r.get("bioguideID")
         if not bioguide_id or bioguide_id in seen:
             continue
-        position = vote_position_from(r.get("voteCast"))
+        cast = r.get("voteCast")
+        position = vote_position_from(cast)
+        raw_position = None
         if position is None:
-            raise SourceError(
-                f"unmapped House voteCast {r.get('voteCast')!r} for {bioguide_id} at {source_url}"
-            )
+            raw_position = clean_text(cast)
+            if not raw_position:
+                # No position AND no raw text is not a cast at all; storing it
+                # would violate the vote_cast_position_present CHECK.
+                log.warning("house_vote.empty_cast", bioguide_id=bioguide_id, url=source_url)
+                continue
+            if raw_position not in raw_values:
+                raw_values.append(raw_position)
         seen.add(bioguide_id)
         rows.append(
             {
@@ -523,12 +537,13 @@ def parse_house_vote_members(
                 "congress_no": congress_no,
                 "bioguide_id": bioguide_id,
                 "position": position,
+                "raw_position": raw_position,
                 "party": r.get("voteParty"),
                 "state": r.get("voteState"),
                 "source_url": source_url,
             }
         )
-    return rows
+    return rows, raw_values
 
 
 def _parse_date(value: Any) -> date | None:

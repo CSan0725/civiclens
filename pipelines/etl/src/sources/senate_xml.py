@@ -243,25 +243,31 @@ def parse_vote_members(
     congress_no: int,
     source_url: str,
     lis_crosswalk: dict[str, str],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """Build `vote_cast` rows. Returns (rows, unresolved LIS ids).
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Build `vote_cast` rows.
 
-    Unresolved senators are reported rather than guessed. Name-matching a
-    senator onto a Bioguide ID would risk attributing a vote to the wrong
-    person, which PRD FC-1 rules out — the caller decides what to do with the
-    gap, and it is visible either way.
+    Returns (rows, unresolved LIS ids, distinct non-enum cast strings).
+
+    Two different kinds of "cannot map", handled differently on purpose:
+
+    * An unresolved LIS id means we do not know WHO cast the vote. Those are
+      reported and dropped, never name-matched — attributing a vote to the
+      wrong senator is worse than a gap (PRD FC-1).
+    * A cast outside the `vote_position` enum means we know who voted but the
+      vocabulary is wider than Yea/Nay. Those are stored verbatim in
+      `raw_position`, because discarding a real recorded vote is its own
+      distortion (PRD FC-4). See migration 0003.
     """
     root = etree.fromstring(payload)
     rows: list[dict[str, Any]] = []
     unresolved: list[str] = []
+    raw_values: list[str] = []
     seen: set[str] = set()
 
     for m in root.findall("members/member"):
         lis_id = _text(m, "lis_member_id")
         cast = _text(m, "vote_cast")
         position = vote_position_from(cast)
-        if position is None:
-            raise SourceError(f"unmapped Senate vote_cast {cast!r} at {source_url}")
 
         bioguide_id = lis_crosswalk.get(lis_id or "")
         if not bioguide_id:
@@ -269,18 +275,28 @@ def parse_vote_members(
             continue
         if bioguide_id in seen:
             continue
-        seen.add(bioguide_id)
 
+        raw_position = None
+        if position is None:
+            raw_position = cast
+            if not raw_position:
+                log.warning("senate_vote.empty_cast", lis_id=lis_id, url=source_url)
+                continue
+            if raw_position not in raw_values:
+                raw_values.append(raw_position)
+
+        seen.add(bioguide_id)
         rows.append(
             {
                 "vote_id": vote_id,
                 "congress_no": congress_no,
                 "bioguide_id": bioguide_id,
                 "position": position,
+                "raw_position": raw_position,
                 "party": _text(m, "party"),
                 "state": _text(m, "state"),
                 "source_url": source_url,
             }
         )
 
-    return rows, unresolved
+    return rows, unresolved, raw_values

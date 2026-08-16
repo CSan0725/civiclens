@@ -96,7 +96,7 @@ def test_crosswalk_skips_rows_without_an_lis_id() -> None:
 
 def test_parse_vote_members_resolves_via_crosswalk() -> None:
     crosswalk = legislators.parse_lis_crosswalk(load_bytes("legislators_current.csv"))
-    rows, unresolved = senate_xml.parse_vote_members(
+    rows, unresolved, raw = senate_xml.parse_vote_members(
         load_bytes(VOTE),
         vote_id=9,
         congress_no=119,
@@ -112,7 +112,7 @@ def test_parse_vote_members_resolves_via_crosswalk() -> None:
 
 def test_unresolvable_senators_are_reported_never_guessed() -> None:
     """PRD FC-1: a misattributed vote is worse than a missing one."""
-    rows, unresolved = senate_xml.parse_vote_members(
+    rows, unresolved, raw = senate_xml.parse_vote_members(
         load_bytes(VOTE),
         vote_id=9,
         congress_no=119,
@@ -125,7 +125,7 @@ def test_unresolvable_senators_are_reported_never_guessed() -> None:
 
 def test_not_voting_maps_onto_the_enum() -> None:
     crosswalk = legislators.parse_lis_crosswalk(load_bytes("legislators_current.csv"))
-    rows, _ = senate_xml.parse_vote_members(
+    rows, _, _raw = senate_xml.parse_vote_members(
         load_bytes(VOTE),
         vote_id=9,
         congress_no=119,

@@ -6,7 +6,6 @@ import pytest
 
 from conftest import load_json
 from sources import congress_gov as cg
-from sources.base import SourceError
 
 # ---------------------------------------------------------------------------
 # Members
@@ -205,7 +204,7 @@ def test_majority_threshold_parsing(vote_type: str | None, expected: str | None)
 
 
 def test_parse_house_vote_members_maps_positions() -> None:
-    rows = cg.parse_house_vote_members(
+    rows, raw = cg.parse_house_vote_members(
         load_json("house_vote_members_119_1_240.json"),
         vote_id=42,
         congress_no=119,
@@ -218,16 +217,58 @@ def test_parse_house_vote_members_maps_positions() -> None:
     assert {r["position"] for r in rows} <= {"Yea", "Nay", "Present", "NotVoting"}
     # "Not Voting" (with a space) must normalise onto the enum label.
     assert "NotVoting" in {r["position"] for r in rows}
+    # An ordinary roll call has nothing outside the enum.
+    assert raw == []
+    assert all(r["raw_position"] is None for r in rows)
 
 
-def test_unmapped_vote_cast_raises_rather_than_guessing() -> None:
-    """An unknown position must fail loudly, never default to Yea or Nay."""
+def test_non_enum_cast_is_stored_verbatim_never_guessed() -> None:
+    """A position outside the enum is preserved, not coerced and not dropped.
+
+    Migration 0003: `position` goes NULL and the source string lands in
+    `raw_position`. Turning it into a Yea or a Nay would be the interpretation
+    PRD FC-4 forbids; dropping it would lose a real recorded vote.
+    """
     payload = load_json("house_vote_members_119_1_240.json")
     payload["houseRollCallVoteMemberVotes"]["results"][0]["voteCast"] = "Maybe"
-    with pytest.raises(SourceError, match="unmapped House voteCast"):
-        cg.parse_house_vote_members(
-            payload, vote_id=1, congress_no=119, source_url="https://example/m"
-        )
+    rows, raw = cg.parse_house_vote_members(
+        payload, vote_id=1, congress_no=119, source_url="https://example/m"
+    )
+    odd = [r for r in rows if r["raw_position"] is not None]
+    assert len(odd) == 1
+    assert odd[0]["position"] is None
+    assert odd[0]["raw_position"] == "Maybe"
+    assert raw == ["Maybe"]
+    # Everyone else is unaffected.
+    assert all(r["position"] is not None for r in rows if r["raw_position"] is None)
+
+
+def test_speaker_election_casts_are_candidate_names() -> None:
+    """The real payload that used to abort the nightly run."""
+    rows, raw = cg.parse_house_vote_members(
+        load_json("house_vote_members_119_1_2_speaker.json"),
+        vote_id=2,
+        congress_no=119,
+        source_url="https://example/speaker",
+    )
+    assert rows, "the Speaker election must now produce casts"
+    assert all(r["position"] is None for r in rows)
+    assert set(raw) == {"Jeffries", "Emmer", "Johnson (LA)"}
+    assert {r["raw_position"] for r in rows} == {"Jeffries", "Emmer", "Johnson (LA)"}
+
+
+def test_speaker_election_detail_reports_no_yea_nay() -> None:
+    """votePartyTotal switches to [{candidate, total}] — no yea/nay fields.
+
+    So the stored tally is 0-0, which is honest: nobody cast a Yea or a Nay.
+    It also keeps the tally-integrity check (reported vs counted) true.
+    """
+    row = cg.parse_house_vote_detail(
+        load_json("house_vote_detail_119_1_2_speaker.json"), source_url="https://example/v"
+    )
+    assert row["question"] == "Election of the Speaker"
+    assert row["yea_count"] == 0
+    assert row["nay_count"] == 0
 
 
 def test_house_vote_coverage_floor_is_the_115th() -> None:
