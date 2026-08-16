@@ -106,7 +106,7 @@ jobs:
                   crosswalk = legislators.load_lis_crosswalk(cw_fetcher)
               print(f"CROSSWALK  {len(crosswalk)} lis_id -> bioguide_id entries")
 
-              casts, unresolved = senate_xml.parse_vote_members(
+              casts, unresolved, raw_values = senate_xml.parse_vote_members(
                   vote.payload,
                   vote_id=0,
                   congress_no=row["congress_no"],
@@ -115,12 +115,17 @@ jobs:
               )
               positions: dict[str, int] = {}
               for c in casts:
-                  positions[c["position"]] = positions.get(c["position"], 0) + 1
+                  # position is None when the cast is outside the enum; the
+                  # source string is kept in raw_position (migration 0003).
+                  key = c["position"] or f"raw:{c['raw_position']}"
+                  positions[key] = positions.get(key, 0) + 1
 
               print(f"CASTS  resolved {len(casts)}, unresolved {len(unresolved)}")
               print(f"CASTS  positions: {positions}")
               if unresolved:
                   print(f"CASTS  unresolved lis ids: {sorted(set(unresolved))}")
+              if raw_values:
+                  print(f"CASTS  non-enum positions recorded verbatim: {raw_values}")
 
               print()
               print("RESULT: senate.gov is REACHABLE from this runner with the honest User-Agent.")

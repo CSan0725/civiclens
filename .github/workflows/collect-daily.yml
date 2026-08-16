@@ -34,6 +34,17 @@ on:
         description: Max roll calls per chamber/session per run
         required: false
         default: "50"
+      chamber:
+        description: Which chamber's roll calls to collect
+        type: choice
+        required: false
+        default: both
+        options: [both, house, senate]
+      skip_bills:
+        description: Skip the bills step (for a targeted vote re-collection)
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: collect-daily
@@ -63,6 +74,7 @@ jobs:
       CONGRESS_ARG: ${{ inputs.congress && format('--congress {0}', inputs.congress) || '' }}
       BILL_LIMIT: ${{ inputs.bill_limit || '150' }}
       VOTE_LIMIT: ${{ inputs.vote_limit || '50' }}
+      CHAMBER: ${{ inputs.chamber || 'both' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -94,14 +106,20 @@ jobs:
       # BILL_LIMIT bills change in one day, the tail waits for tomorrow —
       # raise the limit or wire `--since` if that starts happening.
       - name: Bills, actions and sponsorships
+        if: ${{ inputs.skip_bills != true && inputs.skip_bills != 'true' }}
         run: uv run civiclens-etl bills $CONGRESS_ARG --limit "$BILL_LIMIT"
 
       - name: House roll calls
+        if: ${{ env.CHAMBER == 'both' || env.CHAMBER == 'house' }}
         run: uv run civiclens-etl votes $CONGRESS_ARG --chamber house --limit "$VOTE_LIMIT"
 
       # Senate is a separate step so a senate.gov outage does not mask a
-      # successful House run in the logs.
+      # successful House run in the logs. Skipping one chamber also lets a
+      # targeted re-collection avoid pointlessly re-walking the other — and
+      # avoid several hundred needless requests at senate.gov, whose WAF is
+      # rate-sensitive.
       - name: Senate roll calls
+        if: ${{ env.CHAMBER == 'both' || env.CHAMBER == 'senate' }}
         run: uv run civiclens-etl votes $CONGRESS_ARG --chamber senate --limit "$VOTE_LIMIT"
 
       - name: Report freshness
@@ -130,6 +148,41 @@ jobs:
               print("\nrow counts:")
               for t, n in cur.fetchall():
                   print(f"  {t:<14}{n:>9,d}")
+
+              # Positions outside the vote_position enum — candidate-name votes
+              # in an Election of the Speaker and anything like it. Reported so
+              # the case stays visible rather than only living in a log line.
+              cur.execute("""
+                  select v.congress_no, v.session, v.roll_number, v.question,
+                         c.raw_position, count(*)
+                  from vote_cast c join vote v on v.id = c.vote_id
+                  where c.raw_position is not null
+                  group by 1,2,3,4,5 order by 1,2,3,5
+              """)
+              raw_rows = cur.fetchall()
+              print("")
+              print("raw_position casts (non-enum positions): %d group(s)" % len(raw_rows))
+              for cn, se, roll, q, raw, n in raw_rows:
+                  print("  %s/%s roll %s [%s] %r: %d" % (cn, se, roll, q, raw, n))
+
+              # Integrity: the tally a roll call reports must equal the casts
+              # actually stored for it.
+              cur.execute("""
+                  select count(*) from vote v join lateral (
+                    select count(*) filter (where position='Yea') yea,
+                           count(*) filter (where position='Nay') nay
+                    from vote_cast c where c.vote_id = v.id) a on true
+                  where v.yea_count is distinct from a.yea
+                     or v.nay_count is distinct from a.nay
+              """)
+              bad = cur.fetchone()[0]
+              cur.execute("select count(*) from vote")
+              total = cur.fetchone()[0]
+              print("")
+              print("tally integrity: %d/%d roll calls match counted casts" % (total - bad, total))
+              cur.execute("""select count(*) from vote v where not exists
+                             (select 1 from vote_cast c where c.vote_id = v.id)""")
+              print("orphaned vote rows: %d" % cur.fetchone()[0])
           PY
 
       - name: Open an issue on failure
