@@ -47,7 +47,11 @@ jobs:
           --health-retries 20
 
     env:
-      CIVICLENS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civiclens_test
+      # sslmode=disable is required, not cosmetic: dbmate's Postgres driver
+      # (lib/pq) defaults to requiring TLS, and the service container serves
+      # plaintext, so omitting it fails with "pq: SSL is not enabled on the
+      # server" before a single migration runs.
+      CIVICLENS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civiclens_test?sslmode=disable
 
     steps:
       - uses: actions/checkout@v4
