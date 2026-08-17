@@ -74,6 +74,9 @@ CLI 기반 구현에 바로 투입 가능한 수준의 제품 요구사항 정�
 - UK 온보딩(국가 스위처)
 - 데이터 다운로드/공개 API
 
+### 백로그 (우선순위 미정 — §18 참조)
+- 로비 데이터(Lobbying Disclosure) — 정치인별 로비 활동·기부 내역
+
 ---
 
 ## 4. 기능 요구사항 (Functional Requirements)
@@ -146,8 +149,10 @@ CLI 기반 구현에 바로 투입 가능한 수준의 제품 요구사항 정�
 | 2차 | Voteview(다운로드) | 표결 교차검증·백필(이념점수 미사용) | 학술 공개 |
 | 2차 | unitedstates/congress | 스크레이퍼/스키마 참조 | 오픈소스 |
 | v2 | GDELT 등 | 뉴스 언급 탐지 | §12 준수 |
+| 백로그 | LDA.gov (lda.gov / lda.congress.gov) | 로비 등록·활동·기부 내역 | 퍼블릭 도메인급(§18) |
 
 제외: GovTrack **API**(2026 여름 종료) — 데이터 의존 금지, 웹은 UX 참고만.
+제외(표시용): OpenSecrets API/벌크데이터 — 비영리 전용 라이선스, §18 참조. 사내 교차검증 참고에만 한정 가능, 서비스 노출 불가.
 
 > **실측 정정 (P1, 2026-08-16)** — 아래 세 항목은 본 문서 작성 시점의 기재값과 실제 서비스 응답이 달라
 > 실측 기준으로 정정한다. 근거·재현 방법은 `docs/P1-source-verification.md`.
@@ -367,6 +372,78 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 - OQ-3. 뉴스 표시용 소스(v2): GDELT만 vs 유료 표시 API 병행 시점.
 - OQ-4. 배포 환경(Vercel + 관리형 Postgres vs 자체 호스팅) — CLI 착수 시 결정.
 - OQ-5. 데이터 갱신 오케스트레이션(cron vs Prefect/Airflow).
+- OQ-6. 로비 데이터(§18) 착수 시점(v2 vs v3)과 "회전문(revolving door)" 매칭 포함 여부.
+
+---
+
+## 18. 백로그 — 로비 데이터 (Lobbying Disclosure)
+
+**제안 배경:** 정치인별로 "누구에게 얼마나 로비를 받았는지"를 보여달라는 요청(2026-08-17). 착수 전
+라이선스·소스 분석을 먼저 확정해둔다 — 실제 구현 시점(v2 이후로 추정, OQ-6)에 이 절을 그대로 스펙으로 쓴다.
+
+### 18.1 핵심 결론
+
+**OpenSecrets API/벌크데이터는 서비스에 못 쓴다.** 라이선스가 CC BY-NC-SA(비영리)이고, API 약관이
+"교육·연구·비영리 목적"으로 명시 제한하며 재배포·상업적 이용에 서면 허가(유료)를 요구한다. 이 프로젝트가
+장기적으로 결제·광고 수익화를 목표로 한다고 이미 밝힌 이상(2026-08-17 논의), OpenSecrets 데이터를 화면에
+노출하는 건 라이선스 위반이다. 게다가 OpenSecrets은 정부 1차 소스가 아니라 "산업군 분류"라는 자체 편집
+판단이 들어간 3자 가공 데이터라, PRD FC-1/FC-4(공식 1차 소스 기준, 해석·가공 라벨 금지) 원칙과도 결이
+다르다. → **사내 리서치·수치 대조용으로만 잠깐 참고 가능, 화면에 표시하거나 재배포 불가.**
+
+**대신 LDA(Lobbying Disclosure Act) 원자료를 직접 수집·가공한다.** 공식 소스이고, 약관
+(lda.senate.gov/api/tos, 2019-08-22 최종 수정)에 "Data accessed through LDA.gov do not, and should not,
+include controls over its end use" — **최종 용도(상업적 이용 포함)에 제한이 없다고 명시**돼 있다. 요구되는
+건 (a) 조회일자 인용, (b) "Senate Office of Public Records cannot vouch for the data or analyses derived
+from these data after the data have been retrieved from LDA.gov" 문구 고지, (c) 원문 왜곡·수정 금지,
+(d) 미 상원 문장(Seal) 사용 금지 — 전부 지금 다른 소스(Congress.gov 등)에도 이미 적용 중인 provenance/
+methodology 관행과 그대로 겹친다. 무료, API 키 불필요(익명 15req/분, 등록 시 120req/분).
+
+**전환 주의:** 구 시스템 `lda.senate.gov`는 2026-06-30 종료 공지(별도 조회 결과는 07-31로도 나옴 — 착수
+시점에 재확인). 새 `lda.gov` / `lda.congress.gov`로 이미 이전된 상태에서 시작해야 한다 — 다른 소스들과
+마찬가지로 착수 전 실제 엔드포인트를 먼저 찔러 확인하는 절차(§16 방식)를 그대로 적용한다.
+
+### 18.2 데이터 종류 — "로비를 얼마나 받았는지"는 두 갈래로 나뉜다
+
+| 보고서 | 내용 | 개별 의원 단위인가 |
+|---|---|---|
+| LD-1 (등록) | 어떤 로비회사가 어떤 고객을 대리하는지 | 아니오 |
+| LD-2 (분기 활동보고서) | 고객·등록로비스트·이슈·**상대 기관**(하원/상원/특정 부처)·지출액 | **아니오** — 챔버/기관 단위지 특정 의원실 단위가 아님 |
+| **LD-203 (반기 정치기부 보고서)** | 등록로비스트가 연방 후보·현직자·리더십PAC·정당위원회에 한 기부($200 초과분 의무 공시) | **예** — 이게 사용자가 원하는 "의원 Y가 로비스트 X에게 얼마 받았다"에 해당 |
+
+→ "로비 받은 금액"을 의원 단위로 보여주려면 **LD-203이 핵심**이고, LD-2는 "이 이슈에 어떤 로비회사들이
+얼마나 썼는지"라는 별도 화면(법안/이슈 상세에 붙이면 자연스러움)이 된다. 이 둘을 하나의 숫자로 섞으면
+안 된다 — 서로 다른 걸 측정한다.
+
+### 18.3 OpenSecrets 수준에 도달하려면 추가로 필요한 것
+
+OpenSecrets의 로비 관련 강점은 (a) LD-2+LD-203+FEC를 합쳐 의원별/산업별 요약 숫자를 만들어주는 것,
+(b) 로비스트 신원의 표기 변형(동일인이 여러 철자로 등장)을 정규화하는 것, (c) "회전문"(전직 의원·보좌진이
+로비스트로 전직한 이력) 추적이다. 우리가 원자료 기반으로 이 수준에 가려면:
+
+1. LD-203 기부자(로비스트)를 FEC 수령측 기록과 대조 — 같은 기부가 양쪽에 잡히므로 서로 검증 가능
+   (Voteview 대조와 같은 패턴을 그대로 재사용 가능).
+2. 로비스트 신원 정규화 — LDA가 부여하는 등록 ID를 1차 키로 쓰고, 이름 매칭은 보조로만.
+3. bioguide_id ↔ LD-203 수령자 매칭 — Candidate/Member 매핑과 같은 방식(§6 fec_candidate_id 매핑 큐
+   재사용 가능).
+4. "회전문" 추적은 난이도가 다른 항목들과 다르다(전직 이력 데이터가 흩어져 있고 자동 매칭 신뢰도가 낮음)
+   — **1차 스코프에서 제외**하고, 넣더라도 수기 검토 큐를 거치게 한다(OQ-6에서 결정).
+
+### 18.4 제안 데이터 모델 확장 (§6에 추가할 후보, 확정 아님)
+
+```
+LobbyingRegistration(lda_registration_id PK, registrant_name, client_name, filing_year, source_url, retrieved_at)
+LobbyingActivity(registration_id FK, period, issue_area_code, government_entities[], amount_reported?, source_url, retrieved_at)
+LobbyingContribution(lda_filing_id PK, lobbyist_name, contributor_type, recipient_name, bioguide_id? FK,
+                      amount, contribution_date, filing_period, source_url, retrieved_at)
+```
+
+`bioguide_id`는 자동 매칭 신뢰도가 낮을 수 있어 nullable + 매칭 방법/신뢰도 컬럼(§6 Candidate의
+`bioguide_match_method` 패턴 재사용)을 둔다.
+
+### 18.5 배치 제안
+
+뉴스 계층(§12)과 유사하게 "3차 보조 계층"으로 v2 이후 배치. 표시 원칙은 §9 FC-1~5, §11 중립 가드레일을
+그대로 적용 — "이 의원은 로비의 영향을 받았다" 류의 해석 문구 금지, 금액·날짜·출처만 제시.
 
 ---
 
