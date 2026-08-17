@@ -12,7 +12,14 @@ Deployment-Architecture-Report §4:
     backfill      manual    clerk.house.gov 1990-2016 House roll calls     [P2]
     reconcile     daily     Voteview cross-check -> reconciliation flags   [P2]
 
-Only the P1 jobs are implemented. The rest report what milestone owns them.
+`backfill` is the one job that is NOT meant for GitHub Actions: the full
+1990-2016 range is 17,433 roll calls and exceeds the 6-hour hosted-runner cap
+(Deployment-Architecture-Report §1b). Run it locally or on a temporary VPS,
+with DATABASE_URL supplied for that one invocation. It is restartable — see
+`clerk_xml_sync`.
+
+`reconcile` lands with the Voteview collector. The P3/P4 jobs report what
+milestone owns them.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ JOBS: dict[str, str] = {
     "reconcile": "Voteview cross-check -> vote_reconciliation_flag (daily) [P2]",
 }
 
-IMPLEMENTED = {"members", "bills", "votes"}
+IMPLEMENTED = {"members", "bills", "votes", "backfill"}
 
 
 def current_congress(today: date | None = None) -> int:
@@ -97,6 +104,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="report what would run without touching the network or the database",
     )
+    parser.add_argument(
+        "--from-year",
+        type=int,
+        default=None,
+        help="backfill only: first calendar year (default: the Clerk's earliest, 1990)",
+    )
+    parser.add_argument(
+        "--to-year",
+        type=int,
+        default=None,
+        help="backfill only: last calendar year (default: 2016, where Congress.gov takes over)",
+    )
     return parser
 
 
@@ -133,8 +152,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Imported here so `--help` and the not-implemented path stay free of
     # database and network dependencies.
     from loaders.engine import get_engine
+    from sources import clerk_xml, senate_xml
     from sources import congress_gov as cg
-    from sources import senate_xml
+    from sources.clerk_xml_sync import backfill
     from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
     from sources.senate_xml_sync import sync_senate_votes
 
@@ -171,6 +191,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 limit=args.limit,
                                 member_fetcher=mfetcher,
                             )
+
+            elif args.job == "backfill":
+                # A Congress.gov fetcher is not optional here: it backfills the
+                # thousands of former members a 1990s roll call names, and it
+                # is what the pre-2003 name resolver is built from.
+                with clerk_xml.open_fetcher() as cfetcher, cg.open_fetcher() as mfetcher:
+                    backfill(
+                        conn,
+                        cfetcher,
+                        from_year=args.from_year or clerk_xml.EARLIEST_YEAR,
+                        to_year=args.to_year or clerk_xml.LATEST_BACKFILL_YEAR,
+                        limit=args.limit,
+                        member_fetcher=mfetcher,
+                    )
+
     except Exception as exc:
         log.error("etl.failed", job=args.job, error=f"{type(exc).__name__}: {exc}")
         return 1

@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rollcall-vote PUBLIC "-//US Congress//DTDs/vote v1.0 20031119 //EN" "../vote.dtd">
+<?xml-stylesheet type="text/xsl" href="../vote.xsl"?>
+<rollcall-vote>
+<vote-metadata>
+<majority>D</majority>
+<congress>101</congress>
+<session>2nd</session>
+<chamber>U.S. House of Representatives</chamber>
+<rollcall-num>400</rollcall-num>
+<legis-num>H R 4300</legis-num>
+<vote-question>On Agreeing to the Amendment</vote-question>
+<amendment-num>3</amendment-num>
+<amendment-author>MORRISON (CT)</amendment-author>
+<vote-type>RECORDED VOTE</vote-type>
+<vote-result>Failed</vote-result>
+<action-date>2-Oct-1990</action-date>
+<action-time time-etz="16:15">4:15 PM</action-time>
+<vote-desc></vote-desc>
+<vote-totals>
+<totals-by-party-header>
+<party-header>Party</party-header>
+<yea-header>Ayes</yea-header>
+<nay-header>Noes</nay-header>
+<present-header>Answered “Present”</present-header>
+<not-voting-header>Not Voting</not-voting-header>
+</totals-by-party-header>
+<totals-by-party>
+<party>Republican</party>
+<yea-total>6</yea-total>
+<nay-total>164</nay-total>
+<present-total>0</present-total>
+<not-voting-total>6</not-voting-total>
+</totals-by-party>
+<totals-by-party>
+<party>Democratic</party>
+<yea-total>188</yea-total>
+<nay-total>65</nay-total>
+<present-total>0</present-total>
+<not-voting-total>4</not-voting-total>
+</totals-by-party>
+<totals-by-party>
+<party>Independent</party>
+<yea-total>0</yea-total>
+<nay-total>0</nay-total>
+<present-total>0</present-total>
+<not-voting-total>0</not-voting-total>
+</totals-by-party>
+<totals-by-vote>
+<total-stub>Totals</total-stub>
+<yea-total>194</yea-total>
+<nay-total>229</nay-total>
+<present-total>0</present-total>
+<not-voting-total>10</not-voting-total>
+</totals-by-vote>
+</vote-totals>
+</vote-metadata>
+<vote-data>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Ackerman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AR" role="legislator">Alexander</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Anderson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Andrews (TX)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Annunzio</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AR" role="legislator">Anthony</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Applegate</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Archer</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Armey</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WI" role="legislator">Aspin</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Atkins</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OR" role="legislator">AuCoin</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="LA" role="legislator">Baker (LA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NC" role="legislator">Ballenger</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Barnard</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Bartlett</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Barton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VA" role="legislator">Bateman</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Bates</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Beilenson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Bennett</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MD" role="legislator">Bentley</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NE" role="legislator">Bereuter</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Berman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AL" role="legislator">Bevill</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NV" role="legislator">Bilbray</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Bilirakis</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VA" role="legislator">Bliley</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Boehlert</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="LA" role="legislator">Boggs</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Bonior</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Borski</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Bosco</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="VA" role="legislator">Boucher</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Boxer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="ME" role="legislator">Brennan</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Brooks</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Broomfield</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AL" role="legislator">Browder</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Brown (CA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CO" role="legislator">Brown (CO)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Bruce</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Bryant (TX)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MO" role="legislator">Buechner</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KY" role="legislator">Bunning</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IN" role="legislator">Burton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Bustamante</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">Byron</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AL" role="legislator">Callahan</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Campbell (CA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CO" role="legislator">Campbell (CO)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">Cardin</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="DE" role="legislator">Carper</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Carr</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WA" role="legislator">Chandler</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Chapman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Clarke</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MO" role="legislator">Clay</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Clement</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Clinger</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NC" role="legislator">Coble</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MO" role="legislator">Coleman (MO)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Coleman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Collins (IL)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Combest</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Condit</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MA" role="legislator">Conte</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Conyers</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Cooper</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Costello</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Coughlin</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Courter</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Cox</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Coyne</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="ID" role="legislator">Craig</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Crane</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Crockett</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Dannemeyer</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Darden</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Davis</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">de la Garza</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OR" role="legislator">DeFazio</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">DeLay</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Dellums</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="SC" role="legislator">Derrick</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">DeWine</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AL" role="legislator">Dickinson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WA" role="legislator">Dicks</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Dingell</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Dixon</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Donnelly</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="ND" role="legislator">Dorgan (ND)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Dornan</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NH" role="legislator">Douglas</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Downey</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Dreier</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TN" role="legislator">Duncan</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Durbin</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Dwyer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Dymally</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">Dyson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Early</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Eckart</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Edwards (CA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OK" role="legislator">Edwards (OK)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MO" role="legislator">Emerson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Engel</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OK" role="legislator">English (OK)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AL" role="legislator">Erdreich</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MS" role="legislator">Espy</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Evans</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Fascell</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Fawell</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Fazio</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Feighan</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Fields (TX)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Fish</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Flake</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AL" role="legislator">Flippo</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Foglietta</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Ford (MI)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Ford</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Frank (MA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MN" role="legislator">Frenzel</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Frost</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Gallegly</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Gallo</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Gaydos</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CT" role="legislator">Gejdenson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Gekas</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MO" role="legislator">Gephardt</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Geren</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Gibbons</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Gillmor</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Gilman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="GA" role="legislator">Gingrich</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KS" role="legislator">Glickman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Gonzalez</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Goodling</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Gordon</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Goss</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Gradison</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IA" role="legislator">Grandy</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Grant</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Gray</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Green</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Guarini</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WI" role="legislator">Gunderson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Hall (OH)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Hall (TX)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Hamilton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AR" role="legislator">Hammerschmidt</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MO" role="legislator">Hancock</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="UT" role="legislator">Hansen</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AL" role="legislator">Harris</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Hastert</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Hatcher</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Hawkins</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Hayes (IL)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="LA" role="legislator">Hayes</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CO" role="legislator">Hefley</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Hefner</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Henry</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Herger</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Hertel</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IN" role="legislator">Hiler</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NE" role="legislator">Hoagland</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Hochbrueckner</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="LA" role="legislator">Holloway</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KY" role="legislator">Hopkins</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Horton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Houghton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">Hoyer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KY" role="legislator">Hubbard</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="LA" role="legislator">Huckaby</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Hughes</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Hunter</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Hutto</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Hyde</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OK" role="legislator">Inhofe</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Ireland</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Jacobs</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">James</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Jenkins</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CT" role="legislator">Johnson (CT)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="SD" role="legislator">Johnson (SD)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Johnston</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Jones (GA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Jones (NC)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Jontz</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Kanjorski</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Kaptur</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Kasich</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WI" role="legislator">Kastenmeier</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Kennedy (MA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CT" role="legislator">Kennelly</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Kildee</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WI" role="legislator">Kleczka</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AZ" role="legislator">Kolbe</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Kolter</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Kostmayer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AZ" role="legislator">Kyl</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">LaFalce</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Lagomarsino</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Lancaster</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Lantos</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Laughlin</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IA" role="legislator">Leach</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Leath (TX)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Lehman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Lehman (FL)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Lent</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Levin</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Levine (CA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Lewis (CA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Lewis (FL)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Lewis (GA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IA" role="legislator">Lightfoot</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Lipinski</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="LA" role="legislator">Livingston</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Lloyd</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Long</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Lowery (CA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Lowey</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Luken, Thomas</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Lukens, Donald</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="RI" role="legislator">Machtley</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Madigan</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Manton</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Markey</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MT" role="legislator">Marlenee</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Martin (IL)</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Martin (NY)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Martinez</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Matsui</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Mavroules</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KY" role="legislator">Mazzoli</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">McCandless</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">McCloskey</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">McCollum</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="LA" role="legislator">McCrery</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OK" role="legislator">McCurdy</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">McDade</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WA" role="legislator">McDermott</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">McEwen</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">McGrath</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">McHugh</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NC" role="legislator">McMillan</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">McMillen (MD)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">McNulty</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KS" role="legislator">Meyers</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MD" role="legislator">Mfume</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Michel</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Miller (CA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Miller (OH)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WA" role="legislator">Miller (WA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Mineta</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="HI" role="legislator">Mink</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Moakley</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Molinari</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WV" role="legislator">Mollohan</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MS" role="legislator">Montgomery</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WI" role="legislator">Moody</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Moorhead</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MD" role="legislator">Morella</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CT" role="legislator">Morrison (CT)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WA" role="legislator">Morrison (WA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Mrazek</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Murphy</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Murtha</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IN" role="legislator">Myers</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IA" role="legislator">Nagle</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KY" role="legislator">Natcher</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Neal</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Neal (NC)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Nelson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="UT" role="legislator">Nielson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Nowak</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Oakar</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MN" role="legislator">Oberstar</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WI" role="legislator">Obey</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="VA" role="legislator">Olin</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Ortiz</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Owens</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="UT" role="legislator">Owens (UT)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Oxley</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Packard</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Pallone</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Panetta</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MS" role="legislator">Parker</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VA" role="legislator">Parris</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Pashayan</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="SC" role="legislator">Patterson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Paxon</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Payne (NJ)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="VA" role="legislator">Payne (VA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Pease</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Pelosi</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MN" role="legislator">Penny</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KY" role="legislator">Perkins</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WI" role="legislator">Petri</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="VA" role="legislator">Pickett</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Pickle</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IL" role="legislator">Porter</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Poshard</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Price (NC)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Pursell</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TN" role="legislator">Quillen</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WV" role="legislator">Rahall</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Rangel</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="SC" role="legislator">Ravenel</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Ray</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Regula</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AZ" role="legislator">Rhodes</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NM" role="legislator">Richardson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Ridge</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Rinaldo</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Ritter</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KS" role="legislator">Roberts</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AR" role="legislator">Robinson</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Roe</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KY" role="legislator">Rogers</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Rohrabacher</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Ros-Lehtinen</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Rose</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Rostenkowski</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WI" role="legislator">Roth</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Roukema</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CT" role="legislator">Rowland (CT)</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Rowland</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Roybal</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Russo</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MN" role="legislator">Sabo</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="HI" role="legislator">Saiki</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Sangmeister</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Sarpalius</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Savage</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Sawyer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Saxton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CO" role="legislator">Schaefer</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Scheuer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NM" role="legislator">Schiff</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="RI" role="legislator">Schneider</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CO" role="legislator">Schroeder</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Schuette</legislator><vote>Not Voting</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Schulze</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Schumer</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WI" role="legislator">Sensenbrenner</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Serrano</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Sharp</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Shaw</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CT" role="legislator">Shays</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Shumway</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Shuster</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MN" role="legislator">Sikorski</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="VA" role="legislator">Sisisky</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CO" role="legislator">Skaggs</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NM" role="legislator">Skeen</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MO" role="legislator">Skelton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="KS" role="legislator">Slattery</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Slaughter</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VA" role="legislator">Slaughter (VA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="FL" role="legislator">Smith (FL)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IA" role="legislator">Smith (IA)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NE" role="legislator">Smith (NE)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NJ" role="legislator">Smith (NJ)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TX" role="legislator">Smith (TX)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VT" role="legislator">Smith (VT)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OR" role="legislator">Smith, Denny (OR)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NH" role="legislator">Smith, Robert (NH)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OR" role="legislator">Smith (OR)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="ME" role="legislator">Snowe</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Solarz</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Solomon</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="SC" role="legislator">Spence</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="SC" role="legislator">Spratt</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WV" role="legislator">Staggers</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="ID" role="legislator">Stallings</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MN" role="legislator">Stangeland</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Stark</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Stearns</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Stenholm</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Stokes</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MA" role="legislator">Studds</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AZ" role="legislator">Stump</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="TN" role="legislator">Sundquist</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WA" role="legislator">Swift</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OK" role="legislator">Synar</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="SC" role="legislator">Tallon</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TN" role="legislator">Tanner</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="IA" role="legislator">Tauke</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="LA" role="legislator">Tauzin</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MS" role="legislator">Taylor (MS)</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="CA" role="legislator">Thomas</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="GA" role="legislator">Thomas (GA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="WY" role="legislator">Thomas (WY)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Torres</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NJ" role="legislator">Torricelli</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Towns</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OH" role="legislator">Traficant</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Traxler</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="AZ" role="legislator">Udall</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WA" role="legislator">Unsoeld</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Upton</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NC" role="legislator">Valentine</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MI" role="legislator">Vander Jagt</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MN" role="legislator">Vento</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IN" role="legislator">Visclosky</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MO" role="legislator">Volkmer</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NV" role="legislator">Vucanovich</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Walgren</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Walker</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="NY" role="legislator">Walsh</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Washington</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OK" role="legislator">Watkins</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="CA" role="legislator">Waxman</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="MN" role="legislator">Weber</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="NY" role="legislator">Weiss</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="PA" role="legislator">Weldon (PA)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MO" role="legislator">Wheat</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="KS" role="legislator">Whittaker</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MS" role="legislator">Whitten</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MT" role="legislator">Williams</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="TX" role="legislator">Wilson</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="WV" role="legislator">Wise</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="VA" role="legislator">Wolf</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="MI" role="legislator">Wolpe</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="OR" role="legislator">Wyden</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="OH" role="legislator">Wylie</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="IL" role="legislator">Yates</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="D" state="PA" role="legislator">Yatron</legislator><vote>Aye</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="AK" role="legislator">Young (AK)</legislator><vote>No</vote></recorded-vote>
+<recorded-vote><legislator party="R" state="FL" role="legislator">Young (FL)</legislator><vote>No</vote></recorded-vote>
+</vote-data>
+</rollcall-vote>

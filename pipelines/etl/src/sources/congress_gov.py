@@ -101,6 +101,17 @@ def fetch_member_detail(fetcher: Fetcher, bioguide_id: str) -> FetchResult:
     return fetcher.get(f"/member/{bioguide_id}")
 
 
+def fetch_congress_roster(fetcher: Fetcher, *, congress: CongressNo) -> Iterator[FetchResult]:
+    """Yield every roster page for one Congress, serving and former alike.
+
+    Distinct from `fetch_members(current_only=...)`: this one is term-scoped and
+    is what `clerk_xml` resolves pre-2003 roll-call names against. The 101st
+    returns 551 member-records — both chambers, including mid-term successors —
+    which is the population a 1990 roll call can possibly name.
+    """
+    yield from fetcher.paginate(f"/member/congress/{congress}", limit=250)
+
+
 def fetch_bills(
     fetcher: Fetcher,
     *,
@@ -200,6 +211,32 @@ def _int_or_none(value: Any) -> int | None:
 def parse_members(payload: dict[str, Any]) -> list[str]:
     """Extract bioguide IDs from a roster page."""
     return [m["bioguideId"] for m in payload.get("members", []) if m.get("bioguideId")]
+
+
+def parse_congress_roster(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract House seats from a term-scoped roster page.
+
+    Senators are dropped: `district` is None for a Senate seat, 0 for an
+    at-large state or a territorial Delegate, and 1..n otherwise — verified
+    against the 103rd (Alaska 0, Wyoming 0, DC/PR/AS/GU/VI 0, senators None).
+
+    `name` is the inverted form ("Pelosi, Nancy"); `state` is the FULL state
+    name, since the list endpoint carries no `stateCode`.
+    """
+    rows: list[dict[str, Any]] = []
+    for m in payload.get("members", []):
+        if m.get("district") is None or not m.get("bioguideId"):
+            continue
+        rows.append(
+            {
+                "bioguide_id": m["bioguideId"],
+                "name": clean_text(m.get("name")) or "",
+                "state_name": clean_text(m.get("state")) or "",
+                "district": m.get("district"),
+                "party": m.get("partyName"),
+            }
+        )
+    return rows
 
 
 def parse_member_detail(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:

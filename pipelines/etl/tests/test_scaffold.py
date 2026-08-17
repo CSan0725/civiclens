@@ -35,14 +35,18 @@ def test_p1_collectors_are_implemented() -> None:
     assert congress_gov.parse_members({"members": []}) == []
 
 
+def test_clerk_collector_is_implemented() -> None:
+    """The Clerk backfill replaced its stub. tests/test_clerk_xml.py has the rest."""
+    assert clerk_xml.parse_roll_numbers(b"") == []
+    assert clerk_xml.congress_and_session_for(1990) == (101, 2)
+
+
 def test_later_milestone_collectors_are_still_stubs() -> None:
-    """P2/P3/P4 sources stay declared-but-unimplemented until their session."""
+    """Voteview (P2, next commit) and the P3/P4 sources stay declared-only."""
     with pytest.raises(NotImplementedError):
         govinfo.fetch_granules("CREC-2025-01-01")
     with pytest.raises(NotImplementedError):
         fec.fetch_candidate_totals(fec_candidate_id="H0AL01234", cycle=2026)
-    with pytest.raises(NotImplementedError):
-        clerk_xml.fetch_year_index(2015)
     with pytest.raises(NotImplementedError):
         voteview.fetch_members_csv()
 

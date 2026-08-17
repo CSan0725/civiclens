@@ -1,0 +1,2650 @@
+{
+    "members": [
+        {
+            "bioguideId": "P000197",
+            "district": 5,
+            "name": "Pelosi, Nancy",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000197?format=json"
+        },
+        {
+            "bioguideId": "K000009",
+            "district": 9,
+            "name": "Kaptur, Marcy",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/K000009?format=json"
+        },
+        {
+            "bioguideId": "D000203",
+            "district": 15,
+            "name": "de la Garza, E.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1965
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000203?format=json"
+        },
+        {
+            "bioguideId": "M000843",
+            "district": 14,
+            "name": "Molinari, Susan",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000843?format=json"
+        },
+        {
+            "bioguideId": "S000124",
+            "district": 8,
+            "name": "Scheuer, James H.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1973,
+                        "startYear": 1965
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000124?format=json"
+        },
+        {
+            "bioguideId": "A000215",
+            "district": 7,
+            "name": "Archer, Bill",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1971
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000215?format=json"
+        },
+        {
+            "bioguideId": "P000009",
+            "district": null,
+            "name": "Packwood, Bob",
+            "partyName": "Republican",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1997,
+                        "startYear": 1969
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000009?format=json"
+        },
+        {
+            "bioguideId": "E000179",
+            "district": 19,
+            "name": "Engel, Eliot L.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2021,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/E000179?format=json"
+        },
+        {
+            "bioguideId": "W000779",
+            "district": 3,
+            "name": "Wyden, Ron",
+            "partyName": "Democratic",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1996,
+                        "startYear": 1981
+                    },
+                    {
+                        "chamber": "Senate",
+                        "startYear": 1996
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000779?format=json"
+        },
+        {
+            "bioguideId": "S000148",
+            "district": 10,
+            "name": "Schumer, Charles E.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1981
+                    },
+                    {
+                        "chamber": "Senate",
+                        "startYear": 1999
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000148?format=json"
+        },
+        {
+            "bioguideId": "O000001",
+            "district": 20,
+            "name": "Oakar, Mary Rose",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/O000001?format=json"
+        },
+        {
+            "bioguideId": "R000053",
+            "district": 16,
+            "name": "Rangel, Charles B.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2017,
+                        "startYear": 1971
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/R000053?format=json"
+        },
+        {
+            "bioguideId": "L000556",
+            "district": 32,
+            "name": "LaFalce, John J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000556?format=json"
+        },
+        {
+            "bioguideId": "L000480",
+            "district": 20,
+            "name": "Lowey, Nita M.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2021,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000480?format=json"
+        },
+        {
+            "bioguideId": "N000163",
+            "district": 33,
+            "name": "Nowak, Henry",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/N000163?format=json"
+        },
+        {
+            "bioguideId": "S000094",
+            "district": 14,
+            "name": "Sawyer, Tom",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000094?format=json"
+        },
+        {
+            "bioguideId": "S000851",
+            "district": 17,
+            "name": "Stenholm, Charles W.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2005,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000851?format=json"
+        },
+        {
+            "bioguideId": "S000393",
+            "district": 14,
+            "name": "Shumway, Norman D.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000393?format=json"
+        },
+        {
+            "bioguideId": "D000191",
+            "district": 4,
+            "name": "DeFazio, Peter A.",
+            "partyName": "Democratic",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2023,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000191?format=json"
+        },
+        {
+            "bioguideId": "D000217",
+            "district": 22,
+            "name": "DeLay, Tom",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000217?format=json"
+        },
+        {
+            "bioguideId": "D000294",
+            "district": 7,
+            "name": "DeWine, Mike",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1983
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 2007,
+                        "startYear": 1995
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000294?format=json"
+        },
+        {
+            "bioguideId": "R000141",
+            "district": 16,
+            "name": "Regula, Ralph",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2009,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/R000141?format=json"
+        },
+        {
+            "bioguideId": "P000328",
+            "district": 10,
+            "name": "Pickle, J. J.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1963
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000328?format=json"
+        },
+        {
+            "bioguideId": "P000170",
+            "district": 13,
+            "name": "Pease, Donald J.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000170?format=json"
+        },
+        {
+            "bioguideId": "P000148",
+            "district": 31,
+            "name": "Paxon, Bill",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000148?format=json"
+        },
+        {
+            "bioguideId": "P000097",
+            "district": 17,
+            "name": "Pashayan, Charles, Jr.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000097?format=json"
+        },
+        {
+            "bioguideId": "P000047",
+            "district": 16,
+            "name": "Panetta, Leon",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000047?format=json"
+        },
+        {
+            "bioguideId": "P000005",
+            "district": 43,
+            "name": "Packard, Ron",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/P000005?format=json"
+        },
+        {
+            "bioguideId": "O000163",
+            "district": 4,
+            "name": "Oxley, Michael G.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/O000163?format=json"
+        },
+        {
+            "bioguideId": "O000159",
+            "district": 12,
+            "name": "Owens, Major R.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/O000159?format=json"
+        },
+        {
+            "bioguideId": "O000107",
+            "district": 27,
+            "name": "Ortiz, Solomon P.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2011,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/O000107?format=json"
+        },
+        {
+            "bioguideId": "W000607",
+            "district": null,
+            "name": "Wilson, Pete",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000607?format=json"
+        },
+        {
+            "bioguideId": "B000401",
+            "district": null,
+            "name": "Bentsen, Lloyd M.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1955,
+                        "startYear": 1947
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1993,
+                        "startYear": 1971
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000401?format=json"
+        },
+        {
+            "bioguideId": "W000781",
+            "district": 15,
+            "name": "Wylie, Chalmers P.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1967
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000781?format=json"
+        },
+        {
+            "bioguideId": "W000763",
+            "district": 12,
+            "name": "Wright, James C., Jr.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1955
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000763?format=json"
+        },
+        {
+            "bioguideId": "W000570",
+            "district": 2,
+            "name": "Wilson, Charles",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000570?format=json"
+        },
+        {
+            "bioguideId": "W000258",
+            "district": 17,
+            "name": "Weiss, Ted",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000258?format=json"
+        },
+        {
+            "bioguideId": "W000215",
+            "district": 24,
+            "name": "Waxman, Henry A.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2015,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000215?format=json"
+        },
+        {
+            "bioguideId": "W000177",
+            "district": 18,
+            "name": "Washington, Craig A.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000177?format=json"
+        },
+        {
+            "bioguideId": "W000099",
+            "district": 27,
+            "name": "Walsh, James T.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2009,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/W000099?format=json"
+        },
+        {
+            "bioguideId": "T000350",
+            "district": 17,
+            "name": "Traficant, James A., Jr.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2002,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/T000350?format=json"
+        },
+        {
+            "bioguideId": "T000326",
+            "district": 11,
+            "name": "Towns, Edolphus",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/T000326?format=json"
+        },
+        {
+            "bioguideId": "T000316",
+            "district": 34,
+            "name": "Torres, Esteban Edward",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/T000316?format=json"
+        },
+        {
+            "bioguideId": "T000188",
+            "district": 20,
+            "name": "Thomas, William M.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/T000188?format=json"
+        },
+        {
+            "bioguideId": "S000948",
+            "district": 21,
+            "name": "Stokes, Louis",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1969
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000948?format=json"
+        },
+        {
+            "bioguideId": "S000810",
+            "district": 9,
+            "name": "Stark, Fortney Pete",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000810?format=json"
+        },
+        {
+            "bioguideId": "S000675",
+            "district": 24,
+            "name": "Solomon, Gerald B. H.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000675?format=json"
+        },
+        {
+            "bioguideId": "S000673",
+            "district": 13,
+            "name": "Solarz, Stephen J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000673?format=json"
+        },
+        {
+            "bioguideId": "S000607",
+            "district": 2,
+            "name": "Smith, Robert",
+            "partyName": "Republican",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1983
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1997
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000607?format=json"
+        },
+        {
+            "bioguideId": "S000606",
+            "district": 1,
+            "name": "Smith, Bob",
+            "partyName": "Republican",
+            "state": "New Hampshire",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1985
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 2003,
+                        "startYear": 1991
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000606?format=json"
+        },
+        {
+            "bioguideId": "S000583",
+            "district": 21,
+            "name": "Smith, Lamar",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2019,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000583?format=json"
+        },
+        {
+            "bioguideId": "S000527",
+            "district": 5,
+            "name": "Smith, Denny",
+            "partyName": "Republican",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000527?format=json"
+        },
+        {
+            "bioguideId": "S000480",
+            "district": 30,
+            "name": "Slaughter, Louise McIntosh",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2018,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000480?format=json"
+        },
+        {
+            "bioguideId": "S000248",
+            "district": 18,
+            "name": "Serrano, Jose E.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2021,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000248?format=json"
+        },
+        {
+            "bioguideId": "S000066",
+            "district": 13,
+            "name": "Sarpalius, Bill",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/S000066?format=json"
+        },
+        {
+            "bioguideId": "R000485",
+            "district": 25,
+            "name": "Roybal, Edward R.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1963
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/R000485?format=json"
+        },
+        {
+            "bioguideId": "R000409",
+            "district": 42,
+            "name": "Rohrabacher, Dana",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2019,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/R000409?format=json"
+        },
+        {
+            "bioguideId": "B000711",
+            "district": 6,
+            "name": "Boxer, Barbara",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 2017,
+                        "startYear": 1993
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000711?format=json"
+        },
+        {
+            "bioguideId": "B000648",
+            "district": 1,
+            "name": "Bosco, Douglas H.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000648?format=json"
+        },
+        {
+            "bioguideId": "B000586",
+            "district": 25,
+            "name": "Boehlert, Sherwood",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000586?format=json"
+        },
+        {
+            "bioguideId": "B000410",
+            "district": 26,
+            "name": "Berman, Howard L.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000410?format=json"
+        },
+        {
+            "bioguideId": "M001057",
+            "district": 3,
+            "name": "Mrazek, Robert J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M001057?format=json"
+        },
+        {
+            "bioguideId": "M000926",
+            "district": 22,
+            "name": "Moorhead, Carlos J.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000926?format=json"
+        },
+        {
+            "bioguideId": "M000842",
+            "district": 14,
+            "name": "Molinari, Guy",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000842?format=json"
+        },
+        {
+            "bioguideId": "M000794",
+            "district": 13,
+            "name": "Mineta, Norman Y.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000794?format=json"
+        },
+        {
+            "bioguideId": "M000725",
+            "district": 7,
+            "name": "Miller, George",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2015,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000725?format=json"
+        },
+        {
+            "bioguideId": "M000718",
+            "district": 10,
+            "name": "Miller, Clarence E.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1967
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000718?format=json"
+        },
+        {
+            "bioguideId": "M000590",
+            "district": 23,
+            "name": "McNulty, Michael R.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2009,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000590?format=json"
+        },
+        {
+            "bioguideId": "M000473",
+            "district": 28,
+            "name": "McHugh, Matthew F.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000473?format=json"
+        },
+        {
+            "bioguideId": "M000458",
+            "district": 5,
+            "name": "McGrath, Raymond J.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000458?format=json"
+        },
+        {
+            "bioguideId": "M000432",
+            "district": 6,
+            "name": "McEwen, Bob",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000432?format=json"
+        },
+        {
+            "bioguideId": "M000306",
+            "district": 37,
+            "name": "McCandless, Alfred A. (Al)",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000306?format=json"
+        },
+        {
+            "bioguideId": "M000249",
+            "district": 3,
+            "name": "Matsui, Robert T.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2005,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000249?format=json"
+        },
+        {
+            "bioguideId": "M000206",
+            "district": 30,
+            "name": "Martinez, Matthew G.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000206?format=json"
+        },
+        {
+            "bioguideId": "M000174",
+            "district": 26,
+            "name": "Martin, David O'B.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000174?format=json"
+        },
+        {
+            "bioguideId": "M000117",
+            "district": 9,
+            "name": "Manton, Thomas J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000117?format=json"
+        },
+        {
+            "bioguideId": "L000509",
+            "district": 8,
+            "name": "Lukens, Donald E.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1971,
+                        "startYear": 1967
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000509?format=json"
+        },
+        {
+            "bioguideId": "L000508",
+            "district": 1,
+            "name": "Luken, Thomas A.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1975,
+                        "startYear": 1973
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000508?format=json"
+        },
+        {
+            "bioguideId": "L000479",
+            "district": 41,
+            "name": "Lowery, Bill",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000479?format=json"
+        },
+        {
+            "bioguideId": "R000497",
+            "district": null,
+            "name": "Rudman, Warren",
+            "partyName": "Republican",
+            "state": "New Hampshire",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/R000497?format=json"
+        },
+        {
+            "bioguideId": "M001054",
+            "district": null,
+            "name": "Moynihan, Daniel Patrick",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 2001,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M001054?format=json"
+        },
+        {
+            "bioguideId": "M000678",
+            "district": null,
+            "name": "Metzenbaum, Howard M.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1975,
+                        "startYear": 1973
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1995,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/M000678?format=json"
+        },
+        {
+            "bioguideId": "H000951",
+            "district": null,
+            "name": "Humphrey, Gordon J.",
+            "partyName": "Republican",
+            "state": "New Hampshire",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000951?format=json"
+        },
+        {
+            "bioguideId": "H000343",
+            "district": null,
+            "name": "Hatfield, Mark O.",
+            "partyName": "Republican",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1997,
+                        "startYear": 1967
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000343?format=json"
+        },
+        {
+            "bioguideId": "G000236",
+            "district": null,
+            "name": "Glenn, John H., Jr.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1999,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000236?format=json"
+        },
+        {
+            "bioguideId": "D000018",
+            "district": null,
+            "name": "D'Amato, Alfonse",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1999,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000018?format=json"
+        },
+        {
+            "bioguideId": "C000877",
+            "district": null,
+            "name": "Cranston, Alan",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "Senate",
+                        "endYear": 1993,
+                        "startYear": 1969
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000877?format=json"
+        },
+        {
+            "bioguideId": "F000184",
+            "district": 6,
+            "name": "Flake, Floyd H.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000184?format=json"
+        },
+        {
+            "bioguideId": "F000141",
+            "district": 21,
+            "name": "Fish, Hamilton, Jr.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1969
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000141?format=json"
+        },
+        {
+            "bioguideId": "C000830",
+            "district": 40,
+            "name": "Cox, Christopher",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000830?format=json"
+        },
+        {
+            "bioguideId": "C000670",
+            "district": 15,
+            "name": "Condit, Gary A.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000670?format=json"
+        },
+        {
+            "bioguideId": "C000653",
+            "district": 19,
+            "name": "Combest, Larry",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000653?format=json"
+        },
+        {
+            "bioguideId": "C000621",
+            "district": 16,
+            "name": "Coleman, Ronald D.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000621?format=json"
+        },
+        {
+            "bioguideId": "C000581",
+            "district": 15,
+            "name": "Coelho, Anthony Lee",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000581?format=json"
+        },
+        {
+            "bioguideId": "C000312",
+            "district": 1,
+            "name": "Chapman, Jim",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000312?format=json"
+        },
+        {
+            "bioguideId": "C000100",
+            "district": 12,
+            "name": "Campbell, Tom",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1989
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1995
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/C000100?format=json"
+        },
+        {
+            "bioguideId": "B001172",
+            "district": 23,
+            "name": "Bustamante, Albert G.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B001172?format=json"
+        },
+        {
+            "bioguideId": "B000997",
+            "district": 5,
+            "name": "Bryant, John W.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000997?format=json"
+        },
+        {
+            "bioguideId": "B000918",
+            "district": 36,
+            "name": "Brown, George E., Jr.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1971,
+                        "startYear": 1963
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000918?format=json"
+        },
+        {
+            "bioguideId": "B000880",
+            "district": 9,
+            "name": "Brooks, Jack B.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1953
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000880?format=json"
+        },
+        {
+            "bioguideId": "B000318",
+            "district": 23,
+            "name": "Beilenson, Anthony C.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000318?format=json"
+        },
+        {
+            "bioguideId": "B000236",
+            "district": 44,
+            "name": "Bates, Jim",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000236?format=json"
+        },
+        {
+            "bioguideId": "B000213",
+            "district": 6,
+            "name": "Barton, Joe",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2019,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000213?format=json"
+        },
+        {
+            "bioguideId": "B000204",
+            "district": 3,
+            "name": "Bartlett, Steve",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/B000204?format=json"
+        },
+        {
+            "bioguideId": "A000337",
+            "district": 1,
+            "name": "AuCoin, Les",
+            "partyName": "Democratic",
+            "state": "Oregon",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000337?format=json"
+        },
+        {
+            "bioguideId": "A000217",
+            "district": 26,
+            "name": "Armey, Richard K.",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000217?format=json"
+        },
+        {
+            "bioguideId": "A000214",
+            "district": 18,
+            "name": "Applegate, Douglas",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000214?format=json"
+        },
+        {
+            "bioguideId": "A000209",
+            "district": 25,
+            "name": "Andrews, Michael",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000209?format=json"
+        },
+        {
+            "bioguideId": "A000189",
+            "district": 32,
+            "name": "Anderson, Glenn M.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1969
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000189?format=json"
+        },
+        {
+            "bioguideId": "A000022",
+            "district": 7,
+            "name": "Ackerman, Gary L.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/A000022?format=json"
+        },
+        {
+            "bioguideId": "F000111",
+            "district": 8,
+            "name": "Fields, Jack",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000111?format=json"
+        },
+        {
+            "bioguideId": "F000059",
+            "district": 19,
+            "name": "Feighan, Edward F.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000059?format=json"
+        },
+        {
+            "bioguideId": "F000053",
+            "district": 4,
+            "name": "Fazio, Vic",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000053?format=json"
+        },
+        {
+            "bioguideId": "E000064",
+            "district": 10,
+            "name": "Edwards, Don",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1963
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/E000064?format=json"
+        },
+        {
+            "bioguideId": "E000031",
+            "district": 11,
+            "name": "Eckart, Dennis E.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/E000031?format=json"
+        },
+        {
+            "bioguideId": "D000592",
+            "district": 31,
+            "name": "Dymally, Mervyn M.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000592?format=json"
+        },
+        {
+            "bioguideId": "D000492",
+            "district": 33,
+            "name": "Dreier, David",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000492?format=json"
+        },
+        {
+            "bioguideId": "D000471",
+            "district": 2,
+            "name": "Downey, Thomas J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000471?format=json"
+        },
+        {
+            "bioguideId": "D000451",
+            "district": 2,
+            "name": "Douglas, Chuck",
+            "partyName": "Republican",
+            "state": "New Hampshire",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000451?format=json"
+        },
+        {
+            "bioguideId": "D000435",
+            "district": 38,
+            "name": "Dornan, Robert K.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1983,
+                        "startYear": 1977
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000435?format=json"
+        },
+        {
+            "bioguideId": "D000373",
+            "district": 28,
+            "name": "Dixon, Julian C.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000373?format=json"
+        },
+        {
+            "bioguideId": "D000222",
+            "district": 8,
+            "name": "Dellums, Ronald V.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1971
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000222?format=json"
+        },
+        {
+            "bioguideId": "D000044",
+            "district": 39,
+            "name": "Dannemeyer, William E.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/D000044?format=json"
+        },
+        {
+            "bioguideId": "L000274",
+            "district": 35,
+            "name": "Lewis, Jerry",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000274?format=json"
+        },
+        {
+            "bioguideId": "L000264",
+            "district": 27,
+            "name": "Levine, Mel",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000264?format=json"
+        },
+        {
+            "bioguideId": "L000243",
+            "district": 4,
+            "name": "Lent, Norman F.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1971
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000243?format=json"
+        },
+        {
+            "bioguideId": "L000237",
+            "district": 18,
+            "name": "Leland, Mickey",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000237?format=json"
+        },
+        {
+            "bioguideId": "L000225",
+            "district": 18,
+            "name": "Lehman, Richard H.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000225?format=json"
+        },
+        {
+            "bioguideId": "L000180",
+            "district": 11,
+            "name": "Leath, Marvin",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000180?format=json"
+        },
+        {
+            "bioguideId": "L000119",
+            "district": 14,
+            "name": "Laughlin, Greg",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000119?format=json"
+        },
+        {
+            "bioguideId": "L000090",
+            "district": 11,
+            "name": "Lantos, Tom",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2008,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000090?format=json"
+        },
+        {
+            "bioguideId": "L000020",
+            "district": 19,
+            "name": "Lagomarsino, Robert J.",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/L000020?format=json"
+        },
+        {
+            "bioguideId": "K000016",
+            "district": 12,
+            "name": "Kasich, John R.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2001,
+                        "startYear": 1983
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/K000016?format=json"
+        },
+        {
+            "bioguideId": "H000981",
+            "district": 45,
+            "name": "Hunter, Duncan",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2009,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000981?format=json"
+        },
+        {
+            "bioguideId": "H000814",
+            "district": 34,
+            "name": "Houghton, Amo",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2005,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000814?format=json"
+        },
+        {
+            "bioguideId": "H000797",
+            "district": 29,
+            "name": "Horton, Frank J.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1963
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000797?format=json"
+        },
+        {
+            "bioguideId": "H000670",
+            "district": 1,
+            "name": "Hochbrueckner, George J.",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000670?format=json"
+        },
+        {
+            "bioguideId": "H000528",
+            "district": 2,
+            "name": "Herger, Wally",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000528?format=json"
+        },
+        {
+            "bioguideId": "H000367",
+            "district": 29,
+            "name": "Hawkins, Augustus F.",
+            "partyName": "Democratic",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1963
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000367?format=json"
+        },
+        {
+            "bioguideId": "H000074",
+            "district": 3,
+            "name": "Hall, Tony P.",
+            "partyName": "Democratic",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2002,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000074?format=json"
+        },
+        {
+            "bioguideId": "H000067",
+            "district": 4,
+            "name": "Hall, Ralph M.",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2015,
+                        "startYear": 1981
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/H000067?format=json"
+        },
+        {
+            "bioguideId": "G000417",
+            "district": 15,
+            "name": "Green, S. William",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1993,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000417?format=json"
+        },
+        {
+            "bioguideId": "G000365",
+            "district": null,
+            "name": "Gramm, Phil",
+            "partyName": "Republican",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1985,
+                        "startYear": 1979
+                    },
+                    {
+                        "chamber": "Senate",
+                        "endYear": 2002,
+                        "startYear": 1985
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000365?format=json"
+        },
+        {
+            "bioguideId": "G000349",
+            "district": 2,
+            "name": "Gradison, Willis D., Jr.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1995,
+                        "startYear": 1975
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000349?format=json"
+        },
+        {
+            "bioguideId": "G000272",
+            "district": 20,
+            "name": "Gonzalez, Henry B.",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1999,
+                        "startYear": 1961
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000272?format=json"
+        },
+        {
+            "bioguideId": "G000212",
+            "district": 22,
+            "name": "Gilman, Benjamin A.",
+            "partyName": "Republican",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2003,
+                        "startYear": 1973
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000212?format=json"
+        },
+        {
+            "bioguideId": "G000210",
+            "district": 5,
+            "name": "Gillmor, Paul E.",
+            "partyName": "Republican",
+            "state": "Ohio",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2007,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000210?format=json"
+        },
+        {
+            "bioguideId": "G000134",
+            "district": 12,
+            "name": "Geren, Pete",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1997,
+                        "startYear": 1989
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000134?format=json"
+        },
+        {
+            "bioguideId": "G000047",
+            "district": 18,
+            "name": "Garcia, Robert",
+            "partyName": "Democratic",
+            "state": "New York",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 1991,
+                        "startYear": 1977
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000047?format=json"
+        },
+        {
+            "bioguideId": "G000021",
+            "district": 21,
+            "name": "Gallegly, Elton",
+            "partyName": "Republican",
+            "state": "California",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2013,
+                        "startYear": 1987
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/G000021?format=json"
+        },
+        {
+            "bioguideId": "F000392",
+            "district": 24,
+            "name": "Frost, Martin",
+            "partyName": "Democratic",
+            "state": "Texas",
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "endYear": 2005,
+                        "startYear": 1979
+                    }
+                ]
+            },
+            "url": "https://api.congress.gov/v3/member/F000392?format=json"
+        }
+    ],
+    "pagination": {
+        "count": 151
+    },
+    "request": {
+        "congress": "101",
+        "contentType": "application/json",
+        "format": "json"
+    }
+}
