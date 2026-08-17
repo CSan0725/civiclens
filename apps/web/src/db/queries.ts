@@ -25,7 +25,22 @@ import { voteCast } from "@/db/schema";
  *
  * Everything here returns raw recorded facts. No derived stance, score or
  * ranking (PRD N1/FC-4).
+ *
+ * ROLL CALLS ARE FILTERED BY `is_published` (PRD FC-3). Every query that
+ * touches `vote` goes through `publishedVote` below; nothing reads the table
+ * unfiltered. Until P2 this was not true — the column existed, was false on
+ * every row, and no page looked at it — so the site published values the
+ * database had marked unconfirmed. Migration 0004 settles which of the two
+ * readings of FC-3 applies and this is the query side of it.
  */
+
+/**
+ * The FC-3 gate: a roll call is hidden only while an independent source
+ * CONTRADICTS it. Not-yet-cross-checked is a different state, and is surfaced
+ * to the reader as a caption rather than by withholding the vote — see
+ * migration 0004 for why.
+ */
+const publishedVote = eq(vote.isPublished, true);
 
 /** How current the underlying data is, per dataset and overall. */
 export async function getFreshness() {
@@ -109,12 +124,24 @@ export async function getRecentVotes(limit = 6) {
       nayCount: vote.nayCount,
       presentCount: vote.presentCount,
       notVotingCount: vote.notVotingCount,
-      isPublished: vote.isPublished,
+      // NULL until an independent source has agreed with this tally. Drives
+      // the "not yet cross-checked" caption — not whether the vote is shown.
+      reconciledAt: vote.reconciledAt,
       sourceUrl: vote.sourceUrl,
     })
     .from(vote)
+    .where(publishedVote)
     .orderBy(desc(vote.voteDate), desc(vote.rollNumber))
     .limit(limit);
+}
+
+/** How many roll calls are currently withheld because a source contradicts them. */
+export async function getWithheldVoteCount() {
+  const rows = await getDb()
+    .select({ n: count() })
+    .from(vote)
+    .where(eq(vote.isPublished, false));
+  return Number(rows.at(0)?.n ?? 0);
 }
 
 /** Latest floor actions across all collected bills. */
@@ -202,6 +229,7 @@ export async function getMemberVotes(bioguideId: string, limit = 100) {
       result: vote.result,
       position: voteCast.position,
       rawPosition: voteCast.rawPosition,
+      reconciledAt: vote.reconciledAt,
       sourceUrl: vote.sourceUrl,
       billCongress: bill.congressNo,
       billType: bill.billType,
@@ -211,12 +239,18 @@ export async function getMemberVotes(bioguideId: string, limit = 100) {
     .from(voteCast)
     .innerJoin(vote, eq(vote.id, voteCast.voteId))
     .leftJoin(bill, eq(bill.id, vote.billId))
-    .where(eq(voteCast.bioguideId, bioguideId))
+    .where(and(eq(voteCast.bioguideId, bioguideId), publishedVote))
     .orderBy(desc(vote.voteDate), desc(vote.rollNumber))
     .limit(limit);
 }
 
-/** Counts per recorded position, including non-enum ones grouped as "other". */
+/**
+ * Counts per recorded position, including non-enum ones grouped as "other".
+ *
+ * Joined to `vote` purely for the FC-3 filter: a count that included withheld
+ * roll calls would put a disputed value on the page by another route, and it
+ * would also disagree with the list below it.
+ */
 export async function getMemberPositionCounts(bioguideId: string) {
   const rows = await getDb()
     .select({
@@ -225,7 +259,8 @@ export async function getMemberPositionCounts(bioguideId: string) {
       n: count(),
     })
     .from(voteCast)
-    .where(eq(voteCast.bioguideId, bioguideId))
+    .innerJoin(vote, eq(vote.id, voteCast.voteId))
+    .where(and(eq(voteCast.bioguideId, bioguideId), publishedVote))
     .groupBy(voteCast.position, sql`${voteCast.rawPosition} is not null`);
 
   const tally = { Yea: 0, Nay: 0, Present: 0, NotVoting: 0, other: 0, total: 0 };

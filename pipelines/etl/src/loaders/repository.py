@@ -12,9 +12,10 @@ property of this layer rather than of each collector.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Connection, func, select, text, tuple_
+from sqlalchemy import Connection, func, select, text, tuple_, update
 
 from common.logging import get_logger
 from loaders.engine import reflect_table
@@ -140,6 +141,151 @@ def existing_member_ids(conn: Connection, bioguide_ids: Iterable[str]) -> set[st
         select(table.c.bioguide_id).where(table.c.bioguide_id.in_(wanted))
     ).scalars()
     return set(rows)
+
+
+def vote_scopes(conn: Connection) -> list[tuple[int, str]]:
+    """Every `(congress_no, chamber)` that has stored roll calls.
+
+    Drives the reconciliation run: it works over whatever is in the database,
+    so the backfilled Congresses and the ones the daily cron has been filling
+    since P1 are covered by the same pass, with no list to keep updated.
+    """
+    table = reflect_table("vote")
+    stmt = (
+        select(table.c.congress_no, table.c.chamber)
+        .group_by(table.c.congress_no, table.c.chamber)
+        .order_by(table.c.congress_no, table.c.chamber)
+    )
+    return [(int(c), str(ch)) for c, ch in conn.execute(stmt)]
+
+
+def votes_in_scope(conn: Connection, *, congress_no: int, chamber: str) -> list[dict[str, Any]]:
+    """Stored roll calls for one Congress and chamber, with their tallies."""
+    table = reflect_table("vote")
+    stmt = (
+        select(
+            table.c.id,
+            table.c.session,
+            table.c.roll_number,
+            table.c.yea_count,
+            table.c.nay_count,
+            table.c.reconciled_at,
+            table.c.is_published,
+        )
+        .where(table.c.congress_no == congress_no, table.c.chamber == chamber)
+        .order_by(table.c.session, table.c.roll_number)
+    )
+    return [dict(row) for row in conn.execute(stmt).mappings()]
+
+
+def vote_positions(
+    conn: Connection, *, congress_no: int, vote_ids: Sequence[int]
+) -> dict[int, dict[str, str | None]]:
+    """`{vote_id: {bioguide_id: position}}` for a batch of roll calls.
+
+    `congress_no` is passed so Postgres can prune to the one `vote_cast`
+    partition instead of scanning every one of them.
+    """
+    if not vote_ids:
+        return {}
+    table = reflect_table("vote_cast")
+    stmt = select(table.c.vote_id, table.c.bioguide_id, table.c.position).where(
+        table.c.congress_no == congress_no, table.c.vote_id.in_(list(vote_ids))
+    )
+    out: dict[int, dict[str, str | None]] = {int(v): {} for v in vote_ids}
+    for vote_id, bioguide_id, position in conn.execute(stmt):
+        out[int(vote_id)][str(bioguide_id)] = None if position is None else str(position)
+    return out
+
+
+def mark_reconciled(conn: Connection, vote_ids: Sequence[int], *, at: datetime) -> int:
+    """Record that these roll calls agreed with the comparison source.
+
+    Also republishes them: a vote that was retracted by an earlier run and now
+    agrees must come back, or a fixed discrepancy would hide the vote forever.
+    """
+    if not vote_ids:
+        return 0
+    table = reflect_table("vote")
+    result = conn.execute(
+        update(table)
+        .where(table.c.id.in_(list(vote_ids)))
+        .values(reconciled_at=at, is_published=True)
+    )
+    return int(result.rowcount or 0)
+
+
+def retract_votes(conn: Connection, vote_ids: Sequence[int]) -> int:
+    """Hide roll calls whose tally a comparison source contradicts (PRD FC-3).
+
+    `reconciled_at` is deliberately left alone: the comparison DID run, and
+    what it found is the reason the vote is hidden. The open flag is the record
+    of why.
+    """
+    if not vote_ids:
+        return 0
+    table = reflect_table("vote")
+    result = conn.execute(
+        update(table).where(table.c.id.in_(list(vote_ids))).values(is_published=False)
+    )
+    return int(result.rowcount or 0)
+
+
+def upsert_reconciliation_flags(conn: Connection, rows: Sequence[dict[str, Any]]) -> int:
+    """Record open discrepancies, keeping the original `detected_at`.
+
+    Idempotent on the partial unique index from migration 0004, so re-running
+    reconciliation over a Congress that still disagrees does not pile up a new
+    copy of the same finding every night.
+    """
+    if not rows:
+        return 0
+    table = reflect_table("vote_reconciliation_flag")
+    elements = [
+        table.c.vote_id,
+        table.c.compared_to,
+        table.c.field,
+        func.coalesce(table.c.bioguide_id, text("''")),
+    ]
+    return bulk_upsert(
+        conn,
+        table,
+        rows,
+        conflict_elements=elements,
+        # Nothing to refresh: a flag that already exists for this exact finding
+        # keeps the timestamp of when it was FIRST detected, which is the fact
+        # a reviewer needs.
+        update_columns=(),
+    )
+
+
+def resolve_flags(conn: Connection, vote_ids: Sequence[int], *, at: datetime) -> int:
+    """Close open flags on roll calls that now agree.
+
+    Closed rather than deleted: the review queue's history is part of the audit
+    trail (PRD NFR-5), and "this disagreed until 2026-08-18" is a fact worth
+    keeping.
+    """
+    if not vote_ids:
+        return 0
+    table = reflect_table("vote_reconciliation_flag")
+    result = conn.execute(
+        update(table)
+        .where(table.c.vote_id.in_(list(vote_ids)), table.c.status == "open")
+        .values(status="resolved", resolved_at=at)
+    )
+    return int(result.rowcount or 0)
+
+
+def flagged_vote_ids(conn: Connection, vote_ids: Sequence[int]) -> set[int]:
+    """Which of these roll calls currently carry an open flag."""
+    if not vote_ids:
+        return set()
+    table = reflect_table("vote_reconciliation_flag")
+    stmt = select(table.c.vote_id).where(
+        table.c.vote_id.in_(list(vote_ids)), table.c.status == "open"
+    )
+    return {int(v) for v in conn.execute(stmt).scalars()}
 
 
 def existing_vote_keys(

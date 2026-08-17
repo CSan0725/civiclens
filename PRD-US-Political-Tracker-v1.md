@@ -181,7 +181,8 @@ District(geoid PK, state, cd_number, congress_no, boundary_geojson, current_memb
 Bill(congress_no, bill_type, number  [자연키], title, policy_area, status, sponsor_id)
 BillAction(bill_id FK, date, text, action_type, source_system)
 Sponsorship(bill_id FK, member_id FK, role[sponsor|cosponsor], date, withdrawn bool)
-Vote(congress_no, chamber, session, roll_number [자연키], date, question, result)
+Vote(congress_no, chamber, session, roll_number [자연키], date, question, result,
+     reconciled_at?, is_published)                                         # 각주 4
 VoteCast(vote_id FK, member_id FK, position[Yea|Nay|Present|NotVoting])
 Speech(member_id FK, date, chamber, title, text, granule_url)
 CommitteeMembership(member_id FK, committee_id, role, congress_no)
@@ -192,6 +193,12 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 ```
 
 원칙: 자연키 우선(멱등 upsert), 지역구 없음=null, District는 congress_no로 버전링.
+
+> **각주 4 — `Vote.reconciled_at` / `Vote.is_published`는 서로 다른 질문에 답한다 (P2, 2026-08-18).**
+> `reconciled_at`은 "독립 소스가 **마지막으로 동의한** 시각"이고, NULL은 **아직 대조 안 됨**이지
+> 분쟁 중이 아니다. `is_published`는 "**반증된 적 없음**"이며, open flag가 있는 동안에만 false다.
+> 둘을 하나로 합치면 §9 각주 3의 세 상태 중 하나가 표현 불가능해진다.
+> 웹 쿼리는 `vote`를 무필터로 읽지 않는다(`apps/web/src/db/queries.ts`의 `publishedVote`).
 
 ---
 
@@ -230,9 +237,49 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 - FC-1. 공식 1차 소스가 항상 기준선. 뉴스는 사실 생성 금지(가리키기만).
 - FC-2. 표결 집계 reconciliation: (Congress.gov/senate.gov/Clerk) ↔ Voteview 자동 대조.
-- FC-3. 불일치 발생 시: 사용자엔 미확정값 미노출 + 내부 검토 큐 적재.
+- FC-3. 불일치 발생 시: 사용자엔 미확정값 미노출 + 내부 검토 큐 적재. **(각주 3)**
 - FC-4. 해석/추론 라벨 금지(성향·의도·"반대 취지" 등).
 - FC-5. 상세페이지 "원자료 보기" 링크 필수(POLIWIKI 방식).
+
+> **각주 3 — FC-3 확정 해석 (P2, 2026-08-18): "반증되면 내린다"이지 "확인될 때까지 안 올린다"가 아니다.**
+>
+> 문제는 이 한 줄이 두 가지로 읽힌다는 것이었다. FC-3 본문은 **불일치가 났을 때** 미노출하라는
+> 뜻이고, 도시에 §2.2의 "사용자에겐 확정값만 노출"은 **확인되기 전까지** 미노출하라는 뜻이다.
+> 두 문장은 같은 정책이 아니다. P1은 대조 기능이 없던 상태에서 후자를 구현해
+> `vote.is_published`를 전부 false로 썼고, P5(thin)가 만든 화면은 그 컬럼을 아예 보지 않고
+> 전부 노출하면서 "Not yet cross-checked against Voteview" 캐치프레이즈만 달았다.
+> 즉 **DB는 "아무것도 공개하지 마"라고 적혀 있었고, 사이트는 전부 공개하고 있었다.**
+> P2에서 실제로 대조가 가능해졌으므로 여기서 확정한다.
+>
+> **확정: 반증되지 않는 한 공개한다.** 근거는 P2 실측(`docs/P2-source-verification.md` Finding 12):
+>
+> 1. **Voteview는 늦다.** 실측일(2026-08-17) 기준 최신 하원 롤콜이 2026-07-23 — 의회보다 3주 반
+>    뒤처져 있다. Voteview 승인을 노출 전제조건으로 두면 사이트 전체가 공식 기록보다 3주 늦어지고,
+>    NFR-2(표결 24h 내 반영)가 구조적으로 깨진다.
+> 2. **Voteview는 전부를 덮지 않는다.** 정족수 호명(QUORUM)은 표결이 아니라서 애초에 수록하지 않는다.
+>    "확인될 때까지 미노출"이면 Clerk가 공식 발표했고 아무도 이의를 제기하지 않은 롤콜이 **영구히**
+>    안 보이게 된다.
+> 3. **소스 위계가 뒤집힌다.** FC-1은 정부 기록을 기준선으로, Voteview를 "동의하거나 반대하는 쪽"으로
+>    규정한다. **반대만 할 수 있는 소스가 침묵으로 거부권까지 쥐면 안 된다.** 3자가 아직 재출판하지
+>    않았다는 이유로 정확히 기록된 공식 사실을 감추는 것은 그 자체로 기록의 왜곡이며,
+>    이는 migration 0003이 `raw_position`을 도입하며 세운 논리와 같다.
+>
+> FC-3이 막으려는 위험은 **틀린 숫자를 보여주는 것**이다. Voteview의 침묵은 틀렸다는 증거가 아니고,
+> 반증은 증거다. 따라서 상태는 셋이다 (§6 각주 4, migration 0004):
+>
+> | 상태 | DB | 사용자 화면 |
+> |---|---|---|
+> | 미대조 | `reconciled_at IS NULL`, `is_published` | 노출 + "Not yet cross-checked" 캐치프레이즈 |
+> | 대조 일치 | `reconciled_at` 기록, `is_published` | 노출, 캐치프레이즈 없음 |
+> | **불일치** | `NOT is_published` + open flag | **미노출** + 검토 큐 적재 |
+>
+> 세 번째 줄이 FC-3의 문자 그대로의 요구이고, P2가 그것이 실제로 발생할 수 있는 첫 릴리스다.
+> 감춘 건수는 대시보드에 숫자로 고지한다 — 조용한 공백은 수집 실패와 구별되지 않기 때문이다.
+>
+> 대조 대상 필드는 `yea_count`/`nay_count` 두 개뿐이다. Voteview에는 present/not-voting의 공식
+> 컬럼이 없고, cast code로 유도한 값은 하원이 "Not Voting"으로 기록하는 pair/announced 표시와
+> 투표하지 않은 의원까지 포함해 체계적으로 어긋난다(P2 Finding 10). 그 값을 대조했다면 관행 차이가
+> 대량의 "불일치"로 둔갑해 사이트 대부분을 감췄을 것이다.
 
 ---
 
@@ -357,18 +404,18 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 - [x] Congress.gov API 키 발급 + House Votes 베타 엔드포인트 응답 확인 — **2017~(115대)** 확인(2026-08-16)
 - [x] senate.gov XML 최신 회기 스키마 확인 — 119대 2세션 실물 확인. 단 senate.gov는 WAF로 일부 네트워크에서 403; GitHub Actions 러너에서는 정상(각주 2)
-- [ ] Clerk XML(하원, ~2022) 접근·스키마 확인
+- [x] Clerk XML(하원, **~2016**) 접근·스키마 확인 — 1990~2016 전 연도 실측(2026-08-17). 1989는 404이므로 하한이 1990으로 확정. **2003년에 `<legislator name-id>`(bioguide)가 생기는 스키마 단절**이 있어 1990~2002는 Congress.gov 로스터로 이름 해석(실측 해석률 99.65%). 상세: `docs/P2-source-verification.md`
 - [ ] GovInfo API 키 + Congressional Record granule 파싱 확인
 - [ ] FEC API 키 + 후보 5년 필터 확인
 - [ ] Census Geocoder 주소→지역구 응답 확인 + 119대 경계 파일 확보
-- [ ] Voteview 다운로드 필드(Members' Votes) 매핑 확인
+- [x] Voteview 다운로드 필드(Members' Votes) 매핑 확인 — 실측(2026-08-18). **주의: Voteview의 `rollnumber`는 우리 roll_number가 아니다**(회기 통산 번호이고 정족수 호명을 건너뜀). 매칭 키는 `clerk_rollnumber` + `session`. 집계 대조는 `yea_count`/`nay_count` 컬럼만 — cast code에서 유도한 값은 관행 차이로 체계적으로 어긋난다(§9 각주 3). 상세: `docs/P2-source-verification.md`
 
 ---
 
 ## 17. 열린 결정 (미확정)
 
 - OQ-1. 제품명·도메인.
-- OQ-2. 하원 백필 시작연도: 1990(Clerk 최댓값) vs 최근 N대 의회로 한정.
+- ~~OQ-2. 하원 백필 시작연도: 1990(Clerk 최댓값) vs 최근 N대 의회로 한정.~~ → **1990으로 확정(P2, 2026-08-18).** Clerk의 실제 최댓값이 1990이다(1989는 404). 상한은 2016 — 2017부터는 Congress.gov 베타가 덮으므로 두 소스가 겹치지 않는다.
 - OQ-3. 뉴스 표시용 소스(v2): GDELT만 vs 유료 표시 API 병행 시점.
 - OQ-4. 배포 환경(Vercel + 관리형 Postgres vs 자체 호스팅) — CLI 착수 시 결정.
 - OQ-5. 데이터 갱신 오케스트레이션(cron vs Prefect/Airflow).

@@ -14,6 +14,7 @@ import {
   getRecentVotes,
   getRecentlyPassedBills,
   getSampleMembers,
+  getWithheldVoteCount,
 } from "@/db/queries";
 import { billHref, formatBillNumber, formatChamber, formatDate, formatSeat } from "@/lib/format";
 
@@ -127,7 +128,7 @@ async function PassedBills() {
 }
 
 async function RecentVotes() {
-  const votes = await getRecentVotes();
+  const [votes, withheld] = await Promise.all([getRecentVotes(), getWithheldVoteCount()]);
   return (
     <Card>
       <CardHeader>
@@ -159,15 +160,39 @@ async function RecentVotes() {
               />
               <div className="flex flex-wrap items-center gap-x-3">
                 <SourceLink href={v.sourceUrl} label="View original record" />
-                {!v.isPublished ? (
+                {/*
+                  Three states, one of which is never rendered here (PRD FC-3,
+                  migration 0004): a roll call an independent source
+                  contradicts is withheld by the query, so anything reaching
+                  this point either agrees with Voteview or has not been
+                  compared yet. Only the second gets a caption.
+                */}
+                {v.reconciledAt ? (
+                  <span className="text-xs text-muted-foreground">
+                    Tally cross-checked against Voteview
+                  </span>
+                ) : (
                   <span className="text-xs text-muted-foreground">
                     Not yet cross-checked against Voteview
                   </span>
-                ) : null}
+                )}
               </div>
             </article>
           ))
         )}
+        {/*
+          Say that something is being withheld rather than letting it vanish.
+          A silent gap is indistinguishable from a collection failure, and the
+          count is the honest way to show the review queue exists (PRD FC-3).
+        */}
+        {withheld > 0 ? (
+          <p className="border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+            {withheld} roll {withheld === 1 ? "call is" : "calls are"} not shown
+            anywhere on this site: the tally recorded by the chamber and the one
+            published by Voteview disagree, so the figure is under review rather
+            than on display.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

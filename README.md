@@ -97,6 +97,56 @@ uv run civiclens-etl votes   --congress 119 --chamber house --limit 5
 Congress. Jobs are idempotent: re-running the same command upserts in place and
 skips roll calls already stored.
 
+### The House backfill (1990–2016) — run this off-runner
+
+```bash
+cd pipelines/etl
+
+# Smoke-test one year, five roll calls.
+uv run civiclens-etl backfill --from-year 1990 --to-year 1990 --limit 5
+
+# The real thing. ~26,000 roll calls; hours, not minutes.
+uv run civiclens-etl backfill
+```
+
+This is the one job that must NOT run on a GitHub-hosted runner: a hosted job is
+capped at 6 hours (Deployment-Architecture-Report §1b). Run it locally or on a
+temporary VPS, supplying the target database for that one invocation rather than
+writing it into `.env`:
+
+```bash
+DATABASE_URL="<neon unpooled url>" uv run civiclens-etl backfill
+```
+
+Use the **unpooled** Neon host — bulk upserts must not go through PgBouncer
+transaction pooling.
+
+It is restartable. Roll calls already stored are skipped before they are
+fetched, and each year gets its own `dataset_sync_state` row, so an interrupted
+run resumes with the same command and the database says how far it got:
+
+```sql
+select dataset, last_status, rows_upserted, message
+from dataset_sync_state where dataset like 'house_backfill_%' order by dataset;
+```
+
+### Cross-checking against Voteview
+
+```bash
+# Compare and report, writing nothing. Do this first after a backfill.
+uv run civiclens-etl reconcile --report-only
+
+# For real: publish what agrees, withhold and queue what does not.
+uv run civiclens-etl reconcile
+
+# One Congress, tallies only (skips a multi-megabyte download per Congress).
+uv run civiclens-etl reconcile --congress 119 --skip-positions
+```
+
+The daily workflow reconciles the sitting Congress. A full-range pass is a
+manual step after a backfill — it re-downloads one file per Congress, for data
+that has not moved in thirty years.
+
 ### Checks
 
 ```bash
@@ -288,7 +338,12 @@ editorial discipline:
 3. **No interpretation.** No ideology scores, no ratings, no "voted against the
    intent of" labels. Counts, statuses, source text, links. Voteview is used to
    cross-check tallies, and its NOMINATE columns are explicitly excluded.
-4. **Disagreement means silence.** When sources disagree, the value is flagged
-   for review and stays unpublished rather than being shown with a caveat.
+4. **Disagreement means silence — but silence is not disagreement.** When
+   sources disagree, the value is flagged for review and withheld rather than
+   shown with a caveat. When the independent source simply has not caught up —
+   Voteview republishes weeks behind the chamber, and never indexes quorum
+   calls at all — the official record is still shown, captioned "not yet
+   cross-checked". Settled in P2; the argument is in
+   `packages/db/migrations/0004_fc3_publish_unless_contradicted.sql`.
 5. **Coverage limits are stated, not implied.** FEC misses unregistered minor
    candidates; the Congressional Record holds floor statements only.

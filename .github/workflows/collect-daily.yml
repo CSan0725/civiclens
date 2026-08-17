@@ -124,6 +124,22 @@ jobs:
         if: ${{ env.CHAMBER == 'both' || env.CHAMBER == 'senate' }}
         run: uv run civiclens-etl votes $CONGRESS_ARG --chamber senate --limit "$VOTE_LIMIT"
 
+      # PRD FC-2/FC-3. Scoped to the sitting Congress on purpose: an unscoped
+      # run re-downloads a Voteview file per Congress in `vote`, which after
+      # the 1990-2016 backfill is fourteen of them, for data that has not moved
+      # in thirty years. Re-run the full range by hand after a backfill:
+      #   civiclens-etl reconcile
+      #
+      # This step publishes and retracts roll calls, so it runs AFTER
+      # collection: a vote collected minutes ago should be cross-checked in the
+      # same pass rather than waiting a day.
+      - name: Reconcile against Voteview
+        run: |
+          # Asks the CLI which Congress is sitting rather than recomputing the
+          # arithmetic here, so the 3-January convening rule lives in one place.
+          CONGRESS=$(uv run python -c 'from common.cli import current_congress; print(current_congress())')
+          uv run civiclens-etl reconcile --congress "$CONGRESS"
+
       - name: Report freshness
         if: always()
         run: |
@@ -185,6 +201,26 @@ jobs:
               cur.execute("""select count(*) from vote v where not exists
                              (select 1 from vote_cast c where c.vote_id = v.id)""")
               print("orphaned vote rows: %d" % cur.fetchone()[0])
+
+              # FC-2/FC-3 state of the vote table. "withheld" is the only one
+              # users cannot see; it should be small and every entry should
+              # have an open flag explaining it.
+              cur.execute("""
+                  select count(*) filter (where reconciled_at is not null and is_published),
+                         count(*) filter (where reconciled_at is null and is_published),
+                         count(*) filter (where not is_published)
+                  from vote
+              """)
+              agreed, unchecked, withheld = cur.fetchone()
+              print("")
+              print("reconciliation: %d agree, %d not yet cross-checked, %d withheld"
+                    % (agreed, unchecked, withheld))
+              cur.execute("""
+                  select f.field, count(*) from vote_reconciliation_flag f
+                  where f.status = 'open' group by 1 order by 2 desc
+              """)
+              for field, n in cur.fetchall():
+                  print("  open flags on %s: %d" % (field, n))
           PY
 
       - name: Open an issue on failure

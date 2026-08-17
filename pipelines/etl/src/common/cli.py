@@ -18,8 +18,7 @@ Deployment-Architecture-Report §4:
 with DATABASE_URL supplied for that one invocation. It is restartable — see
 `clerk_xml_sync`.
 
-`reconcile` lands with the Voteview collector. The P3/P4 jobs report what
-milestone owns them.
+The P3/P4 jobs report what milestone owns them.
 """
 
 from __future__ import annotations
@@ -43,7 +42,7 @@ JOBS: dict[str, str] = {
     "reconcile": "Voteview cross-check -> vote_reconciliation_flag (daily) [P2]",
 }
 
-IMPLEMENTED = {"members", "bills", "votes", "backfill"}
+IMPLEMENTED = {"members", "bills", "votes", "backfill", "reconcile"}
 
 
 def current_congress(today: date | None = None) -> int:
@@ -116,11 +115,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="backfill only: last calendar year (default: 2016, where Congress.gov takes over)",
     )
+    parser.add_argument(
+        "--skip-positions",
+        action="store_true",
+        help="reconcile only: compare tallies but not per-member positions",
+    )
+    parser.add_argument(
+        "--report-only",
+        action="store_true",
+        help=(
+            "reconcile only: compare and report without writing. Run this first "
+            "over a freshly backfilled range."
+        ),
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    # Recorded before the default is filled in: `reconcile` covers every stored
+    # Congress unless one was named, which is the opposite of every other job's
+    # "whichever is sitting today".
+    congress_given = args.congress is not None
     if args.congress is None:
         args.congress = current_congress()
     settings = get_settings()
@@ -152,11 +168,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Imported here so `--help` and the not-implemented path stay free of
     # database and network dependencies.
     from loaders.engine import get_engine
-    from sources import clerk_xml, senate_xml
+    from sources import clerk_xml, senate_xml, voteview
     from sources import congress_gov as cg
     from sources.clerk_xml_sync import backfill
     from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
     from sources.senate_xml_sync import sync_senate_votes
+    from sources.voteview_sync import reconcile
 
     engine = get_engine()
     try:
@@ -206,6 +223,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                         member_fetcher=mfetcher,
                     )
 
+            elif args.job == "reconcile":
+                with voteview.open_fetcher() as vfetcher:
+                    reconcile(
+                        conn,
+                        vfetcher,
+                        congress=args.congress if congress_given else None,
+                        chamber=None if args.chamber == "both" else args.chamber,
+                        check_positions=not args.skip_positions,
+                        dry_run=args.report_only,
+                    )
     except Exception as exc:
         log.error("etl.failed", job=args.job, error=f"{type(exc).__name__}: {exc}")
         return 1
