@@ -13,6 +13,13 @@ name: migrate
 #   - Secret DATABASE_URL_UNPOOLED is set on that environment. Use the DIRECT
 #     Neon endpoint: DDL must not go through PgBouncer transaction pooling.
 
+# The run list is where someone checks whether the database was migrated, so the
+# run's own title has to answer that. A dry run and a real one are otherwise
+# indistinguishable there: both finish green.
+run-name: >-
+  migrate ${{ inputs.environment }}
+  ${{ inputs.dry_run && '(dry run — applies nothing)' || '(APPLYING)' }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -65,6 +72,22 @@ jobs:
       - name: Pending migrations
         run: pnpm --filter @civiclens/db run status
 
+      # A dry run is the default, and it finishes green having changed nothing —
+      # which reads in the run list exactly like a migration that was applied. It
+      # was read that way once: `migrate` showed success, 0004 was still pending,
+      # and the deployed app served an empty dashboard against the old schema.
+      # Cheaper to say so here than to diagnose it from the outside again.
+      - name: Say that a dry run applied nothing
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "::warning title=Dry run::Nothing was applied. Re-run with 'Only report pending migrations' UNCHECKED to apply the migrations listed above."
+          {
+            echo "### Dry run — no migrations were applied"
+            echo
+            echo "Any migration listed as pending in the \`Pending migrations\` step is"
+            echo "still pending. Re-run this workflow with **dry_run unchecked** to apply it."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Apply
         if: ${{ !inputs.dry_run }}
         run: pnpm --filter @civiclens/db run up
@@ -72,3 +95,12 @@ jobs:
       - name: Final status
         if: ${{ !inputs.dry_run }}
         run: pnpm --filter @civiclens/db run status
+
+      - name: Record that migrations were applied
+        if: ${{ !inputs.dry_run }}
+        run: |
+          {
+            echo "### Migrations applied to \`${{ inputs.environment }}\`"
+            echo
+            echo "The \`Final status\` step above lists the schema as it now stands."
+          } >> "$GITHUB_STEP_SUMMARY"
