@@ -107,6 +107,8 @@ class ReconcileCounts:
         self.agreed = 0
         self.disagreed = 0
         self.no_counterpart = 0
+        self.not_comparable = 0
+        self.roster_gap = 0
         self.reopened = 0
         self.flags = 0
         self.position_flags = 0
@@ -117,6 +119,8 @@ class ReconcileCounts:
             "agreed": self.agreed,
             "disagreed": self.disagreed,
             "no_counterpart": self.no_counterpart,
+            "not_comparable": self.not_comparable,
+            "roster_gap": self.roster_gap,
             "flags": self.flags,
             "position_flags": self.position_flags,
             "reopened": self.reopened,
@@ -124,10 +128,12 @@ class ReconcileCounts:
 
     def summary(self) -> str:
         return (
-            f"reconciled {self.compared}: {self.agreed} agree, "
-            f"{self.disagreed} disagree ({self.flags} flags, "
+            f"reconciled {self.compared}: {self.agreed} agree "
+            f"({self.roster_gap} once members missing from Voteview's roster are "
+            f"excluded), {self.disagreed} disagree ({self.flags} flags, "
             f"{self.position_flags} per-member), "
-            f"{self.no_counterpart} with no Voteview counterpart"
+            f"{self.no_counterpart} with no Voteview counterpart, "
+            f"{self.not_comparable} not tally-comparable"
         )
 
 
@@ -168,6 +174,11 @@ def _reconcile_scope(
             chamber=chamber,
         )
 
+    # Who Voteview has for this Congress at all. Its tally columns count that
+    # roster and no one else, so a member missing from it moves the columns
+    # without anyone disagreeing about anything (`voteview.uncovered_casts`).
+    covered = voteview.covered_members(crosswalk, congress=congress, chamber=chamber)
+
     log.info(
         "reconcile.scope_loaded",
         congress=congress,
@@ -189,23 +200,40 @@ def _reconcile_scope(
         if not pairs:
             continue
 
-        positions: dict[int, dict[str, str | None]] = {}
-        if check_positions:
-            positions = repo.vote_positions(
-                conn, congress_no=congress, vote_ids=[int(r["id"]) for r, _ in pairs]
-            )
+        # Read unconditionally: the stored casts are what say which of this
+        # roll call's votes belong to members Voteview never lists, and that is
+        # needed to compare the TALLIES honestly. `--skip-positions` skips the
+        # multi-megabyte votes download and the per-member comparison, not this.
+        positions = repo.vote_positions(
+            conn, congress_no=congress, vote_ids=[int(r["id"]) for r, _ in pairs]
+        )
 
         agreed: list[int] = []
         flag_rows: list[dict[str, Any]] = []
         disagreed: list[int] = []
         for row, counterpart in pairs:
             vote_id = int(row["id"])
+            stored_positions = positions.get(vote_id, {})
+            if not voteview.tally_is_comparable(row, stored_positions):
+                # An Election of the Speaker: candidate names on our side, a
+                # re-coded yea/nay on Voteview's. Left unreconciled rather than
+                # flagged — the site captions it "not yet cross-checked", which
+                # is exactly what it is.
+                counts.not_comparable += 1
+                log.info(
+                    "reconcile.not_tally_comparable",
+                    vote=f"{congress}/{chamber}/{counterpart.session}/{counterpart.roll_number}",
+                )
+                continue
             counts.compared += 1
-            found = voteview.compare_tally(row, counterpart)
+            uncovered = voteview.uncovered_casts(stored_positions, covered=covered)
+            if any(uncovered.values()):
+                counts.roster_gap += 1
+            found = voteview.compare_tally(row, counterpart, uncovered=uncovered)
             if check_positions:
                 found.extend(
                     voteview.compare_positions(
-                        positions.get(vote_id, {}),
+                        stored_positions,
                         casts.get(counterpart.voteview_rollnumber, {}),
                         counterpart=counterpart,
                         crosswalk=crosswalk,
@@ -265,7 +293,9 @@ def _flag_rows(vote_id: int, found: list[Discrepancy]) -> list[dict[str, Any]]:
 
     rows: list[dict[str, Any]] = []
     for index, d in enumerate(tallies + kept_positions):
-        note = overflow_note if d.field == "position" and index == len(tallies) else None
+        note = d.note
+        if note is None and d.field == "position" and index == len(tallies):
+            note = overflow_note
         rows.append(
             {
                 "vote_id": vote_id,

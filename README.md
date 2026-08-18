@@ -6,13 +6,14 @@ public-domain sources. It provides raw records with a link back to the source
 for every fact, and **does not rate, score, or evaluate** legislators or
 legislation.
 
-> **Status: P1 (core data collection) complete, and verified on CI.** Members,
-> bills, actions, sponsorships and House roll calls are collected live from
-> Congress.gov into Postgres. Senate access is confirmed working from GitHub
-> Actions with the shipped User-Agent — the 403 seen locally is network-scoped,
-> not User-Agent-scoped. **Nothing is user-visible yet**: every vote is held
-> `is_published = false` until Voteview reconciliation runs in P2, and the
-> interface is P5. See [Where this stands](#where-this-stands).
+> **Status: P2 shipped and run against the live database (2026-08-18).**
+> Members, bills, actions, sponsorships and roll calls collect from
+> Congress.gov and senate.gov; the Clerk backfill has brought in 1990 and 2016
+> so far; and every stored roll call has been cross-checked against Voteview.
+> 2,001 agree and are published, 42 disagree and are withheld for review, 30
+> have no Voteview counterpart yet and say so on the page. The interface is the
+> thin P5 slice: a dashboard and member profiles.
+> See [Where this stands](#where-this-stands).
 
 `CivicLens` is a working name.
 
@@ -173,7 +174,7 @@ Milestones follow `PRD-US-Political-Tracker-v1.md` §14.
 |---|---|---|
 | **P0** | Repo, CI, DB schema, ETL skeleton | **Done** |
 | **P1** | Members, bills, actions, votes (House 2017~, Senate) | **Done**, green on GitHub Actions |
-| P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | Not started |
+| P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | **Code done and run.** 1990 + 2016 backfilled (1,158 roll calls, 499k casts); reconciliation run over all 2,073 stored roll calls. The remaining 1991–2015 years are collection time, not work |
 | P3 | GovInfo Congressional Record speeches + full-text search | Not started |
 | P4 | Census geocoding, district boundaries, MapLibre, FEC candidates | Not started |
 | P5 | Dashboard, profiles, search, rankings — the real interface | **Dashboard + member profile done**; 10 routes still placeholders |
@@ -261,8 +262,9 @@ this logic.
 - **No Clerk XML backfill** — P2. Note the gap is now 1990–2016, not 1990–2022:
   the House Votes beta turned out to serve the 115th Congress onward, not the
   118th.
-- **No reconciliation.** Every `vote` is written `is_published = false` and
-  stays invisible to users until Voteview cross-checking runs in P2 (PRD FC-3).
+- **No reconciliation.** Every `vote` was written `is_published = false` and
+  nothing ever set it true. P2 settled which reading of FC-3 that was meant to
+  implement — publish unless contradicted — in migration 0004.
 - **No real UI.** Routes are still placeholders; the interface is P5.
 
 ### What the interface shows today
@@ -289,9 +291,12 @@ report".
 
 ### To continue
 
-1. P2: Clerk XML backfill 1990–2016 + Voteview reconciliation, which is what
-   flips `is_published` and makes votes publishable.
+1. The rest of the backfill: 1991–2015, ~16,300 roll calls. Same command, same
+   restartable per-year bookkeeping; it is hours of collection, not new code.
+   Re-run `civiclens-etl reconcile` over the full range afterwards.
 2. The remaining ten routes, and search.
+3. A review queue UI for the 42 open reconciliation flags. They are currently
+   readable only in `vote_reconciliation_flag`.
 
 ## Confirmed decisions
 

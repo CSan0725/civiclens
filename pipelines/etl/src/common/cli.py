@@ -118,7 +118,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-positions",
         action="store_true",
-        help="reconcile only: compare tallies but not per-member positions",
+        help=(
+            "reconcile only: skip the per-member comparison and its multi-megabyte "
+            "download. Stored casts are still read — they are what identify members "
+            "Voteview does not carry."
+        ),
     )
     parser.add_argument(
         "--report-only",

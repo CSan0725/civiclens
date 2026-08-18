@@ -2,10 +2,14 @@
 
 The fixtures are the 101st Congress, trimmed to the four 1990 roll calls the
 tally survey covered plus every House member row. That range was chosen because
-it is where the interesting cases live: two of the four roll calls genuinely
-disagree with the Clerk, the era still contains paired and announced votes, and
-the corresponding Clerk fixture (`clerk_vote_1990_400.xml`) is the same roll
-call seen from the other side.
+it is where the interesting cases live: two of the four roll calls report a
+different yea count from the Clerk's, the era still contains paired and
+announced votes, and the corresponding Clerk fixture (`clerk_vote_1990_400.xml`)
+is the same roll call seen from the other side.
+
+Those two turned out to be the roster gap, not a disagreement — Voteview has no
+101st-Congress row for Patsy Mink at all — which is why the members fixture is
+kept complete rather than trimmed to the members who appear in the votes file.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ ROLLCALLS = "voteview_rollcalls_h101.csv"
 VOTES = "voteview_votes_h101.csv"
 MEMBERS = "voteview_members_101.csv"
 CLERK_1990_400 = "clerk_vote_1990_400.xml"
+SPEAKER_2015 = "clerk_vote_2015_581.xml"
 
 
 # ---------------------------------------------------------------------------
@@ -102,11 +107,11 @@ def test_agreement_produces_no_discrepancy() -> None:
     assert voteview.compare_tally(stored, entry) == []
 
 
-def test_a_real_1990_disagreement_is_found() -> None:
+def test_an_unexplained_one_vote_difference_is_found() -> None:
     """Clerk roll 1990/400 reports 194 yeas; Voteview reports 193.
 
-    A genuine one-vote disagreement in the live data, and the reason this
-    particular roll call is a fixture. It is what the review queue exists for.
+    With nothing known about who is missing from Voteview's roster, that is a
+    disagreement and the review queue is where it belongs.
     """
     clerk_row = clerk_xml.parse_vote(
         load_bytes(CLERK_1990_400), source_url="https://example/v", year=1990
@@ -117,6 +122,71 @@ def test_a_real_1990_disagreement_is_found() -> None:
     assert found[0].field == "yea_count"
     assert (found[0].primary_value, found[0].voteview_value) == ("194", "193")
     assert found[0].bioguide_id is None
+
+
+def test_voteview_has_no_101st_congress_row_for_patsy_mink() -> None:
+    """The premise of the two tests below, asserted against the real file.
+
+    Mink won the HI-02 special election in September 1990 and voted for the
+    rest of the 101st. Voteview's member file starts her at the 102nd, so its
+    yea counts for late 1990 are the chamber's minus her vote.
+    """
+    crosswalk = voteview.parse_members(load_bytes(MEMBERS))
+    covered = voteview.covered_members(crosswalk, congress=101, chamber="house")
+    assert "M000797" not in covered
+    assert "M000843" in covered  # Susan Molinari, sworn in March 1990, IS carried
+
+
+def test_a_member_voteview_does_not_carry_explains_the_difference() -> None:
+    """The same roll call, once the run knows who Voteview is missing.
+
+    194 - 1 = 193 exactly, so there is nothing for anyone to review: the
+    chamber counted Mink and Voteview cannot. Publishing this as a
+    contradiction would hide a quarter of 1990 behind FC-3.
+    """
+    clerk_row = clerk_xml.parse_vote(
+        load_bytes(CLERK_1990_400), source_url="https://example/v", year=1990
+    )
+    entry = voteview.parse_rollcalls(load_bytes(ROLLCALLS))[(101, "house", 2, 400)]
+    crosswalk = voteview.parse_members(load_bytes(MEMBERS))
+    covered = voteview.covered_members(crosswalk, congress=101, chamber="house")
+
+    uncovered = voteview.uncovered_casts({"M000797": "Yea"}, covered=covered)
+    assert uncovered == {"yea_count": 1, "nay_count": 0}
+    assert voteview.compare_tally(clerk_row, entry, uncovered=uncovered) == []
+
+
+def test_a_difference_the_roster_gap_only_partly_explains_is_still_flagged() -> None:
+    """One missing member does not excuse a two-vote difference.
+
+    The flag carries the arithmetic so the reviewer does not have to redo it.
+    """
+    entry = voteview.parse_rollcalls(load_bytes(ROLLCALLS))[(101, "house", 2, 400)]
+    found = voteview.compare_tally(
+        {"yea_count": 195, "nay_count": entry.nay_count},
+        entry,
+        uncovered={"yea_count": 1, "nay_count": 0},
+    )
+    assert len(found) == 1
+    assert (found[0].primary_value, found[0].voteview_value) == ("195", "193")
+    assert found[0].note is not None
+    assert "194 remain" in found[0].note
+
+
+def test_an_election_of_the_speaker_is_not_tally_comparable() -> None:
+    """Candidate names on our side; a re-coded yea/nay on Voteview's.
+
+    Nothing about the two numbers is the same question, so the roll call is
+    left uncompared and captioned rather than retracted (migration 0003/0004).
+    """
+    speaker = clerk_xml.parse_vote(
+        load_bytes(SPEAKER_2015), source_url="https://example/v", year=2015
+    )
+    casts_without_a_position = {"R000570": None, "P000197": None}
+    assert not voteview.tally_is_comparable(speaker, casts_without_a_position)
+
+    ordinary = {"yea_count": 194, "nay_count": 229}
+    assert voteview.tally_is_comparable(ordinary, {"M000797": "Yea"})
 
 
 def test_a_missing_count_is_not_a_disagreement() -> None:

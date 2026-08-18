@@ -63,7 +63,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -133,6 +133,9 @@ class Discrepancy:
     field: str
     primary_value: str | None
     voteview_value: str | None
+    # Why the two numbers differ, when the run can say. Lands on the review
+    # queue row, so whoever opens it does not have to re-derive it.
+    note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -306,20 +309,103 @@ def parse_votes(payload: bytes, *, chamber: str) -> dict[int, dict[int, int]]:
 # ---------------------------------------------------------------------------
 
 
-def compare_tally(stored: dict[str, Any], counterpart: RollCall) -> list[Discrepancy]:
+def covered_members(
+    crosswalk: dict[tuple[int, str, int], str], *, congress: CongressNo, chamber: str
+) -> frozenset[str]:
+    """Every Bioguide ID Voteview carries for one Congress and chamber.
+
+    Voteview's tally columns count the members in ITS roster, so its roster is
+    the population its numbers describe. Knowing who is missing from it is what
+    separates "the two sources disagree" from "one of them has never heard of
+    this member" — see `uncovered_casts`.
+    """
+    return frozenset(
+        bioguide_id
+        for (row_congress, row_chamber, _icpsr), bioguide_id in crosswalk.items()
+        if row_congress == congress and row_chamber == chamber
+    )
+
+
+def uncovered_casts(
+    stored_positions: Mapping[str, str | None], *, covered: frozenset[str]
+) -> dict[str, int]:
+    """Yea/Nay casts we recorded for members Voteview does not carry.
+
+    Voteview's roster is term-scoped and it misses members who arrive late in a
+    Congress: Patsy Mink won the HI-02 special election in September 1990 and
+    voted 146 times in the 101st, and Voteview's member file has no 101st row
+    for her at all. Every one of those roll calls therefore shows the Clerk's
+    official tally one yea above Voteview's column — 129 of 536 in 1990 alone,
+    a quarter of the year — and none of them is a disagreement about the
+    record. `compare_tally` subtracts these before deciding.
+    """
+    out = dict.fromkeys(TALLY_FIELDS, 0)
+    for bioguide_id, position in stored_positions.items():
+        if bioguide_id in covered:
+            continue
+        if position == "Yea":
+            out["yea_count"] += 1
+        elif position == "Nay":
+            out["nay_count"] += 1
+    return out
+
+
+def tally_is_comparable(
+    stored: Mapping[str, Any], stored_positions: Mapping[str, str | None]
+) -> bool:
+    """False when the two sides are not counting the same question.
+
+    An Election of the Speaker records candidate NAMES, so the chamber
+    publishes no yea/nay total and every cast lands in `raw_position` with a
+    NULL position (migration 0003). Voteview re-codes the same roll call as
+    1/6 by whom the member backed and publishes yea and nay counts for it.
+    Comparing those two would report a disagreement on every Speaker election
+    forever, and FC-3 would then hide a roll call nobody disputes.
+    """
+    if int(stored.get("yea_count") or 0) or int(stored.get("nay_count") or 0):
+        return True
+    return not any(position is None for position in stored_positions.values())
+
+
+def compare_tally(
+    stored: dict[str, Any],
+    counterpart: RollCall,
+    *,
+    uncovered: Mapping[str, int] | None = None,
+) -> list[Discrepancy]:
     """Compare one stored roll call's tally against Voteview's.
 
     A count missing on EITHER side is not a discrepancy: the tier-1 document
     genuinely omits a total sometimes, and asserting a disagreement from an
     absence would put a real, correctly recorded vote behind a review queue for
     no reason.
+
+    Args:
+        uncovered: yea/nay casts belonging to members Voteview does not carry
+            for this Congress, from `uncovered_casts`. A difference those
+            members fully account for is a gap in Voteview's roster, not a
+            disagreement, and is not flagged. One they only partly account for
+            is still flagged, and says so.
     """
     out: list[Discrepancy] = []
+    gaps = uncovered or {}
     for name in TALLY_FIELDS:
-        ours = stored.get(name)
+        ours_raw = stored.get(name)
         theirs = getattr(counterpart, name)
-        if ours is None or theirs is None or int(ours) == int(theirs):
+        if ours_raw is None or theirs is None:
             continue
+        ours, theirs = int(ours_raw), int(theirs)
+        if ours == theirs:
+            continue
+        gap = int(gaps.get(name, 0))
+        if gap and ours - gap == theirs:
+            continue
+        note = None
+        if gap:
+            note = (
+                f"{gap} of these cast(s) belong to members Voteview does not carry for "
+                f"this Congress; {ours - gap} remain after excluding them"
+            )
         out.append(
             Discrepancy(
                 congress_no=counterpart.congress_no,
@@ -330,6 +416,7 @@ def compare_tally(stored: dict[str, Any], counterpart: RollCall) -> list[Discrep
                 field=name,
                 primary_value=str(ours),
                 voteview_value=str(theirs),
+                note=note,
             )
         )
     return out

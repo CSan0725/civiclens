@@ -34,6 +34,7 @@ def bulk_upsert(
     *,
     conflict_columns: Sequence[str] | None = None,
     conflict_elements: Sequence[Any] | None = None,
+    index_where: Any | None = None,
     update_columns: Sequence[str] | None = None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
@@ -51,6 +52,12 @@ def bulk_upsert(
             from expressions, which `bill_action`'s is: Postgres infers an
             expression index only from a matching expression list, and
             `ON CONFLICT ON CONSTRAINT` cannot name a bare UNIQUE INDEX.
+        index_where: the arbiter index's predicate, when it is PARTIAL. Postgres
+            will not infer a partial index from the column list alone — it
+            answers "there is no unique or exclusion constraint matching the ON
+            CONFLICT specification" — and the predicate must be a literal
+            expression it can prove equivalent, so pass `text("status =
+            'open'")` rather than a bound parameter.
         update_columns: columns to refresh on conflict. Defaults to every
             supplied column that is not part of the conflict key.
         batch_size: rows per statement.
@@ -88,6 +95,8 @@ def bulk_upsert(
             if conflict_columns is not None
             else list(conflict_elements or ())
         }
+        if index_where is not None:
+            target["index_where"] = index_where
         if update_columns:
             stmt = stmt.on_conflict_do_update(
                 set_={c: stmt.excluded[c] for c in update_columns}, **target

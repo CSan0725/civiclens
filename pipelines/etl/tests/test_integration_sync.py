@@ -71,8 +71,9 @@ def conn(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Connection
 def _truncate(connection: Connection) -> None:
     connection.execute(
         text(
-            "TRUNCATE vote_cast, vote, sponsorship, bill_action, bill, term, member, "
-            "committee, provenance, dataset_sync_state RESTART IDENTITY CASCADE"
+            "TRUNCATE vote_reconciliation_flag, vote_cast, vote, sponsorship, "
+            "bill_action, bill, term, member, committee, provenance, "
+            "dataset_sync_state RESTART IDENTITY CASCADE"
         )
     )
     connection.commit()
@@ -608,3 +609,93 @@ def test_a_failing_roll_call_leaves_no_half_written_vote(conn: Connection) -> No
         )
     ).scalar_one()
     assert orphans == 0, "the vote row must not survive its own failed cast write"
+
+
+# ---------------------------------------------------------------------------
+# Reconciliation flags
+# ---------------------------------------------------------------------------
+
+
+def _a_stored_roll_call(conn: Connection) -> int:
+    """A minimal 1990 House roll call to hang review-queue rows off."""
+    return int(
+        conn.execute(
+            text(
+                "INSERT INTO vote (congress_no, chamber, session, roll_number, vote_date, "
+                "yea_count, nay_count, source_system) "
+                "VALUES (101, 'house', 2, 166, DATE '1990-06-13', 312, 113, 'clerk_xml') "
+                "RETURNING id"
+            )
+        ).scalar_one()
+    )
+
+
+def test_reopening_the_same_finding_does_not_pile_up_review_rows(conn: Connection) -> None:
+    """The flag upsert must actually hit migration 0004's PARTIAL unique index.
+
+    It did not: `ON CONFLICT` inferred from the column list alone, and Postgres
+    answered "there is no unique or exclusion constraint matching the ON
+    CONFLICT specification" the first time reconciliation found a real
+    disagreement against a migrated database. Unit tests could not see it —
+    the index only exists in Postgres.
+    """
+    from loaders import repository as repo
+
+    vote_id = _a_stored_roll_call(conn)
+    finding = {
+        "vote_id": vote_id,
+        "bioguide_id": None,
+        "field": "yea_count",
+        "primary_value": "312",
+        "compared_value": "311",
+        "compared_to": "voteview",
+        "status": "open",
+        "note": None,
+    }
+
+    repo.upsert_reconciliation_flags(conn, [finding])
+    repo.upsert_reconciliation_flags(conn, [finding])
+
+    rows = conn.execute(
+        text("SELECT count(*), min(detected_at) = max(detected_at) FROM vote_reconciliation_flag")
+    ).one()
+    assert rows[0] == 1, "the same open finding must not be filed twice"
+    assert rows[1] is True, "and it keeps the timestamp of when it was FIRST detected"
+
+    # A different field on the same roll call is a different finding.
+    repo.upsert_reconciliation_flags(conn, [{**finding, "field": "nay_count"}])
+    assert conn.execute(text("SELECT count(*) FROM vote_reconciliation_flag")).scalar_one() == 2
+
+
+def test_a_resolved_flag_does_not_block_re_detection(conn: Connection) -> None:
+    """The index is partial on `status = 'open'` precisely so it does not.
+
+    A disagreement that was closed and then recurs is a new finding, with its
+    own detected_at, not a collision with the closed one.
+    """
+    from datetime import UTC, datetime
+
+    from loaders import repository as repo
+
+    vote_id = _a_stored_roll_call(conn)
+    finding = {
+        "vote_id": vote_id,
+        "bioguide_id": None,
+        "field": "yea_count",
+        "primary_value": "312",
+        "compared_value": "311",
+        "compared_to": "voteview",
+        "status": "open",
+        "note": None,
+    }
+    repo.upsert_reconciliation_flags(conn, [finding])
+    repo.resolve_flags(conn, [vote_id], at=datetime.now(UTC))
+    repo.upsert_reconciliation_flags(conn, [finding])
+
+    counts = conn.execute(
+        text(
+            "SELECT count(*) FILTER (WHERE status = 'open'), "
+            "count(*) FILTER (WHERE status = 'resolved') FROM vote_reconciliation_flag"
+        )
+    ).one()
+    assert counts == (1, 1)

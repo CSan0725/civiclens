@@ -252,6 +252,10 @@ def upsert_reconciliation_flags(conn: Connection, rows: Sequence[dict[str, Any]]
         table,
         rows,
         conflict_elements=elements,
+        # The index is PARTIAL (`WHERE status = 'open'`, migration 0004), so the
+        # predicate has to be named here too: without it Postgres refuses the
+        # statement outright rather than falling back to the column list.
+        index_where=text("status = 'open'"),
         # Nothing to refresh: a flag that already exists for this exact finding
         # keeps the timestamp of when it was FIRST detected, which is the fact
         # a reviewer needs.

@@ -291,24 +291,33 @@ official present/not-voting column in Voteview to compare against, and
 comparing the derived ones would have flagged a convention as an error on a
 large fraction of roll calls — hiding most of the site under FC-3.
 
+**Amended 2026-08-18, after the first full run.** "The columns reproduce the
+chamber's official tally" holds only where Voteview's ROSTER is complete. Its
+columns count the members it carries, so a member it has never heard of moves
+every tally that member voted in. In the 101st that is 124 roll calls — see
+finding 14, which is what the 44-roll-call survey was too small to see.
+
 Per-member comparison is restricted for the same reason: only codes 1 (Yea),
 6 (Nay) and 7/8 (Present) are compared, and only for members present on both
 sides.
 
-### Finding 11 — the two 1990 disagreements are real
+### Finding 11 — WITHDRAWN: the two 1990 "disagreements" are finding 14
 
-Not artefacts of the key or the parsing — the dates match and the roll calls
-are the same ones:
+The 2026-08-17 probe reported these as genuine:
 
 | Roll call | Clerk | Voteview |
 |---|---|---|
 | 1990 roll 400 (101/2) | yea 194, nay 229 | yea **193**, nay 229 |
 | 1990 roll 450 (101/2) | yea 162, nay 248 | yea **161**, nay 248 |
 
-Both are one yea. This is precisely what FC-2 exists to surface, and roll 400 is
-checked in as a fixture (`clerk_vote_1990_400.xml` +
-`voteview_rollcalls_h101.csv`) so the discrepancy path is covered by a test
-against real disagreeing data rather than a synthetic example.
+They are not. Both are one yea, both are dated after 22 September 1990, and
+both are Patsy Mink — a member Voteview does not carry for the 101st Congress
+at all (finding 14). The dates and the key were checked; the ROSTER was not.
+
+Roll 400 stays a fixture, and is now the test for the opposite property: the
+same numbers are a disagreement when nothing is known about who is missing,
+and not a disagreement once `covered_members` says Voteview has no 101st row
+for `M000797`.
 
 ### Finding 12 — quorum calls have no counterpart, and that is not a discrepancy
 
@@ -339,6 +348,76 @@ handed — the key is not on the row (PRD N1/FC-4). The `*_rollcalls.csv` file
 carries its own set (`nominate_mid_1`, `nominate_spread_1`, …), which is why
 the exclusion also matches the `nominate_`/`nokken_poole_` prefixes rather than
 only the listed names.
+
+---
+
+## What the first full run found (2026-08-18)
+
+`reconcile` over 2,073 stored roll calls — 1990 and 2016 from the Clerk
+backfill, the 119th from the daily cron:
+
+| | Roll calls |
+|---|---|
+| agree | 2,001 |
+| disagree (open flags, withheld under FC-3) | 42 |
+| no Voteview counterpart (quorum calls, and votes newer than its last release) | 29 |
+| not tally-comparable (finding 15) | 1 |
+
+The first pass of that run reported **157** disagreements, 156 of them in 1990.
+Findings 14 and 15 are what the other 115 turned out to be.
+
+### Finding 14 — Voteview's roster is term-scoped, and it misses mid-Congress arrivals
+
+Patsy Mink won the HI-02 special election on 22 September 1990 and voted 146
+times in the remainder of the 101st Congress. `HSall_members.csv` has **no
+101st-Congress row for her at all** — her first is the 102nd. Every roll call
+she voted in therefore shows the Clerk's official tally exactly one above
+Voteview's column, because Voteview's columns count Voteview's roster.
+
+Measured over the 1990 backfill: **124 of 536 roll calls**, 23% of the year.
+Susan Molinari is the mirror image — sworn in March 1990, carried by Voteview,
+and dropped by OUR side as an unresolvable `NY:Molinari` label (finding 3). She
+costs us a cast row but not a tally, because the tally we store is the Clerk's
+own `<totals-by-vote>`, not a count of the casts we managed to resolve.
+
+Verified end to end on 1990 roll 166: the Clerk document's `<totals-by-vote>`
+says yea 312, the document itself contains 312 `Aye` legislators, we store 312,
+Voteview says 311.
+
+So `compare_tally` subtracts the casts belonging to members Voteview does not
+carry before deciding. A difference those members fully account for is not a
+disagreement; one they only partly account for still is, and the flag records
+the arithmetic. Without this, FC-3 would have withheld 29% of 1990 over a
+roster gap.
+
+### Finding 15 — an Election of the Speaker is not tally-comparable
+
+The chamber publishes no yea/nay total for it: members call out candidate
+names, and every cast lands in `raw_position` with a NULL position (migration
+0003). Voteview re-codes the same roll call as 1/6 by whom the member backed
+and publishes yea and nay counts — 119/1/2 comes out 218-216 against our 0-0.
+
+Two different questions, so the roll call is left uncompared and uncaptioned
+rather than retracted. One roll call in the current data.
+
+### Finding 16 — the 42 that remain are genuine, and they are all 1990
+
+None in 2016, none in the 119th. Eight are tally differences; the rest are
+per-member positions. Spot-checked against the Clerk's own XML, which agrees
+with what we stored in every case:
+
+| Roll call | Clerk (and us) | Voteview |
+|---|---|---|
+| 1990 roll 9 | Wylie (R-OH) Aye, Synar (D-OK) No | Wylie Nay, Synar Yea |
+| 1990 roll 516 | Porter (R-IL) Nay, Price (D-NC) Yea | Porter Yea, Price Nay |
+| 1990 roll 38 | Sabo (D-MN) Yea, Savage (D-IL) Not Voting | Sabo Nay, Savage Yea |
+| 1990 roll 166 | yea 312 | yea 311 — one member Voteview codes 4 (announced Nay) |
+
+The last row is the announced/paired era showing up in the tally COLUMN rather
+than in a derived count: Voteview leaves codes 2-5 out of its yea and nay
+totals, and in the 101st the Clerk sometimes counted those members as voting.
+Genuinely two sources saying different things about the same cast, which is
+what FC-2 is for.
 
 ---
 

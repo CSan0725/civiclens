@@ -3,12 +3,16 @@
 Python pipeline that pulls US Congress data from official public-domain sources
 into the Postgres/PostGIS database defined by `packages/db`.
 
-**P1 status: Congress.gov and senate.gov implemented.** Members, bills,
-actions, sponsorships and House roll calls collect live. The Senate parser is
-complete but its live access is blocked from some networks — see
-[`docs/P1-source-verification.md`](../../docs/P1-source-verification.md).
-GovInfo (P3), FEC (P4), Census (P4), Clerk XML (P2) and Voteview (P2) remain
-signature-and-TODO stubs.
+**P2 status: clerk.house.gov and Voteview implemented too.** Members, bills,
+actions, sponsorships and House/Senate roll calls collect live; `backfill`
+fills the 1990-2016 House gap the Congress.gov beta does not reach, and
+`reconcile` cross-checks stored roll calls against Voteview and publishes or
+retracts them (FC-2/FC-3). The Senate parser's live access is blocked from some
+networks — see
+[`docs/P1-source-verification.md`](../../docs/P1-source-verification.md); the
+P2 probes are in
+[`docs/P2-source-verification.md`](../../docs/P2-source-verification.md).
+GovInfo (P3), FEC (P4) and Census (P4) remain signature-and-TODO stubs.
 
 ## Layout
 
@@ -38,6 +42,12 @@ uv run civiclens-etl members --congress 119 --limit 20
 uv run civiclens-etl bills   --congress 119 --limit 10
 uv run civiclens-etl votes   --congress 119 --chamber house --limit 5
 uv run civiclens-etl <job> --dry-run       # report without touching anything
+
+# P2. `backfill` is per calendar year, restartable, and refuses a --to-year
+# past 2016; `reconcile` covers every stored Congress unless one is named.
+uv run civiclens-etl backfill  --from-year 1990 --to-year 1990
+uv run civiclens-etl reconcile --report-only   # compare, write nothing
+uv run civiclens-etl reconcile
 
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run pytest                              # no network: fixtures only
