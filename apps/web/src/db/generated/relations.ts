@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+import { bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
 
 export const voteRelations = relations(vote, ({one, many}) => ({
 	bill: one(bill, {
@@ -33,11 +33,12 @@ export const committeeRelations = relations(committee, ({one, many}) => ({
 	committeeMemberships: many(committeeMembership),
 }));
 
-export const speechRelations = relations(speech, ({one}) => ({
+export const speechRelations = relations(speech, ({one, many}) => ({
 	member: one(member, {
 		fields: [speech.bioguideId],
 		references: [member.bioguideId]
 	}),
+	speechSpeakers: many(speechSpeaker),
 }));
 
 export const memberRelations = relations(member, ({many}) => ({
@@ -47,6 +48,7 @@ export const memberRelations = relations(member, ({many}) => ({
 	candidates: many(candidate),
 	newsMentions: many(newsMention),
 	voteReconciliationFlags: many(voteReconciliationFlag),
+	speechSpeakers: many(speechSpeaker),
 	sponsorships: many(sponsorship),
 	committeeMemberships: many(committeeMembership),
 	districts: many(district),
@@ -97,6 +99,17 @@ export const voteReconciliationFlagRelations = relations(voteReconciliationFlag,
 	vote: one(vote, {
 		fields: [voteReconciliationFlag.voteId],
 		references: [vote.id]
+	}),
+}));
+
+export const speechSpeakerRelations = relations(speechSpeaker, ({one}) => ({
+	member: one(member, {
+		fields: [speechSpeaker.bioguideId],
+		references: [member.bioguideId]
+	}),
+	speech: one(speech, {
+		fields: [speechSpeaker.speechId],
+		references: [speech.id]
 	}),
 }));
 

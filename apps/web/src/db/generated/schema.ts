@@ -34,7 +34,7 @@ export const vote = pgTable("vote", {
 	sourceUrl: text("source_url"),
 	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
 	reconciledAt: timestamp("reconciled_at", { withTimezone: true, mode: 'string' }),
-	isPublished: boolean("is_published").default(false).notNull(),
+	isPublished: boolean("is_published").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
@@ -348,7 +348,8 @@ export const voteReconciliationFlag = pgTable("vote_reconciliation_flag", {
 	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
 	note: text(),
 }, (table) => [
-	index("idx_vote_reconciliation_flag_open").using("btree", table.status.asc().nullsLast().op("text_ops"), table.detectedAt.desc().nullsFirst().op("text_ops")),
+	uniqueIndex("idx_vote_reconciliation_flag_natural_key").using("btree", sql`vote_id`, sql`compared_to`, sql`field`, sql`COALESCE(bioguide_id, ''::text)`).where(sql`(status = 'open'::text)`),
+	index("idx_vote_reconciliation_flag_open").using("btree", table.status.asc().nullsLast().op("timestamptz_ops"), table.detectedAt.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_vote_reconciliation_flag_vote").using("btree", table.voteId.asc().nullsLast().op("int8_ops")),
 	foreignKey({
 			columns: [table.bioguideId],
@@ -361,6 +362,26 @@ export const voteReconciliationFlag = pgTable("vote_reconciliation_flag", {
 			name: "vote_reconciliation_flag_vote_id_fkey"
 		}).onDelete("cascade"),
 	check("vote_reconciliation_flag_status", sql`status = ANY (ARRAY['open'::text, 'resolved'::text, 'ignored'::text])`),
+]);
+
+export const speechSpeaker = pgTable("speech_speaker", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	speechId: bigint("speech_id", { mode: "number" }).notNull(),
+	bioguideId: text("bioguide_id").notNull(),
+	ordinal: smallint().default(0).notNull(),
+}, (table) => [
+	index("idx_speech_speaker_member").using("btree", table.bioguideId.asc().nullsLast().op("int8_ops"), table.speechId.desc().nullsFirst().op("text_ops")),
+	foreignKey({
+			columns: [table.bioguideId],
+			foreignColumns: [member.bioguideId],
+			name: "speech_speaker_bioguide_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.speechId],
+			foreignColumns: [speech.id],
+			name: "speech_speaker_speech_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.speechId, table.bioguideId], name: "speech_speaker_pkey"}),
 ]);
 
 export const sponsorship = pgTable("sponsorship", {
