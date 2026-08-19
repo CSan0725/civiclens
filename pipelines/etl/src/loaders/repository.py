@@ -34,6 +34,8 @@ BILL_KEY = ("congress_no", "bill_type", "number")
 SPONSORSHIP_KEY = ("bill_id", "bioguide_id", "role")
 VOTE_KEY = ("congress_no", "chamber", "session", "roll_number")
 VOTE_CAST_KEY = ("congress_no", "vote_id", "bioguide_id")
+SPEECH_KEY = ("granule_id",)
+SPEECH_SPEAKER_KEY = ("speech_id", "bioguide_id")
 
 
 def upsert_members(conn: Connection, rows: Sequence[dict[str, Any]]) -> int:
@@ -117,6 +119,53 @@ def upsert_vote_casts(conn: Connection, rows: Sequence[dict[str, Any]]) -> int:
     row. Never target a child directly.
     """
     return bulk_upsert(conn, reflect_table("vote_cast"), rows, conflict_columns=VOTE_CAST_KEY)
+
+
+def upsert_speeches(conn: Connection, rows: Sequence[dict[str, Any]]) -> int:
+    """Upsert Congressional Record granules on their natural key, `granule_id`.
+
+    Re-collecting a package GPO has corrected overwrites the stored text rather
+    than adding a second copy of the statement.
+    """
+    return bulk_upsert(conn, reflect_table("speech"), rows, conflict_columns=SPEECH_KEY)
+
+
+def stored_speeches(conn: Connection, granule_ids: Sequence[str]) -> dict[str, dict[str, Any]]:
+    """`{granule_id: {"id": ..., "retrieved_at": ...}}` for granules already stored.
+
+    Serves two callers. The loader needs the surrogate id to write
+    `speech_speaker`. The collector compares `retrieved_at` against the
+    package's upstream `lastModified` to decide whether the body text is worth
+    fetching again — text is one request per granule and is essentially the
+    whole cost of a run, so not re-fetching unchanged text is what makes a
+    multi-hour backfill restartable and the nightly job cheap.
+    """
+    if not granule_ids:
+        return {}
+    table = reflect_table("speech")
+    stmt = select(table.c.granule_id, table.c.id, table.c.retrieved_at).where(
+        table.c.granule_id.in_(list(granule_ids))
+    )
+    return {
+        str(row.granule_id): {"id": int(row.id), "retrieved_at": row.retrieved_at}
+        for row in conn.execute(stmt)
+    }
+
+
+def replace_speech_speakers(
+    conn: Connection, *, speech_id: int, rows: Sequence[dict[str, Any]]
+) -> int:
+    """Rewrite one granule's speaker list.
+
+    DELETE-then-insert rather than upsert: a correction that REMOVES a speaker
+    has to remove the row too, and an upsert cannot see what is no longer in
+    the payload.
+    """
+    table = reflect_table("speech_speaker")
+    conn.execute(table.delete().where(table.c.speech_id == speech_id))
+    if not rows:
+        return 0
+    return bulk_upsert(conn, table, list(rows), conflict_columns=SPEECH_SPEAKER_KEY)
 
 
 def find_bill_id(conn: Connection, *, congress_no: int, bill_type: str, number: int) -> int | None:

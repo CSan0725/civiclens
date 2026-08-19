@@ -6,19 +6,22 @@ Deployment-Architecture-Report §4:
     members       weekly    Congress.gov roster -> member, term            [P1]
     bills         daily     Congress.gov bills, actions, cosponsors        [P1]
     votes         daily     House 2017~ (Congress.gov) + Senate XML        [P1]
-    speeches      daily     GovInfo Congressional Record granules          [P3]
+    speeches      weekly    GovInfo Congressional Record granules          [P3]
     candidates    weekly    openFEC candidates + totals                    [P4]
     boundaries    manual    Census TIGER/CB -> district (+ TopoJSON to R2) [P4]
     backfill      manual    clerk.house.gov 1990-2016 House roll calls     [P2]
+    backfill-speeches manual GovInfo Congressional Record, one Congress     [P3]
     reconcile     daily     Voteview cross-check -> reconciliation flags   [P2]
 
-`backfill` is the one job that is NOT meant for GitHub Actions: the full
-1990-2016 range is 17,433 roll calls and exceeds the 6-hour hosted-runner cap
-(Deployment-Architecture-Report §1b). Run it locally or on a temporary VPS,
-with DATABASE_URL supplied for that one invocation. It is restartable — see
-`clerk_xml_sync`.
+`backfill` and `backfill-speeches` are the jobs that are NOT meant for GitHub
+Actions. The full 1990-2016 roll-call range is 17,433 roll calls and exceeds
+the 6-hour hosted-runner cap (Deployment-Architecture-Report §1b); one
+Congress of the Congressional Record is ~52,000 granules and one HTTP request
+each, measured at ~3.5 hours (docs/P3-source-verification.md). Run either
+locally or on a temporary VPS, with DATABASE_URL supplied for that one
+invocation. Both are restartable — see `clerk_xml_sync` and `govinfo_sync`.
 
-The P3/P4 jobs report what milestone owns them.
+The P4 jobs report what milestone owns them.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 from common.logging import configure_logging, get_logger
 from common.settings import get_settings
@@ -35,14 +38,23 @@ JOBS: dict[str, str] = {
     "members": "Congress.gov roster -> member, term (weekly) [P1]",
     "bills": "Congress.gov bills, actions, cosponsors (daily) [P1]",
     "votes": "House 2017~ + Senate roll calls -> vote, vote_cast (daily) [P1]",
-    "speeches": "GovInfo Congressional Record granules -> speech (daily) [P3]",
+    "speeches": "GovInfo Congressional Record granules -> speech (weekly) [P3]",
     "candidates": "openFEC candidates + totals -> candidate, campaign_finance [P4]",
     "boundaries": "Census TIGER/CB -> district, TopoJSON -> R2 (per Congress) [P4]",
     "backfill": "clerk.house.gov House roll calls (manual, long-running) [P2]",
+    "backfill-speeches": "GovInfo Congressional Record, one Congress (manual, long-running) [P3]",
     "reconcile": "Voteview cross-check -> vote_reconciliation_flag (daily) [P2]",
 }
 
-IMPLEMENTED = {"members", "bills", "votes", "backfill", "reconcile"}
+IMPLEMENTED = {
+    "members",
+    "bills",
+    "votes",
+    "speeches",
+    "backfill",
+    "backfill-speeches",
+    "reconcile",
+}
 
 
 def current_congress(today: date | None = None) -> int:
@@ -125,6 +137,31 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--since-days",
+        type=int,
+        default=None,
+        help=(
+            "speeches only: look back this many days for packages GovInfo has "
+            "modified (default: 7). --since overrides it with an explicit date."
+        ),
+    )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help=(
+            "speeches only: re-fetch granule text even when the stored copy is "
+            "newer than the package's upstream lastModified"
+        ),
+    )
+    parser.add_argument(
+        "--include-digest",
+        action="store_true",
+        help=(
+            "speeches only: also store Daily Digest and front-matter granules. "
+            "Neither is a statement; both are skipped by default."
+        ),
+    )
+    parser.add_argument(
         "--report-only",
         action="store_true",
         help=(
@@ -172,10 +209,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Imported here so `--help` and the not-implemented path stay free of
     # database and network dependencies.
     from loaders.engine import get_engine
-    from sources import clerk_xml, senate_xml, voteview
+    from sources import clerk_xml, govinfo, senate_xml, voteview
     from sources import congress_gov as cg
     from sources.clerk_xml_sync import backfill
     from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
+    from sources.govinfo_sync import backfill_speeches, sync_speeches
     from sources.senate_xml_sync import sync_senate_votes
     from sources.voteview_sync import reconcile
 
@@ -212,6 +250,40 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 limit=args.limit,
                                 member_fetcher=mfetcher,
                             )
+
+            elif args.job == "speeches":
+                # A Congress.gov fetcher backfills speakers the roster has not
+                # seen — a member who resigned mid-Congress still spoke, and a
+                # granule whose speaker is unknown loses its attribution
+                # without one.
+                with govinfo.open_fetcher() as gfetcher, cg.open_fetcher() as mfetcher:
+                    since = (
+                        datetime.fromisoformat(args.since).replace(tzinfo=UTC)
+                        if args.since
+                        else datetime.now(UTC) - timedelta(days=args.since_days or 7)
+                    )
+                    sync_speeches(
+                        conn,
+                        gfetcher,
+                        since=since,
+                        limit=args.limit,
+                        skip_existing=not args.refresh,
+                        member_fetcher=mfetcher,
+                        include_digest=args.include_digest,
+                    )
+
+            elif args.job == "backfill-speeches":
+                with govinfo.open_fetcher() as gfetcher, cg.open_fetcher() as mfetcher:
+                    backfill_speeches(
+                        conn,
+                        gfetcher,
+                        congress=args.congress,
+                        from_date=date.fromisoformat(args.since) if args.since else None,
+                        limit=args.limit,
+                        skip_existing=not args.refresh,
+                        member_fetcher=mfetcher,
+                        include_digest=args.include_digest,
+                    )
 
             elif args.job == "backfill":
                 # A Congress.gov fetcher is not optional here: it backfills the
