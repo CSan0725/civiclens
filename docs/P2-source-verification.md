@@ -351,20 +351,36 @@ only the listed names.
 
 ---
 
-## What the first full run found (2026-08-18)
+## What the runs found
 
-`reconcile` over 2,073 stored roll calls — 1990 and 2016 from the Clerk
-backfill, the 119th from the daily cron:
+### The two-year slice (2026-08-18) — 2,073 roll calls
+
+1990 and 2016 from the Clerk backfill plus the 119th from the daily cron:
+2,001 agree, 42 disagree, 29 have no counterpart, 1 is not tally-comparable.
+The first pass reported **157** disagreements, 156 of them in 1990; findings 14
+and 15 are what the other 115 turned out to be.
+
+### The whole range (2026-08-19) — 18,348 roll calls
+
+1990–2016 complete (17,433 Clerk roll calls, the count finding 1 arrived at by
+walking the index pages, matched exactly) plus the 119th:
 
 | | Roll calls |
 |---|---|
-| agree | 2,001 |
-| disagree (open flags, withheld under FC-3) | 42 |
-| no Voteview counterpart (quorum calls, and votes newer than its last release) | 29 |
-| not tally-comparable (finding 15) | 1 |
+| agree | 17,909 |
+| disagree (open flags, withheld under FC-3) | 247 — 1.36% |
+| no Voteview counterpart (quorum calls, and votes newer than its last release) | 177 |
+| not tally-comparable (finding 15) | 15 |
 
-The first pass of that run reported **157** disagreements, 156 of them in 1990.
-Findings 14 and 15 are what the other 115 turned out to be.
+This pass reported **1,387** disagreements before finding 17, 93% of them in
+three Congresses. Measured cost of the load: **7,849,148 `vote_cast` rows**
+against the 7.6M finding 1 estimated, and **1.31 GiB** of database against the
+1.5–2 GB it projected — 0.42 GiB of that is indexes.
+
+Where the remaining 247 sit: 103rd 141, 101st 42, 104th 30, 102nd 10, 105th 10,
+106th 7, 107th 6, 110th 1. **The 108th Congress onward is clean** — every roll
+call from 2003 to 2016, and the whole 119th, agrees with Voteview. The
+disagreements live in the era both sources reconstructed rather than recorded.
 
 ### Finding 14 — Voteview's roster is term-scoped, and it misses mid-Congress arrivals
 
@@ -400,6 +416,33 @@ and publishes yea and nay counts — 119/1/2 comes out 218-216 against our 0-0.
 Two different questions, so the roll call is left uncompared and uncaptioned
 rather than retracted. One roll call in the current data.
 
+### Finding 17 — Voteview's tally columns count Representatives, not Delegates
+
+Its votes file records a Delegate's cast; its `yea_count`/`nay_count` columns
+do not include it. The Clerk's official total does. 1993 roll 15, all three
+numbers from the same two sources:
+
+| | Yea | Nay |
+|---|---|---|
+| Clerk `<totals-by-vote>`, and what we store | 187 | **244** |
+| Voteview `nay_count` column | 187 | **239** |
+| Voteview's OWN votes file, counting cast code 6 | — | **244** |
+
+The five are Norton (DC), de Lugo (VI), Faleomavaega (AS) and the Guam and
+Puerto Rico delegates. It only surfaces in the 103rd, 110th and 111th
+Congresses, the three that gave Delegates the Committee-of-the-Whole vote
+(granted 1993, removed 1995, restored 2007, removed again 2011) — elsewhere
+they cast no votes for the columns to omit. Deltas run +1 to +6, the number of
+delegates voting that way on the day.
+
+Finding 14's adjustment could not absorb this, because these members ARE in
+Voteview's roster. So the test is no longer "does Voteview carry this member"
+but "does Voteview's tally column count this member's cast", and the list of
+delegations comes from our own roster — asking Voteview who to exclude from a
+check on Voteview would be circular.
+
+Left in, it withheld 44% of the 103rd, 25% of the 110th and 19% of the 111th.
+
 ### Finding 16 — the 42 that remain are genuine, and they are all 1990
 
 None in 2016, none in the 119th. Eight are tally differences; the rest are
@@ -418,6 +461,13 @@ than in a derived count: Voteview leaves codes 2-5 out of its yea and nay
 totals, and in the 101st the Clerk sometimes counted those members as voting.
 Genuinely two sources saying different things about the same cast, which is
 what FC-2 is for.
+
+**Extended by the full range.** Over 1990–2016 the same shape holds, and one
+member dominates: 139 of the 247 are Neil Abercrombie in the 103rd, whom the
+Clerk records as Not Voting on roll calls where Voteview records a Yea or a
+Nay. Checked for a mapping fault and there is none — ICPSR 15245 is
+"ABERCROMBIE, Neil", maps to A000014, and no Bioguide ID repeats in Voteview's
+103rd House roster. Two sources, one member, different answers.
 
 ---
 

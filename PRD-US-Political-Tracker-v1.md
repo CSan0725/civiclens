@@ -405,18 +405,18 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 
 - [x] Congress.gov API 키 발급 + House Votes 베타 엔드포인트 응답 확인 — **2017~(115대)** 확인(2026-08-16)
 - [x] senate.gov XML 최신 회기 스키마 확인 — 119대 2세션 실물 확인. 단 senate.gov는 WAF로 일부 네트워크에서 403; GitHub Actions 러너에서는 정상(각주 2)
-- [x] Clerk XML(하원, **~2016**) 접근·스키마 확인 — 1990~2016 전 연도 실측(2026-08-17). 1989는 404이므로 하한이 1990으로 확정. **2003년에 `<legislator name-id>`(bioguide)가 생기는 스키마 단절**이 있어 1990~2002는 Congress.gov 로스터로 이름 해석(실측 해석률 99.65%). 상세: `docs/P2-source-verification.md`
+- [x] Clerk XML(하원, **~2016**) 접근·스키마 확인 — 1990~2016 전 연도 실측(2026-08-17). **백필 실행 완료(2026-08-19): 17,433개 롤콜 전량 적재**(인덱스 실측치와 정확히 일치), `vote_cast` 7,849,148행, DB 1.31 GiB(예측 1.5~2GB), 실패·재시도 0. 1989는 404이므로 하한이 1990으로 확정. **2003년에 `<legislator name-id>`(bioguide)가 생기는 스키마 단절**이 있어 1990~2002는 Congress.gov 로스터로 이름 해석(실측 해석률 99.65%). 상세: `docs/P2-source-verification.md`
 - [ ] GovInfo API 키 + Congressional Record granule 파싱 확인
 - [ ] FEC API 키 + 후보 5년 필터 확인
 - [ ] Census Geocoder 주소→지역구 응답 확인 + 119대 경계 파일 확보
-- [x] Voteview 다운로드 필드(Members' Votes) 매핑 확인 — 실측(2026-08-18). **주의: Voteview의 `rollnumber`는 우리 roll_number가 아니다**(회기 통산 번호이고 정족수 호명을 건너뜀). 매칭 키는 `clerk_rollnumber` + `session`. 집계 대조는 `yea_count`/`nay_count` 컬럼만 — cast code에서 유도한 값은 관행 차이로 체계적으로 어긋난다(§9 각주 3). 상세: `docs/P2-source-verification.md`
+- [x] Voteview 다운로드 필드(Members' Votes) 매핑 확인 — 실측(2026-08-18), **전 구간 대조 완료(2026-08-19): 18,348건 중 17,909 일치 / 247 불일치(1.36%) / 177 상대 없음 / 15 비교 불가**. **주의: Voteview의 `rollnumber`는 우리 roll_number가 아니다**(회기 통산 번호이고 정족수 호명을 건너뜀). 매칭 키는 `clerk_rollnumber` + `session`. 집계 대조는 `yea_count`/`nay_count` 컬럼만 — cast code에서 유도한 값은 관행 차이로 체계적으로 어긋난다(§9 각주 3). 상세: `docs/P2-source-verification.md`
 
 ---
 
 ## 17. 열린 결정 (미확정)
 
 - OQ-1. 제품명·도메인.
-- ~~OQ-2. 하원 백필 시작연도: 1990(Clerk 최댓값) vs 최근 N대 의회로 한정.~~ → **1990으로 확정(P2, 2026-08-18).** Clerk의 실제 최댓값이 1990이다(1989는 404). 상한은 2016 — 2017부터는 Congress.gov 베타가 덮으므로 두 소스가 겹치지 않는다.
+- ~~OQ-2. 하원 백필 시작연도: 1990(Clerk 최댓값) vs 최근 N대 의회로 한정.~~ → **1990으로 확정(P2, 2026-08-18).** Clerk의 실제 최댓값이 1990이다(1989는 404). 상한은 2016 — 2017부터는 Congress.gov 베타가 덮으므로 두 소스가 겹치지 않는다. **2026-08-19 실행 완료** — 1990~2016 27개 연도 전량 적재(누락 연도 없음), 17,433건. 범위를 좁힐 이유였던 용량·시간 우려는 실측으로 해소됐다(1.31 GiB, 수집 약 5시간).
 - OQ-3. 뉴스 표시용 소스(v2): GDELT만 vs 유료 표시 API 병행 시점.
 - OQ-4. 배포 환경(Vercel + 관리형 Postgres vs 자체 호스팅) — CLI 착수 시 결정.
 - OQ-5. 데이터 갱신 오케스트레이션(cron vs Prefect/Airflow).
