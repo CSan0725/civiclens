@@ -153,16 +153,25 @@ def stored_speeches(conn: Connection, granule_ids: Sequence[str]) -> dict[str, d
 
 
 def replace_speech_speakers(
-    conn: Connection, *, speech_id: int, rows: Sequence[dict[str, Any]]
+    conn: Connection, *, speech_ids: Sequence[int], rows: Sequence[dict[str, Any]]
 ) -> int:
-    """Rewrite one granule's speaker list.
+    """Rewrite the speaker lists of a whole package's granules at once.
 
     DELETE-then-insert rather than upsert: a correction that REMOVES a speaker
     has to remove the row too, and an upsert cannot see what is no longer in
     the payload.
+
+    Scoped to a batch of `speech_id`s rather than one, because the caller
+    rewrites every granule in a package on every visit — including the ones
+    whose text it did not re-fetch, so that a corrected attribution can be
+    fixed without re-downloading text that has not changed. Per-granule that
+    would be two statements each; a 400-day revision sweep would spend ~100,000
+    round trips discovering that nothing moved.
     """
+    if not speech_ids:
+        return 0
     table = reflect_table("speech_speaker")
-    conn.execute(table.delete().where(table.c.speech_id == speech_id))
+    conn.execute(table.delete().where(table.c.speech_id.in_(list(speech_ids))))
     if not rows:
         return 0
     return bulk_upsert(conn, table, list(rows), conflict_columns=SPEECH_SPEAKER_KEY)

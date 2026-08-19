@@ -119,13 +119,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--from-year",
         type=int,
         default=None,
-        help="backfill only: first calendar year (default: the Clerk's earliest, 1990)",
+        help=(
+            "backfill/backfill-speeches only: first calendar year "
+            "(default: the Clerk's earliest, 1990 / the Congress's own start)"
+        ),
     )
     parser.add_argument(
         "--to-year",
         type=int,
         default=None,
-        help="backfill only: last calendar year (default: 2016, where Congress.gov takes over)",
+        help=(
+            "backfill/backfill-speeches only: last calendar year "
+            "(default: 2016, where Congress.gov takes over / the Congress's own end)"
+        ),
     )
     parser.add_argument(
         "--skip-positions",
@@ -273,12 +279,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
 
             elif args.job == "backfill-speeches":
+                # --from-year/--to-year narrow the run inside the Congress, so
+                # a 3.5-hour backfill can be taken a slice at a time. They are
+                # the same flags the Clerk backfill uses; `backfill_speeches`
+                # clamps whatever it is given to the Congress's own dates.
                 with govinfo.open_fetcher() as gfetcher, cg.open_fetcher() as mfetcher:
                     backfill_speeches(
                         conn,
                         gfetcher,
                         congress=args.congress,
-                        from_date=date.fromisoformat(args.since) if args.since else None,
+                        from_date=date(args.from_year, 1, 1) if args.from_year else None,
+                        to_date=date(args.to_year, 12, 31) if args.to_year else None,
                         limit=args.limit,
                         skip_existing=not args.refresh,
                         member_fetcher=mfetcher,

@@ -330,17 +330,18 @@ def load_package(
             conn, [g["granule_id"] for g in granules]
         ).items()
     }
-    speaker_rows = 0
-    for granule_id, speakers in speakers_by_granule.items():
-        speech_id = speech_ids.get(granule_id)
-        if speech_id is None:
-            continue
-        speaker_rows += repo.replace_speech_speakers(
-            conn,
-            speech_id=speech_id,
-            rows=[{"speech_id": speech_id, **s} for s in speakers],
-        )
-    tally.add("speech_speaker", speaker_rows)
+    speaker_rows = [
+        {"speech_id": speech_ids[granule_id], **speaker}
+        for granule_id, speakers in speakers_by_granule.items()
+        if granule_id in speech_ids
+        for speaker in speakers
+    ]
+    tally.add(
+        "speech_speaker",
+        repo.replace_speech_speakers(
+            conn, speech_ids=sorted(speech_ids.values()), rows=speaker_rows
+        ),
+    )
 
     r2_key = write_snapshot(source=SOURCE, entity="package", entity_id=package_id, result=mods)
     record_provenance(
