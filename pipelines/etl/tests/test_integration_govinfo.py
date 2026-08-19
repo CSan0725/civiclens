@@ -288,6 +288,32 @@ def test_unchanged_package_does_not_refetch_text(conn: Connection) -> None:
 
 
 @respx.mock
+def test_unchanged_package_metadata_is_not_archived_twice(conn: Connection) -> None:
+    """The weekly revision sweep must not re-archive what it did not change.
+
+    It revisits every package a Congress published to find out whether GPO
+    touched any of them. Each package's MODS is around a megabyte, so archiving
+    it unconditionally would push ~350 MB of identical bytes to R2 every week
+    and append an audit row per package saying nothing had happened.
+    """
+    _mock_govinfo()
+    modified = datetime(2026, 8, 8, 17, 3, 57, tzinfo=UTC)
+    _load(conn, tally=SyncTally(), last_modified=modified)
+    conn.commit()
+
+    def package_rows() -> int:
+        return conn.execute(
+            text("SELECT count(*) FROM provenance WHERE entity = 'package'")
+        ).scalar_one()
+
+    assert package_rows() == 1
+
+    _load(conn, tally=SyncTally(), last_modified=modified)
+    conn.commit()
+    assert package_rows() == 1, "identical bytes must not produce a second archive"
+
+
+@respx.mock
 def test_speaker_lists_are_rewritten_even_when_text_is_skipped(conn: Connection) -> None:
     """A corrected attribution must be fixable without re-downloading the text."""
     _mock_govinfo()

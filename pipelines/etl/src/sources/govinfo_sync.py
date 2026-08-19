@@ -36,7 +36,7 @@ from common.logging import get_logger
 from loaders import repository as repo
 from loaders.sync_state import SyncTally, sync_run
 from provenance.record import ProvenanceEntry, record_provenance
-from provenance.snapshot import write_snapshot
+from provenance.snapshot import checksum, write_snapshot
 from sources import govinfo
 from sources.base import CongressNo, SourceError, SourceSystem
 from sources.congress_gov_sync import ensure_members
@@ -343,15 +343,19 @@ def load_package(
         ),
     )
 
-    r2_key = write_snapshot(source=SOURCE, entity="package", entity_id=package_id, result=mods)
-    record_provenance(
-        conn,
-        [
-            ProvenanceEntry(entity="package", entity_id=package_id, result=mods, r2_key=r2_key),
-            *entries,
-        ],
-        source=SOURCE,
-    )
+    # Archive the package metadata only when these exact bytes are not already
+    # archived. The weekly revision sweep revisits every package the Congress
+    # published to find out whether GPO touched any of them; without this check
+    # it would re-upload ~350 MB of identical MODS to R2 each week and append
+    # an audit row per package recording that nothing had changed.
+    if not repo.provenance_exists(
+        conn, entity="package", entity_id=package_id, checksum=checksum(mods.payload)
+    ):
+        r2_key = write_snapshot(source=SOURCE, entity="package", entity_id=package_id, result=mods)
+        entries.insert(
+            0, ProvenanceEntry(entity="package", entity_id=package_id, result=mods, r2_key=r2_key)
+        )
+    record_provenance(conn, entries, source=SOURCE)
     return {
         "granules": len(granules),
         "fetched": len(rows),

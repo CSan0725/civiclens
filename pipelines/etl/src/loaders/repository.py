@@ -177,6 +177,31 @@ def replace_speech_speakers(
     return bulk_upsert(conn, table, list(rows), conflict_columns=SPEECH_SPEAKER_KEY)
 
 
+def provenance_exists(conn: Connection, *, entity: str, entity_id: str, checksum: str) -> bool:
+    """Has this exact document already been archived for this entity?
+
+    `provenance.checksum` exists so an incremental run can notice an upstream
+    document is byte-identical and not do the work again. The one caller that
+    needs it is the weekly Congressional Record revision sweep, which revisits
+    ~350 packages to find out whether GPO changed any of them: without this it
+    would re-upload ~350 MB of unchanged MODS to R2 every week and append an
+    audit row per package saying nothing happened.
+
+    Served by `idx_provenance_entity`.
+    """
+    table = reflect_table("provenance")
+    stmt = (
+        select(table.c.id)
+        .where(
+            table.c.entity == entity,
+            table.c.entity_id == entity_id,
+            table.c.checksum == checksum,
+        )
+        .limit(1)
+    )
+    return conn.execute(stmt).first() is not None
+
+
 def find_bill_id(conn: Connection, *, congress_no: int, bill_type: str, number: int) -> int | None:
     """Look up a bill's surrogate id by natural key, or None."""
     table = reflect_table("bill")
