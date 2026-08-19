@@ -6,6 +6,12 @@
 > Clerk 백필 1990~2022 → **1990~2016**, Congress.gov 레이트리밋 문서상 5,000 → **실측 20,000 req/h**.
 > senate.gov는 개발 네트워크에서 WAF 403이지만 GitHub Actions 러너에서는 정상.
 > 근거: `docs/P1-source-verification.md`.
+>
+> **실측 정정 (P3, 2026-08-19):** Congressional Record 커버리지 1990s~ → **1994~**
+> (그 이전은 CRECB 제본판이고 권·부 단위 패키징이라 구조가 다르다). GovInfo
+> 레이트리밋 문서상(api.data.gov) 1,000 → **실측 36,000 req/h**. 그래뉼의 7.2%는
+> 화자가 둘 이상이라 `Speech`에 화자 칼럼 하나로는 담기지 않는다(마이그레이션 0005의
+> `speech_speaker`). 근거: `docs/P3-source-verification.md`.
 > 대상: 연방 의회(하원 435 + 상원 100) · 현직 + 지역구 + 최근 5년 후보자
 
 ---
@@ -23,7 +29,7 @@
 | **Congress.gov House Votes (베타)** | 하원 개별 표결 (**2017~, 115대+** — 실측) | 하원 의원별 찬반 | 상시 | member-votes 레벨. 상원 표결 엔드포인트는 없음(404) |
 | **senate.gov XML** | 상원 개별 표결 (1989~) | 상원 의원별 찬반 | 상시 | roll_call_lists / 개별 vote XML |
 | **clerk.house.gov XML** | 하원 표결 (**1990~2016**) | 2017년 이전 하원 표결 백필 | 정적 | Congress.gov 베타가 못 덮는 구간 |
-| **GovInfo API** (`api.govinfo.gov`) | Congressional Record(발언) 등 | 본회의/Extensions 발언 전문 | 상시 | 발언자·날짜·전문 granule |
+| **GovInfo API** (`api.govinfo.gov`) | Congressional Record(발언) 등 | 본회의/Extensions 발언 전문 | 상시 | 실측 36,000 req/h, API키, 패키지=1일·그래뉼=1발언. 화자는 MODS `<congMember bioGuideId>`(1994년까지 100% 존재) |
 | **FEC API / openFEC** (`api.open.fec.gov`) | 연방 후보·정치자금 | 최근 5년 후보자, 자금 | 상시 | Form 2(출마 신고)로 후보 명단 확보 |
 | **Census Geocoder + TIGER/CB** | 주소→지역구, 경계 폴리곤 | 지도·"내 지역구" | 연 1회+ | 재구획 반영, 의회별 버전 관리 필요 |
 
@@ -164,7 +170,7 @@ Provenance        # entity, field, source_url, retrieved_at, checksum
 | 하원 개별표결 | Congress.gov 베타 | **2017~** | 상시 | ★★★ 공식 |
 | 하원 개별표결(과거) | Clerk XML | **1990~2016** | 정적 | ★★★ 공식 |
 | 상원 개별표결 | senate.gov XML | 1989~ | 상시 | ★★★ 공식 |
-| 본회의 발언 | GovInfo(CR) | 1990s~ | 수일 지연 | ★★★ 공식 |
+| 본회의 발언 | GovInfo(CR) | **1994~**(실측) | **약 1일**(실측; 최초 게시) | ★★★ 공식 |
 | 의회 밖 발언 | 공식 성명/뉴스 | 실시간~ | 시간 | ★~★★ 링크 |
 | 후보·자금 | FEC | 수십년 | 상시 | ★★★ 공식 |
 | 지역구 경계 | Census | 회기별 | 회기 | ★★★ 공식 |
