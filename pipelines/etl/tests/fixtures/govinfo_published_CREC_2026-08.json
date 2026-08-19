@@ -1,0 +1,44 @@
+{
+ "count": 4,
+ "message": null,
+ "nextPage": null,
+ "previousPage": null,
+ "packages": [
+  {
+   "congress": "119",
+   "dateIssued": "2026-08-03",
+   "docClass": "CREC",
+   "lastModified": "2026-08-11T15:20:53Z",
+   "packageId": "CREC-2026-08-03",
+   "packageLink": "https://api.govinfo.gov/packages/CREC-2026-08-03/summary",
+   "title": "Congressional Record Volume 172, Issue 126, (August 3, 2026)"
+  },
+  {
+   "congress": "119",
+   "dateIssued": "2026-08-07",
+   "docClass": "CREC",
+   "lastModified": "2026-08-08T18:50:26Z",
+   "packageId": "CREC-2026-08-07",
+   "packageLink": "https://api.govinfo.gov/packages/CREC-2026-08-07/summary",
+   "title": "Congressional Record Volume 172, Issue 130, (August 7, 2026)"
+  },
+  {
+   "congress": "119",
+   "dateIssued": "2026-08-06",
+   "docClass": "CREC",
+   "lastModified": "2026-08-08T17:03:57Z",
+   "packageId": "CREC-2026-08-06",
+   "packageLink": "https://api.govinfo.gov/packages/CREC-2026-08-06/summary",
+   "title": "Congressional Record Volume 172, Issue 129, (August 6, 2026)"
+  },
+  {
+   "congress": "119",
+   "dateIssued": "2026-08-05",
+   "docClass": "CREC",
+   "lastModified": "2026-08-08T14:42:00Z",
+   "packageId": "CREC-2026-08-05",
+   "packageLink": "https://api.govinfo.gov/packages/CREC-2026-08-05/summary",
+   "title": "Congressional Record Volume 172, Issue 128, (August 5, 2026)"
+  }
+ ]
+}

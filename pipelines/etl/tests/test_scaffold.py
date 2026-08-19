@@ -42,10 +42,14 @@ def test_p2_collectors_are_implemented() -> None:
     assert clerk_xml.congress_and_session_for(1990) == (101, 2)
 
 
+def test_p3_collector_is_implemented() -> None:
+    """P3 replaced the GovInfo stub. tests/test_govinfo.py covers behaviour."""
+    assert govinfo.parse_package_list(b'{"packages": []}') == []
+    assert govinfo.resolve_speaker_bioguide({"speakers": []}) is None
+
+
 def test_later_milestone_collectors_are_still_stubs() -> None:
-    """P3/P4 sources stay declared-but-unimplemented until their session."""
-    with pytest.raises(NotImplementedError):
-        govinfo.fetch_granules("CREC-2025-01-01")
+    """P4 sources stay declared-but-unimplemented until their session."""
     with pytest.raises(NotImplementedError):
         fec.fetch_candidate_totals(fec_candidate_id="H0AL01234", cycle=2026)
 

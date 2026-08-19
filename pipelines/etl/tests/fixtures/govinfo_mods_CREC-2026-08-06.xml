@@ -1,0 +1,719 @@
+<mods xmlns="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1e6746562">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CREC</collectionCode>
+         <category>Proceedings of Congress and General Congressional Publications</category>
+         <waisDatabaseName>2026_record</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2026-08-08</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>Congressional Record</title>
+         <partNumber>Vol. 172, no. 129</partNumber>
+    </titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06.pdf</url>
+    </location>
+    <part type="issue">
+         <extent unit="pages">
+              <start>H5217</start>
+              <end>H5222</end>
+        </extent>
+         <extent unit="pages">
+              <start>S4483</start>
+              <end>S4530</end>
+        </extent>
+         <extent unit="pages">
+              <start>E775</start>
+              <end>E777</end>
+        </extent>
+         <extent unit="pages">
+              <start>D817</start>
+              <end>D822</end>
+        </extent>
+    </part>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2026-08-06</dateIssued>
+         <issuance>continuing</issuance>
+         <frequency authority="marcfrequency">daily</frequency>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>63 digital object pages</extent>
+    </physicalDescription>
+    <classification authority="sudocs">X 1.1/A:</classification>
+    <classification authority="sudocs">X/A.</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06</identifier>
+    <identifier type="local">P0b002ee1e6746562</identifier>
+    <identifier type="stock number">752-002-00000-2</identifier>
+    <identifier type="ILS system id">000568013</identifier>
+    <identifier type="former package identifier">CR06AU26</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2026-08-08</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2026-08-08</recordChangeDate>
+         <recordIdentifier source="DGPO">CREC-2026-08-06</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>CREC</docClass>
+         <accessId>CREC-2026-08-06</accessId>
+         <volume>172</volume>
+         <issue>129</issue>
+         <congress>119</congress>
+         <session>2</session>
+         <bookCount>1</bookCount>
+    </extension>
+    <relatedItem type="constituent" ID="id-CREC-2026-08-06-pt1-PgD817" xlink:href="https://www.govinfo.gov/metadata/granule/CREC-2026-08-06/CREC-2026-08-06-pt1-PgD817/mods.xml">
+         <titleInfo>
+              <title>Daily Digest/Senate</title>
+              <partName>Daily Digest</partName>
+        </titleInfo>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgD817.htm">
+              <identifier type="FDsys Unique ID">D09002ee1e6748648</identifier>
+        </relatedItem>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgD817.pdf">
+              <identifier type="FDsys Unique ID">D09002ee1e67486d7</identifier>
+        </relatedItem>
+         <identifier type="congressional record citation">172 Cong. Rec. D817</identifier>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgD817</identifier>
+         <identifier type="former granule identifier">CR06AU26-3</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgD817</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgD817.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgD817.htm</url>
+        </location>
+         <physicalDescription>
+              <extent>2 p.</extent>
+        </physicalDescription>
+         <part type="article">
+              <extent unit="pages">
+                   <start>D817</start>
+                   <end>D818</end>
+            </extent>
+        </part>
+         <name type="corporate">
+              <namePart>United States</namePart>
+              <namePart>Congress</namePart>
+              <namePart>Senate</namePart>
+              <namePart>Committee on Health, Education, Labor, and Pensions</namePart>
+              <role>
+                   <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+                   <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+            </role>
+              <description>Government Organization</description>
+        </name>
+         <identifier type="preferred citation">172 Cong. Rec. D817</identifier>
+         <extension>
+              <searchTitle>Daily Digest/Senate; Congressional Record Vol. 172, No. 129</searchTitle>
+              <granuleClass>DAILYDIGEST</granuleClass>
+              <accessId>CREC-2026-08-06-pt1-PgD817</accessId>
+              <subGranuleClass>DDSCHAMBER</subGranuleClass>
+              <pagePrefix>D</pagePrefix>
+              <bookNumber>1</bookNumber>
+              <chamber>SENATE</chamber>
+              <granuleDate>2026-08-06</granuleDate>
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6748" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6751" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6711" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6712" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6715" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6751" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6711" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6712" />
+              <amendment chamber="SENATE" congress="119" context="OTHER" number="6732" />
+              <bill congress="119" context="OTHER" number="209" type="SJRES" />
+              <bill congress="119" context="OTHER" number="211" type="SJRES" />
+              <bill congress="119" context="OTHER" number="434" type="S" />
+              <bill congress="119" context="OTHER" number="817" type="SRES" />
+              <bill congress="119" context="OTHER" number="832" type="SRES" />
+              <bill congress="119" context="OTHER" number="841" type="SRES" />
+              <bill congress="119" context="OTHER" number="833" type="SRES" />
+              <bill congress="119" context="OTHER" number="836" type="SRES" />
+              <bill congress="119" context="OTHER" number="837" type="SRES" />
+              <bill congress="119" context="OTHER" number="838" type="SRES" />
+              <bill congress="119" context="OTHER" number="839" type="SRES" />
+              <bill congress="119" context="OTHER" number="840" type="SRES" />
+              <bill congress="119" context="OTHER" number="1838" type="S" />
+              <bill congress="119" context="OTHER" number="2398" type="S" />
+              <bill congress="119" context="OTHER" number="2542" type="S" />
+              <bill congress="119" context="OTHER" number="3266" type="S" />
+              <bill congress="119" context="OTHER" number="4505" type="S" />
+              <bill congress="119" context="OTHER" number="4689" type="S" />
+              <bill congress="119" context="OTHER" number="5273" type="S" />
+              <bill congress="119" context="OTHER" number="5358" type="S" />
+              <bill congress="119" context="OTHER" number="5334" type="HR" />
+              <bill congress="119" context="OTHER" number="6500" type="HR" />
+              <congCommittee authorityId="sshr00" chamber="S" congress="119" type="S">
+                                        
+                   <name type="authority-standard">Committee on Health, Education, Labor, and Pensions</name>
+                                        
+                   <name type="authority-short">Health, Education, Labor, and Pensions</name>
+                                    
+            </congCommittee>
+              <USCode title="26" />
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Joint Resolution 209 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S.J. Res. 209</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Joint Resolution 211 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S.J. Res. 211</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 434 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 434</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 817 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 817</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 832 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 832</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 841 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 841</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 833 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 833</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 836 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 836</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 837 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 837</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 838 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 838</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 839 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 839</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Resolution 840 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. Res. 840</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 1838 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 1838</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 2398 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 2398</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 2542 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 2542</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 3266 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 3266</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 4505 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 4505</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 4689 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 4689</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 5273 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 5273</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Bill 5358 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">S. 5358</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States House Bill 5334 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">H.R. 5334</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States House Bill 6500 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="Congressional Bill citation">H.R. 6500</identifier>
+              <extension>
+                   <congress>119</congress>
+                   <context>OTHER</context>
+            </extension>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Code</title>
+            </titleInfo>
+        </relatedItem>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6748 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6748</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6751 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6751</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6711 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6711</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6712 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6712</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6715 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6715</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6751 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6751</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6711 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6711</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6712 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6712</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+         <relatedItem type="isReferencedBy">
+              <titleInfo>
+                   <title>United States Senate Amendment Number 6732 (119th Congress)</title>
+            </titleInfo>
+              <identifier type="congressional amendment citation">Senate Amendment No. 6732</identifier>
+        </relatedItem>
+         <extension>
+              <congress>119</congress>
+              <chamber>SENATE</chamber>
+        </extension>
+    </relatedItem>
+    <relatedItem type="constituent" ID="id-CREC-2026-08-06-pt1-PgE775-2" xlink:href="https://www.govinfo.gov/metadata/granule/CREC-2026-08-06/CREC-2026-08-06-pt1-PgE775-2/mods.xml">
+         <titleInfo>
+              <title>INTRODUCTION OF THE PROTECTING INDEPENDENT CONTRACTORS FROM DISCRIMINATION ACT</title>
+              <partName>Extensions of Remarks</partName>
+        </titleInfo>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgE775-2.htm">
+              <identifier type="FDsys Unique ID">D09002ee1e674864e</identifier>
+        </relatedItem>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgE775-2.pdf">
+              <identifier type="FDsys Unique ID">D09002ee1e67486dd</identifier>
+        </relatedItem>
+         <identifier type="congressional record citation">172 Cong. Rec. E775</identifier>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgE775-2</identifier>
+         <identifier type="former granule identifier">CR06AU26-12</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgE775-2</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgE775-2.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgE775-2.htm</url>
+        </location>
+         <physicalDescription>
+              <extent>1 p.</extent>
+        </physicalDescription>
+         <part type="article">
+              <extent unit="pages">
+                   <start>E775</start>
+                   <end>E775</end>
+            </extent>
+        </part>
+         <name type="personal">
+              <namePart>Eleanor Holmes Norton</namePart>
+              <affiliation>United States House of Representatives</affiliation>
+              <role>
+                   <roleTerm type="text">speaking</roleTerm>
+            </role>
+              <description>United States Congress Member</description>
+        </name>
+         <identifier type="preferred citation">172 Cong. Rec. E775</identifier>
+         <extension>
+              <searchTitle>INTRODUCTION OF THE PROTECTING INDEPENDENT CONTRACTORS FROM DISCRIMINATION ACT; Congressional Record Vol. 172, No. 129</searchTitle>
+              <granuleClass>EXTENSIONS</granuleClass>
+              <accessId>CREC-2026-08-06-pt1-PgE775-2</accessId>
+              <subGranuleClass>ALLOTHER</subGranuleClass>
+              <pagePrefix>E</pagePrefix>
+              <bookNumber>1</bookNumber>
+              <chamber>HOUSE</chamber>
+              <granuleDate>2026-08-06</granuleDate>
+              <congMember bioGuideId="N000147" chamber="H" congress="119" party="D" role="SPEAKING" state="DC">
+                                        
+                   <name type="parsed">Ms. NORTON</name>
+                                        
+                   <name type="authority-fnf">Eleanor Holmes Norton</name>
+                                        
+                   <name type="authority-lnf">Norton, Eleanor Holmes</name>
+                                        
+                   <name type="authority-other">Eleanor Norton</name>
+                                    
+            </congMember>
+        </extension>
+    </relatedItem>
+    <relatedItem type="constituent" ID="id-CREC-2026-08-06-pt1-PgH-FrontMatter-5" xlink:href="https://www.govinfo.gov/metadata/granule/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH-FrontMatter-5/mods.xml">
+         <titleInfo>
+              <title>House of Representatives</title>
+              <partName>House</partName>
+        </titleInfo>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgH-FrontMatter-5.htm">
+              <identifier type="FDsys Unique ID">D09002ee1e674865b</identifier>
+        </relatedItem>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgH-FrontMatter-5.pdf">
+              <identifier type="FDsys Unique ID">D09002ee1e67486ee</identifier>
+        </relatedItem>
+         <identifier type="congressional record citation">172 Cong. Rec. H5217</identifier>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH-FrontMatter-5</identifier>
+         <identifier type="former granule identifier">CR06AU26-26</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH-FrontMatter-5</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgH-FrontMatter-5.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgH-FrontMatter-5.htm</url>
+        </location>
+         <physicalDescription>
+              <extent>1 p.</extent>
+        </physicalDescription>
+         <part type="article">
+              <extent unit="pages">
+                   <start>H5217</start>
+                   <end>H5217</end>
+            </extent>
+        </part>
+         <identifier type="preferred citation">172 Cong. Rec. H5217</identifier>
+         <extension>
+              <searchTitle>House of Representatives; Congressional Record Vol. 172, No. 129</searchTitle>
+              <granuleClass>HOUSE</granuleClass>
+              <accessId>CREC-2026-08-06-pt1-PgH-FrontMatter-5</accessId>
+              <subGranuleClass>FRONTMATTER</subGranuleClass>
+              <pagePrefix>H</pagePrefix>
+              <bookNumber>1</bookNumber>
+              <chamber>HOUSE</chamber>
+              <granuleDate>2026-08-06</granuleDate>
+        </extension>
+    </relatedItem>
+    <relatedItem type="constituent" ID="id-CREC-2026-08-06-pt1-PgH5217-3" xlink:href="https://www.govinfo.gov/metadata/granule/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH5217-3/mods.xml">
+         <titleInfo>
+              <title>PRAYER</title>
+              <partName>House</partName>
+        </titleInfo>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgH5217-3.htm">
+              <identifier type="FDsys Unique ID">D09002ee1e674865e</identifier>
+        </relatedItem>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgH5217-3.pdf">
+              <identifier type="FDsys Unique ID">D09002ee1e67486f1</identifier>
+        </relatedItem>
+         <identifier type="congressional record citation">172 Cong. Rec. H5217</identifier>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH5217-3</identifier>
+         <identifier type="former granule identifier">CR06AU26-29</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgH5217-3</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgH5217-3.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgH5217-3.htm</url>
+        </location>
+         <physicalDescription>
+              <extent>1 p.</extent>
+        </physicalDescription>
+         <part type="article">
+              <extent unit="pages">
+                   <start>H5217</start>
+                   <end>H5217</end>
+            </extent>
+        </part>
+         <identifier type="preferred citation">172 Cong. Rec. H5217</identifier>
+         <extension>
+              <searchTitle>PRAYER; Congressional Record Vol. 172, No. 129</searchTitle>
+              <granuleClass>HOUSE</granuleClass>
+              <accessId>CREC-2026-08-06-pt1-PgH5217-3</accessId>
+              <subGranuleClass>PRAYER</subGranuleClass>
+              <pagePrefix>H</pagePrefix>
+              <bookNumber>1</bookNumber>
+              <chamber>HOUSE</chamber>
+              <granuleDate>2026-08-06</granuleDate>
+              <time from="09:00:00" to="09:00:00" />
+        </extension>
+    </relatedItem>
+    <relatedItem type="constituent" ID="id-CREC-2026-08-06-pt1-PgS4483-8" xlink:href="https://www.govinfo.gov/metadata/granule/CREC-2026-08-06/CREC-2026-08-06-pt1-PgS4483-8/mods.xml">
+         <titleInfo>
+              <title>Republican Party Accomplishments (Executive Session)</title>
+              <partName>Senate</partName>
+        </titleInfo>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgS4483-8.htm">
+              <identifier type="FDsys Unique ID">D09002ee1e674868c</identifier>
+        </relatedItem>
+         <relatedItem type="otherFormat" xlink:href="https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgS4483-8.pdf">
+              <identifier type="FDsys Unique ID">D09002ee1e6748722</identifier>
+        </relatedItem>
+         <identifier type="congressional record citation">172 Cong. Rec. S4483</identifier>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgS4483-8</identifier>
+         <identifier type="former granule identifier">CR06AU26-76</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CREC-2026-08-06/CREC-2026-08-06-pt1-PgS4483-8</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/pdf/CREC-2026-08-06-pt1-PgS4483-8.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CREC-2026-08-06/html/CREC-2026-08-06-pt1-PgS4483-8.htm</url>
+        </location>
+         <physicalDescription>
+              <extent>2 p.</extent>
+        </physicalDescription>
+         <part type="article">
+              <extent unit="pages">
+                   <start>S4483</start>
+                   <end>S4484</end>
+            </extent>
+        </part>
+         <name type="personal">
+              <namePart>John Barrasso</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">speaking</roleTerm>
+            </role>
+              <description>United States Congress Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Charles E. Schumer</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">speaking</roleTerm>
+            </role>
+              <description>United States Congress Member</description>
+        </name>
+         <identifier type="preferred citation">172 Cong. Rec. S4483</identifier>
+         <extension>
+              <searchTitle>Republican Party Accomplishments (Executive Session); Congressional Record Vol. 172, No. 129</searchTitle>
+              <granuleClass>SENATE</granuleClass>
+              <accessId>CREC-2026-08-06-pt1-PgS4483-8</accessId>
+              <subGranuleClass>SEXECSESSION</subGranuleClass>
+              <pagePrefix>S</pagePrefix>
+              <bookNumber>1</bookNumber>
+              <chamber>SENATE</chamber>
+              <granuleDate>2026-08-06</granuleDate>
+              <congMember bioGuideId="B001261" chamber="S" congress="119" party="R" role="SPEAKING" state="WY">
+                                        
+                   <name type="parsed">Mr. BARRASSO</name>
+                                        
+                   <name type="authority-fnf">John Barrasso</name>
+                                        
+                   <name type="authority-lnf">Barrasso, John</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="S000148" chamber="S" congress="119" party="D" role="SPEAKING" state="NY">
+                                        
+                   <name type="parsed">Mr. SCHUMER</name>
+                                        
+                   <name type="authority-fnf">Charles E. Schumer</name>
+                                        
+                   <name type="authority-lnf">Schumer, Charles E.</name>
+                                        
+                   <name type="authority-other">Charles Schumer</name>
+                                    
+            </congMember>
+        </extension>
+    </relatedItem>
+    </mods>
