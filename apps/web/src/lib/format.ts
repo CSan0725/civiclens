@@ -79,3 +79,24 @@ export function formatSeat(
   }
   return `${state}-${district === 0 ? "At Large" : district}`;
 }
+
+/**
+ * "Senate", or "House · Extensions of Remarks" — chamber and Congressional
+ * Record section, without saying the same word twice.
+ *
+ * For House and Senate granules the section label IS the chamber label, so
+ * rendering both reads as a bug ("Senate · Senate"). Extensions of Remarks is
+ * the case that needs both: it is a House section, and a reader looking at a
+ * member's statements should be able to tell a floor remark from one inserted
+ * into the Extensions.
+ */
+export function formatSpeechContext(
+  chamber?: string | null,
+  section?: string | null,
+): string {
+  const chamberLabel = formatChamber(chamber);
+  if (!section) return chamberLabel;
+  if (section === chamberLabel) return chamberLabel;
+  if (chamberLabel === "—") return section;
+  return `${chamberLabel} · ${section}`;
+}

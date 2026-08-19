@@ -25,6 +25,7 @@ import {
   formatChamber,
   formatDate,
   formatSeat,
+  formatSpeechContext,
   ordinal,
 } from "@/lib/format";
 
@@ -409,8 +410,8 @@ async function Speeches({ bioguide }: { bioguide: string }) {
           <li key={s.id} className="space-y-1.5 py-3">
             <p className="font-medium leading-snug">{s.title ?? "Floor statement"}</p>
             <p className="text-xs text-muted-foreground" data-numeric>
-              {formatChamber(s.chamber)}
-              {s.section ? ` · ${s.section}` : null} · {formatDate(s.speechDate)}
+              {formatSpeechContext(s.chamber, s.section)} ·{" "}
+              {formatDate(s.speechDate)}
               {s.wordCount ? ` · ${s.wordCount.toLocaleString("en-US")} words` : null}
               {/* A colloquy is one granule shared by several members. Saying so
                   keeps the excerpt below from reading as this member's words

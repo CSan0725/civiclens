@@ -16,7 +16,14 @@ import {
   getSampleMembers,
   getWithheldVoteCount,
 } from "@/db/queries";
-import { billHref, formatBillNumber, formatChamber, formatDate, formatSeat } from "@/lib/format";
+import {
+  billHref,
+  formatBillNumber,
+  formatChamber,
+  formatDate,
+  formatSeat,
+  formatSpeechContext,
+} from "@/lib/format";
 
 // Rendered on demand, not prerendered at build time.
 //
@@ -217,8 +224,7 @@ async function RecentSpeeches() {
               <article key={s.id} className="space-y-1">
                 <p className="font-medium">{s.title ?? "Floor statement"}</p>
                 <p className="text-xs text-muted-foreground" data-numeric>
-                  {formatChamber(s.chamber)}
-                  {s.section ? ` · ${s.section}` : null} ·{" "}
+                  {formatSpeechContext(s.chamber, s.section)} ·{" "}
                   {formatDate(s.speechDate)}
                 </p>
                 <SourceLink href={s.granuleUrl} label="View on GovInfo" />

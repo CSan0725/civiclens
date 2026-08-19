@@ -7,7 +7,7 @@ import { PartyChip } from "@/components/party-chip";
 import { EmptyState, SourceLink } from "@/components/provenance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSpeechCoverage, searchSpeeches, type SpeechSearchHit } from "@/db/queries";
-import { formatChamber, formatDate } from "@/lib/format";
+import { formatDate, formatSpeechContext } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Speeches" };
 
@@ -216,8 +216,8 @@ function SpeechResult({ hit }: { hit: SpeechSearchHit }) {
       </div>
 
       <p className="text-xs text-muted-foreground" data-numeric>
-        {formatChamber(hit.chamber)}
-        {hit.section ? ` · ${hit.section}` : null} · {formatDate(hit.speechDate)}
+        {formatSpeechContext(hit.chamber, hit.section)} ·{" "}
+        {formatDate(hit.speechDate)}
         {hit.wordCount ? ` · ${hit.wordCount.toLocaleString("en-US")} words` : null}
       </p>
 
