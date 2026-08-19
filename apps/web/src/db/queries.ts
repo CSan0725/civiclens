@@ -531,13 +531,14 @@ export async function getSpeechCoverage() {
     earliest: string | null;
     latest: string | null;
   }>(sql`
-    select count(*) as total,
-           count(*) filter (
-             where exists (select 1 from speech_speaker x where x.speech_id = speech.id)
-           ) as attributed,
-           min(speech_date) as earliest,
-           max(speech_date) as latest
-      from speech
+    select (select count(*) from speech) as total,
+           -- Counted from speech_speaker's primary key rather than as a
+           -- correlated EXISTS over speech: this runs on every /speeches load
+           -- and on every profile Speeches tab, and (speech_id, bioguide_id)
+           -- serves it as an index-only scan.
+           (select count(distinct speech_id) from speech_speaker) as attributed,
+           (select min(speech_date) from speech) as earliest,
+           (select max(speech_date) from speech) as latest
   `);
   const row = result.rows.at(0);
   return {
