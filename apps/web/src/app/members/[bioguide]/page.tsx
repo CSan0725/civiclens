@@ -12,10 +12,12 @@ import {
   getMember,
   getMemberCommittees,
   getMemberPositionCounts,
+  getMemberSpeechCount,
   getMemberSpeeches,
   getMemberSponsorships,
   getMemberTerms,
   getMemberVotes,
+  getSpeechCoverage,
 } from "@/db/queries";
 import {
   billHref,
@@ -368,28 +370,66 @@ async function VotingHistory({ bioguide }: { bioguide: string }) {
 }
 
 async function Speeches({ bioguide }: { bioguide: string }) {
-  const rows = await getMemberSpeeches(bioguide);
+  const [rows, total, coverage] = await Promise.all([
+    getMemberSpeeches(bioguide),
+    getMemberSpeechCount(bioguide),
+    getSpeechCoverage(),
+  ]);
+
   if (rows.length === 0) {
-    return (
+    // Two different emptinesses, and conflating them would be a lie in either
+    // direction: nothing collected at all, versus collected and this member
+    // does not appear in the range.
+    return coverage.total === 0 ? (
       <EmptyState
         title="Speech data has not been collected yet"
-        detail="Floor statements come from the Congressional Record via GovInfo, a later milestone (P3). This tab is empty because nothing has been collected — not because this member has not spoken. Note that even once collected, the Congressional Record covers floor statements only, not interviews or press releases."
+        detail="Floor statements come from the Congressional Record via GovInfo. This tab is empty because nothing has been collected — not because this member has not spoken."
+      />
+    ) : (
+      <EmptyState
+        title="No statement by this member in the collected range"
+        detail={`The Congressional Record is collected for ${formatDate(coverage.earliest)} – ${formatDate(coverage.latest)}. This member is not recorded as speaking in it. Statements outside that range have not been collected, and the Record covers floor proceedings only — not interviews or press releases.`}
       />
     );
   }
+
   return (
-    <ul className="divide-y">
-      {rows.map((s) => (
-        <li key={s.id} className="space-y-1 py-3">
-          <p className="font-medium">{s.title ?? "Floor statement"}</p>
-          <p className="text-xs text-muted-foreground" data-numeric>
-            {formatChamber(s.chamber)}
-            {s.section ? ` · ${s.section}` : null} · {formatDate(s.speechDate)}
-          </p>
-          <SourceLink href={s.granuleUrl} label="View on GovInfo" />
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        <span data-numeric>{total.toLocaleString("en-US")}</span> statement
+        {total === 1 ? "" : "s"} in the Congressional Record between{" "}
+        {formatDate(coverage.earliest)} and {formatDate(coverage.latest)}
+        {rows.length < total ? `; the ${rows.length} most recent are shown` : null}.
+        Floor proceedings and Extensions of Remarks only — the Record does not
+        carry interviews, press releases or social posts.
+      </p>
+
+      <ul className="divide-y">
+        {rows.map((s) => (
+          <li key={s.id} className="space-y-1.5 py-3">
+            <p className="font-medium leading-snug">{s.title ?? "Floor statement"}</p>
+            <p className="text-xs text-muted-foreground" data-numeric>
+              {formatChamber(s.chamber)}
+              {s.section ? ` · ${s.section}` : null} · {formatDate(s.speechDate)}
+              {s.wordCount ? ` · ${s.wordCount.toLocaleString("en-US")} words` : null}
+              {/* A colloquy is one granule shared by several members. Saying so
+                  keeps the excerpt below from reading as this member's words
+                  when the opening line may be a colleague's. */}
+              {s.coSpeakers > 0
+                ? ` · with ${s.coSpeakers} other speaker${s.coSpeakers === 1 ? "" : "s"}`
+                : null}
+            </p>
+            {s.excerpt ? (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {s.excerpt}
+                {s.excerpt.length >= 320 ? "\u2026" : null}
+              </p>
+            ) : null}
+            <SourceLink href={s.granuleUrl} label="View original on GovInfo" />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

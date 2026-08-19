@@ -209,18 +209,28 @@ async function RecentSpeeches() {
         {speeches.length === 0 ? (
           <EmptyState
             title="Speech data has not been collected yet"
-            detail="Floor statements come from the Congressional Record via GovInfo, which is a later milestone (P3). This section is empty because nothing has been collected — not because these members did not speak."
+            detail="Floor statements come from the Congressional Record via GovInfo. This section is empty because nothing has been collected — not because these members did not speak."
           />
         ) : (
-          speeches.map((s) => (
-            <article key={s.id} className="space-y-1">
-              <p className="font-medium">{s.title ?? "Floor statement"}</p>
-              <p className="text-xs text-muted-foreground" data-numeric>
-                {formatChamber(s.chamber)} · {formatDate(s.speechDate)}
-              </p>
-              <SourceLink href={s.granuleUrl} label="View on GovInfo" />
-            </article>
-          ))
+          <>
+            {speeches.map((s) => (
+              <article key={s.id} className="space-y-1">
+                <p className="font-medium">{s.title ?? "Floor statement"}</p>
+                <p className="text-xs text-muted-foreground" data-numeric>
+                  {formatChamber(s.chamber)}
+                  {s.section ? ` · ${s.section}` : null} ·{" "}
+                  {formatDate(s.speechDate)}
+                </p>
+                <SourceLink href={s.granuleUrl} label="View on GovInfo" />
+              </article>
+            ))}
+            <Link
+              href="/speeches"
+              className="inline-block text-sm underline-offset-2 hover:underline"
+            >
+              Search all speeches →
+            </Link>
+          </>
         )}
       </CardContent>
     </Card>
