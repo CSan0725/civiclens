@@ -211,48 +211,35 @@ def _collect_packages(
 
     for package in packages:
         package_id = package["package_id"]
-        for attempt in range(1, DB_RETRIES + 2):
-            try:
-                counts = load_package(
-                    conn,
-                    fetcher,
-                    package_id=package_id,
-                    last_modified=package.get("last_modified"),
-                    tally=tally,
-                    skip_existing=skip_existing,
-                    member_fetcher=member_fetcher,
-                    include_digest=include_digest,
-                )
-                conn.commit()
-                granules_seen += counts["granules"]
-                unmatched += counts["unattributed"]
-                break
-            except SourceError as exc:
-                _discard_transaction(conn)
-                skipped.append(package_id)
-                log.warning("speeches.skipped", package=package_id, error=str(exc))
-                break
-            except OperationalError as exc:
-                # A serverless database drops connections: Neon closes an
-                # idle-in-transaction session after five minutes, and a
-                # scale-to-zero instance can go away between packages. Over a
-                # six-hour backfill that is a matter of when, not whether, so
-                # one dead socket must cost one package rather than the run.
-                # The already-committed packages are untouched, and the retry
-                # re-reads what is stored, so nothing is collected twice.
-                _discard_transaction(conn)
-                conn.invalidate()
-                if attempt > DB_RETRIES:
-                    skipped.append(package_id)
-                    log.error("speeches.db_failed", package=package_id, error=str(exc))
-                    break
-                log.warning(
-                    "speeches.db_reconnecting",
-                    package=package_id,
-                    attempt=attempt,
-                    error=str(exc)[:200],
-                )
-                time.sleep(DB_RETRY_BACKOFF_SECONDS * attempt)
+        try:
+            counts = load_package(
+                conn,
+                fetcher,
+                package_id=package_id,
+                last_modified=package.get("last_modified"),
+                tally=tally,
+                skip_existing=skip_existing,
+                member_fetcher=member_fetcher,
+                include_digest=include_digest,
+            )
+            conn.commit()
+            granules_seen += counts["granules"]
+            unmatched += counts["unattributed"]
+        except SourceError as exc:
+            _discard_transaction(conn)
+            skipped.append(package_id)
+            log.warning("speeches.skipped", package=package_id, error=str(exc))
+        except OperationalError as exc:
+            # Reconnection is handled where it can actually help, inside the
+            # write phase (`_write_with_reconnect`). Reaching here means the
+            # database was still unreachable after those retries, or that the
+            # short read phase failed. Either way it costs this package and not
+            # the run: everything already committed stands, and re-running
+            # re-reads what is stored rather than re-collecting it.
+            _discard_transaction(conn)
+            conn.invalidate()
+            skipped.append(package_id)
+            log.error("speeches.db_failed", package=package_id, error=str(exc)[:200])
 
     # The speaker-match rate is the headline quality number for FR-S2, and CI
     # logs expire — so it goes in the database, where the freshness bar and any
@@ -307,13 +294,22 @@ def load_package(
     Split out from the loop so tests can drive it straight from captured
     fixtures with no network beyond the respx mock.
 
-    THE PHASE SPLIT IS LOad-BEARING, not tidiness. A package needs one HTTP
-    request per granule — up to 315 of them, minutes of network — and an
-    earlier version of this function did that work with the read transaction
-    still open. Neon sets `idle_in_transaction_session_timeout` to 5 minutes
-    and killed the session 43 minutes into the 119th backfill. So: read what is
-    already stored, END that transaction, fetch with no transaction open, and
-    only then write. Nothing here may hold a transaction across a network call.
+    THE PHASE SPLIT IS LOAD-BEARING, not tidiness. A package needs one HTTP
+    request per granule — up to 315 of them, minutes of network. Two separate
+    failures during the 119th backfill came out of getting this wrong:
+
+      * Holding the read transaction open across the fetch left the session
+        idle-in-transaction, and Neon closes those after 5 minutes.
+      * Ending the transaction was not enough. Neon's compute SUSPENDS after
+        about five minutes with no query at all, and kills the connection when
+        it does — `AdminShutdown: terminating connection due to administrator
+        command`. So the connection is very likely dead by the time the fetch
+        finishes, transaction or no transaction.
+
+    Hence: read what is stored and end that transaction, fetch with nothing
+    open, then deliberately DISCARD the connection and write on a fresh one.
+    The write is retried on its own, without re-fetching — see
+    `_write_package` for why that distinction is the whole fix.
     """
     mods = govinfo.fetch_package_mods(fetcher, package_id)
     granules = govinfo.parse_granules(mods.payload, include_digest=include_digest)
@@ -359,6 +355,89 @@ def load_package(
     )
 
     # --- write phase ------------------------------------------------------
+    # The connection has just sat idle for the whole fetch phase. On Neon that
+    # means the compute may have suspended and taken the socket with it, so
+    # discard it deliberately rather than discovering it through an exception
+    # on the first write. A reconnect costs ~100 ms against several minutes of
+    # fetching, and it makes the healthy path deterministic.
+    if fetched:
+        conn.invalidate()
+
+    return _write_with_reconnect(
+        conn,
+        package_id=package_id,
+        granules=granules,
+        fetched=fetched,
+        mods=mods,
+        r2_key=r2_key,
+        package_archived=package_archived,
+        tally=tally,
+        member_fetcher=member_fetcher,
+    )
+
+
+def _write_with_reconnect(conn: Connection, **kwargs: Any) -> dict[str, int]:
+    """Run the write phase, reconnecting and retrying if the database drops us.
+
+    Retries THIS and not the whole package, which is the difference between a
+    retry that can succeed and one that cannot. Nothing here is re-fetched, so
+    an attempt is seconds long and does not recreate the idle window that
+    caused the drop.
+
+    A tally that has already counted rows from a failed attempt would
+    double-count them on the retry, so the caller's tally is only merged in
+    once an attempt has committed nothing-left-to-fail.
+    """
+    package_id = kwargs["package_id"]
+    outer_tally: SyncTally = kwargs.pop("tally")
+
+    for attempt in range(1, DB_RETRIES + 2):
+        attempt_tally = SyncTally()
+        try:
+            counts = _write_package(conn, tally=attempt_tally, **kwargs)
+        except OperationalError as exc:
+            _discard_transaction(conn)
+            conn.invalidate()
+            if attempt > DB_RETRIES:
+                raise
+            log.warning(
+                "speeches.db_reconnecting",
+                package=package_id,
+                attempt=attempt,
+                error=str(exc)[:200],
+            )
+            time.sleep(DB_RETRY_BACKOFF_SECONDS * attempt)
+            continue
+        for table, rows in attempt_tally.detail.items():
+            outer_tally.add(table, rows)
+        if attempt_tally.data_current_as_of is not None:
+            outer_tally.observe(attempt_tally.data_current_as_of)
+        return counts
+
+    raise AssertionError("unreachable: the loop either returns or raises")
+
+
+def _write_package(
+    conn: Connection,
+    *,
+    package_id: str,
+    granules: list[dict[str, Any]],
+    fetched: list[tuple[dict[str, Any], Any]],
+    mods: Any,
+    r2_key: str | None,
+    package_archived: bool,
+    tally: SyncTally,
+    member_fetcher: Fetcher | None,
+) -> dict[str, int]:
+    """Write one package's granules. Retried on its own, WITHOUT re-fetching.
+
+    This split is the fix for the second failure of the 119th backfill, and the
+    reason a plain retry around the whole package could not work: retrying
+    re-ran the six-minute fetch, which reproduced exactly the idle window that
+    had killed the connection, so every attempt failed at the same query. The
+    expensive half is idempotent but slow; the failing half is cheap. Only the
+    cheap half is worth retrying, and on a fresh connection it takes seconds.
+    """
     # Every speaker in the package resolved in one pass: `ensure_members` is a
     # Congress.gov round trip per unknown member, and the same handful of
     # speakers recur across a sitting's granules. It is bounded — usually zero

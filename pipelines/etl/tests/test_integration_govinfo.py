@@ -22,10 +22,12 @@ import httpx
 import pytest
 import respx
 from sqlalchemy import Connection, Engine, create_engine, text
+from sqlalchemy.exc import OperationalError
 
 from conftest import load_bytes
 from loaders.sync_state import SyncTally
 from sources import govinfo as govinfo_module
+from sources import govinfo_sync
 
 TEST_DB_URL = os.environ.get("CIVICLENS_TEST_DATABASE_URL")
 
@@ -367,6 +369,61 @@ def test_no_transaction_is_open_while_granule_text_is_fetched(conn: Connection) 
         f"{sum(seen)} of {len(seen)} granule fetches ran inside an open "
         "transaction; Neon kills those after five minutes"
     )
+
+
+@respx.mock
+def test_a_dropped_connection_is_retried_without_refetching(conn: Connection) -> None:
+    """The second failure of the 119th backfill, and why the first fix missed it.
+
+    Neon suspends an idle compute after ~5 minutes and kills the connection
+    when it does, so a package whose fetch phase runs longer than that arrives
+    at the write phase holding a dead socket. Retrying the WHOLE package then
+    re-runs the same multi-minute fetch, recreates the same idle window, and
+    fails at the same query — which is exactly what happened, three attempts
+    deep, on CREC-2026-04-22.
+
+    So the property under test is not "it retries", it is "it retries WITHOUT
+    re-fetching". One simulated drop on the first write, and the granule bodies
+    must be fetched exactly once across both attempts.
+    """
+    _mock_govinfo()
+
+    fetches: list[str] = []
+    real_fetch = govinfo_module.fetch_granule_text
+
+    def counting_fetch(*args: object, **kwargs: object) -> object:
+        fetches.append(str(kwargs.get("granule_id", "")))
+        return real_fetch(*args, **kwargs)  # type: ignore[arg-type]
+
+    real_resolve = govinfo_sync._resolve_members
+    calls = {"n": 0}
+
+    def flaky_resolve(*args: object, **kwargs: object) -> object:
+        # The first query of the write phase — exactly where the live failure
+        # surfaced, on `SELECT member.bioguide_id`.
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OperationalError("SELECT member", {}, Exception("server closed"))
+        return real_resolve(*args, **kwargs)  # type: ignore[arg-type]
+
+    govinfo_module.fetch_granule_text = counting_fetch  # type: ignore[assignment]
+    govinfo_sync._resolve_members = flaky_resolve  # type: ignore[assignment]
+    try:
+        counts = _load(conn, tally=SyncTally())
+        conn.commit()
+    finally:
+        govinfo_module.fetch_granule_text = real_fetch  # type: ignore[assignment]
+        govinfo_sync._resolve_members = real_resolve  # type: ignore[assignment]
+
+    assert calls["n"] == 2, "the write phase should have been retried exactly once"
+    assert len(fetches) == len(set(fetches)) == 3, (
+        f"each granule body must be fetched once; got {len(fetches)} fetches "
+        "— the retry is re-running the expensive phase again"
+    )
+    assert counts["fetched"] == 3
+
+    stored = conn.execute(text("SELECT count(*) FROM speech")).scalar_one()
+    assert stored == 3, "the retry must land the package, not half of it"
 
 
 @respx.mock
