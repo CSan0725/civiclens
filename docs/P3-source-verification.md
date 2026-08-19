@@ -357,11 +357,17 @@ account for 4.1 MB between them. Sizing from pages rather than from a granule
 average is what keeps those days from being either ignored or extrapolated
 across the whole Congress.
 
-On disk this is less than 329 MB — Postgres TOASTs and pglz-compresses `text`,
-and English prose compresses roughly 3×; against that, the GIN index on
-`search_tsv` adds its own weight. Call it a few hundred MB all told, which is
-comfortably inside Neon's metered storage at $0.35/GB-month and would not fit
-the 0.5 GB free tier with much room to spare.
+On disk, **measured** rather than reasoned about. Loading 12 packages into a
+real Postgres gave 1,735 granules occupying 10,032 kB in `speech` (table, TOAST
+and every index, including the GIN one) plus 232 kB in `speech_speaker` —
+**6,058 bytes per granule**. TOAST compression barely engages, and the reason is
+the size distribution rather than the compressor: values under 2 kB are stored
+inline uncompressed, and the median granule is 1.8 kB.
+
+At ~49,000 collected granules that is **~285 MB of database**, against ~329 MB
+of raw text — so the indexes very nearly pay for what compression saves. Fine on
+Neon's metered storage at $0.35/GB-month; it would not fit the 0.5 GB free tier
+with any room to spare.
 
 **Time.** Collection measured at ~4.2 requests/second sustained with no added
 delay (1,576 requests in 375 s), well under the 36,000/hour ceiling. One
@@ -416,7 +422,53 @@ separately.** This follows P2's pattern and the measurements support it:
 
 ## What the run found
 
-_Filled in from the actual 119th backfill; see the commit that adds it._
+### The 12-package slice (2026-08-19) — 1,735 granules
+
+Run against a local Postgres before committing to the full backfill, over the
+first eleven sittings of the 119th Congress plus two from August 2026:
+
+| | |
+|---|---|
+| Granules stored | **1,735** |
+| Characters of text | 6,208,861 |
+| Words | 894,534 |
+| Distinct members attributed | 329 |
+| `speech` + `speech_speaker` on disk | 10,264 kB |
+
+Attribution on this slice:
+
+| | Granules | Attributed | Rate |
+|---|---|---|---|
+| `speech.bioguide_id` (exactly one speaker) | 1,735 | 653 | 37.6% |
+| `speech_speaker` (any speaker) | 1,735 | 709 | **40.9%** |
+| Extensions of Remarks | 187 | 180 | 96.3% |
+| Senate | 489 | 248 | 50.7% |
+| House | 1,059 | 225 | 21.2% |
+
+Two things to read carefully here.
+
+**The 3.3-point gap between the two rows is the colloquies** — 56 granules that
+name several speakers and therefore hold NULL in `speech.bioguide_id` while
+appearing in full in `speech_speaker`. That is migration 0005 doing exactly the
+job it exists for; without it those 56 statements would be missing from 100-odd
+member profiles.
+
+**40.9% is below the 52.8% the 17-day probe sample measured, and the slice is
+why.** `--limit 12` takes the first packages by issue date, which here means the
+opening days of a Congress — swearing-in, the election of the Speaker,
+organising resolutions, and the rules package — plus two August pro-forma
+sittings. Both ends of that range are unusually procedural. It is not a
+regression against the probe; it is a biased eleven days, and the number to
+compare against is the one the full backfill produces.
+
+**Restartability was exercised by accident and worked.** A first attempt was
+killed at ten minutes mid-package; re-running the identical command skipped 164,
+193 and 237 already-stored granules in the packages it had finished and resumed
+at the one it had not.
+
+### The full 119th Congress
+
+_Pending — the live run writes to Neon; filled in by the commit that does it._
 
 ---
 

@@ -131,6 +131,55 @@ select dataset, last_status, rows_upserted, message
 from dataset_sync_state where dataset like 'house_backfill_%' order by dataset;
 ```
 
+### Speeches — the Congressional Record
+
+```bash
+cd pipelines/etl
+
+# Incremental: everything GovInfo has MODIFIED in the last week.
+uv run civiclens-etl speeches
+uv run civiclens-etl speeches --since-days 30 --limit 5
+```
+
+The incremental job asks which packages changed, not which were published, and
+that is the point: GPO revises the Record for a long time after a sitting — 35%
+of the 119th Congress's packages were last modified more than 30 days after
+their issue date, and the longest gap measured was 470 days. A
+publication-date query would never see those corrections. `collect-speeches.yml`
+runs a 7-day window nightly and a 400-day sweep on Sundays.
+
+#### Backfilling one Congress — run this off-runner
+
+```bash
+# Smoke-test: two sittings.
+uv run civiclens-etl backfill-speeches --congress 119 --limit 2
+
+# The real thing. 351 packages, 52,265 granules, ~3.5 hours.
+DATABASE_URL="<neon unpooled url>" uv run civiclens-etl backfill-speeches --congress 119
+```
+
+Same rule as the House backfill: one HTTP request per granule puts this past
+what a 6-hour hosted runner should be asked to do, so it runs locally or on a
+temporary VPS with the target database supplied for that one invocation.
+
+It is restartable, and cheaply so. A stored granule whose `retrieved_at` is at
+or after its package's upstream `lastModified` is left alone, so resuming costs
+one metadata request per finished package and no text at all:
+
+```sql
+select dataset, last_status, rows_upserted, message
+from dataset_sync_state where dataset like 'speech%';
+```
+
+`--from-year`/`--to-year` take the run a slice at a time; `--refresh` re-fetches
+text that the freshness check would have skipped; `--include-digest` also stores
+Daily Digest and front-matter granules, which are indexes and mastheads rather
+than statements and are skipped by default.
+
+The Record starts in **1994**. Earlier years are the bound edition (`CRECB`),
+which is packaged per volume-part rather than per day and is not collected —
+see [`docs/P3-source-verification.md`](docs/P3-source-verification.md).
+
 ### Cross-checking against Voteview
 
 ```bash
@@ -175,7 +224,7 @@ Milestones follow `PRD-US-Political-Tracker-v1.md` §14.
 | **P0** | Repo, CI, DB schema, ETL skeleton | **Done** |
 | **P1** | Members, bills, actions, votes (House 2017~, Senate) | **Done**, green on GitHub Actions |
 | P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | **Done and loaded.** 17,433 roll calls, 7,849,148 casts, 1.31 GiB; reconciled over all 18,348 stored roll calls |
-| P3 | GovInfo Congressional Record speeches + full-text search | Not started |
+| P3 | GovInfo Congressional Record speeches + full-text search | **Done.** Collector, `/speeches` search and the profile Speeches tab; 119th Congress backfill pending the live database |
 | P4 | Census geocoding, district boundaries, MapLibre, FEC candidates | Not started |
 | P5 | Dashboard, profiles, search, rankings — the real interface | **Dashboard + member profile done**; 10 routes still placeholders |
 | P6 | Consistency, freshness, observability, accessibility | Not started |
@@ -255,10 +304,48 @@ probe; it writes nothing to a database. The recurring collection workflow is
 (`civiclens-etl votes --chamber senate`) on cron rather than duplicate any of
 this logic.
 
+### What P3 delivered
+
+The Congressional Record, collected from GovInfo at granule level — one row per
+statement, which is both the natural key and the unit search has to return.
+Evidence for every claim below is in
+[`docs/P3-source-verification.md`](docs/P3-source-verification.md).
+
+- **Granules** → `speech`, `speech_speaker`, with the section
+  (House / Senate / Extensions of Remarks) taken from `granuleClass` and the
+  chamber from MODS.
+- **Full-text search** at `/speeches`, on the `tsvector` column that has been in
+  the schema since migration 0001.
+- **The profile Speeches tab**, populated.
+
+Four things the probe changed about the plan:
+
+- **The speaker resolver has no name matching, because CREC never needs one.**
+  The P0 stub expected older granules to carry only a printed name. Every
+  `<congMember>` in the daily Record carries a `bioGuideId`, back to the
+  collection's 1994 start. That deletes the component P2 found hardest to get
+  right.
+- **A granule can have several speakers** — 7.2% do, and a colloquy can name
+  nine. `speech.bioguide_id` is one column, so migration 0005 adds
+  `speech_speaker` and the profile reads the join. The column now means "the
+  speaker when the granule named exactly one", and never holds a guess.
+- **47% of the Record is nobody's statement.** Prayers, the Pledge, the reading
+  of the Journal, adjournments, and 160 Constitutional Authority Statements per
+  five sitting days. They are stored with a NULL speaker, not dropped, and the
+  UI says "No speaker named in the record" rather than leaving a blank.
+- **The Record starts in 1994**, not "the 1990s". Earlier years are the bound
+  edition, packaged per volume-part, and are not collected.
+
+Scope, decided from the measurement rather than by assumption: **the 119th
+Congress only** — 351 packages, 26,985 pages, 52,265 granules, ~329 MB of text,
+~3.5 hours of collection. The full 1994– history extrapolates to roughly 15×
+that, which is a storage decision to take separately;
+`civiclens-etl backfill-speeches --congress N` already accepts any Congress.
+
 ### What P1 deliberately did not do
 
-- **No GovInfo, FEC or Census calls** — P3/P4. Those collectors remain stubs and
-  their keys were left untouched.
+- **No GovInfo, FEC or Census calls** — P3/P4. Those collectors remained stubs
+  and their keys were left untouched. (GovInfo is now implemented; see P3.)
 - **No Clerk XML backfill** — P2. Note the gap is now 1990–2016, not 1990–2022:
   the House Votes beta turned out to serve the 115th Congress onward, not the
   118th.
@@ -277,6 +364,10 @@ half-built version of all twelve:
 - **`/members/[bioguide]`** — unified profile header with a neutral party chip,
   and tabs for overview, sponsorship, voting history, speeches and committees.
   Unknown Bioguide IDs 404.
+- **`/speeches`** — full-text search of the Congressional Record, with the
+  operators Postgres `websearch_to_tsquery` supports (quoted phrase, `or`,
+  `-exclusion`), keyword-highlighted snippets, and speaker cards linking back
+  to profiles.
 
 Two things it deliberately does **not** do:
 
@@ -285,18 +376,22 @@ Two things it deliberately does **not** do:
   member. Raw counts are shown instead, with the reason stated on the page.
 - **No score, rating or ranking of any kind** (PRD N1/FC-4).
 
-Sections with no data yet — speeches, committee membership — say so explicitly
-rather than being hidden, so "not collected" can never read as "nothing to
-report".
+Sections with no data yet — committee membership — say so explicitly rather
+than being hidden, so "not collected" can never read as "nothing to report".
+The Speeches tab now distinguishes two cases that are not the same thing:
+nothing collected at all, versus collected and this member does not appear in
+the range.
 
 ### To continue
 
-1. The remaining ten routes, and search.
+1. The remaining nine routes.
 2. A review queue UI for the 398 open reconciliation flags across 247 roll
    calls. They are currently readable only in `vote_reconciliation_flag`, and
    139 of them are one member — see finding 16 in
    [`docs/P2-source-verification.md`](docs/P2-source-verification.md).
-3. P3: GovInfo Congressional Record speeches and full-text search.
+3. The `/speeches` facets, typed result tabs and per-statement permalinks the
+   UIUX report specifies — P3 shipped the thin version (search box, ranked
+   granule-level results, speaker cards).
 
 ## Confirmed decisions
 
