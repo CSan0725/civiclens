@@ -7,3 +7,8 @@
 pnpm-lock.yaml linguist-generated=true -diff
 pipelines/etl/uv.lock linguist-generated=true -diff
 apps/web/src/db/generated/*.ts linguist-generated=true
+
+# Captured upstream fixtures are evidence, not source. Byte-for-byte or they
+# stop being what the service returned — one Congressional Record granule
+# genuinely contains NUL padding, which is the case its test exists to cover.
+pipelines/etl/tests/fixtures/** -text
