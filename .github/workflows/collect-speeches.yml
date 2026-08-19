@@ -1,0 +1,182 @@
+name: collect-speeches
+
+# Congressional Record collection into the Neon database.
+#
+# Separate from collect-daily.yml on purpose. Votes and bills are a different
+# upstream with a different failure mode, and speech collection is by far the
+# heaviest job in the pipeline — one HTTP request per granule, ~150 granules a
+# sitting. Sharing a workflow would mean a GovInfo slowdown delaying the roll
+# calls, and a GovInfo outage opening an issue that says "daily collection
+# failed" when the votes were fine.
+#
+# CADENCE, from measurement rather than assumption (docs/P3-source-verification.md):
+#
+#   * The Record for a sitting appears about a DAY later — 143 of the 119th
+#     Congress's 351 packages have a lastModified exactly one day after their
+#     issue date, and the minimum across all of them is one day. PRD §7's
+#     "발언 = 수일 지연" is if anything pessimistic.
+#   * GPO keeps REVISING for a long time afterwards: 35% of packages were last
+#     modified more than 30 days after issue, and the longest gap measured was
+#     470 days. A 7-day window would never see those corrections.
+#
+# So two schedules, not one:
+#
+#   daily   --since-days 7    new sittings, plus anything corrected this week
+#   Sunday  --since-days 400  the long tail of GPO's revisions
+#
+# The wide sweep is affordable because collection is freshness-aware: a package
+# whose granules were fetched at or after its current lastModified costs ONE
+# metadata request and no text (sources/govinfo_sync.load_package). A weekly
+# 400-day sweep is therefore ~350 cheap requests plus text for whatever
+# genuinely moved.
+#
+# The one-off backfill of a whole Congress is NOT here — it is ~52,000 requests
+# and several hours. See docs/P3-source-verification.md and
+# `civiclens-etl backfill-speeches`.
+
+on:
+  schedule:
+    # 04:23 UTC daily — before collect-daily's 05:17 so the two never overlap
+    # on the same runner minute, and off the hour because GitHub delays
+    # schedules that land on popular round times.
+    - cron: "23 4 * * *"
+    # 03:47 UTC Sunday — the wide revision sweep.
+    - cron: "47 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: Look back this many days for packages GovInfo has modified
+        required: false
+        default: "7"
+      limit:
+        description: Max packages per run (blank = all in the window)
+        required: false
+        default: ""
+      refresh:
+        description: Re-fetch granule text even when the stored copy is current
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: collect-speeches
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # Well under the 6h hard cap. A normal run is minutes; the weekly sweep is
+    # bounded by how much GPO actually revised, and a run that grows past two
+    # hours is a signal worth failing on rather than absorbing silently.
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: pipelines/etl
+
+    env:
+      # The DIRECT (unpooled) Neon endpoint — bulk upserts must not go through
+      # PgBouncer transaction pooling.
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      GOVINFO_API_KEY: ${{ secrets.GOVINFO_API_KEY }}
+      # Speakers absent from the roster are backfilled from Congress.gov rather
+      # than dropped; without this key their statements are stored unattributed.
+      CONGRESS_GOV_API_KEY: ${{ secrets.CONGRESS_GOV_API_KEY }}
+      ETL_LOG_LEVEL: INFO
+      SINCE_DAYS: >-
+        ${{ inputs.since_days
+            || (github.event.schedule == '47 3 * * 0' && '400')
+            || '7' }}
+      LIMIT_ARG: ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
+      REFRESH_ARG: ${{ (inputs.refresh == true || inputs.refresh == 'true') && '--refresh' || '' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Exact pin: setup-uv stopped publishing major and minor tags at
+      # v8, so `@v10` does not resolve. Bump this line deliberately.
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipelines/etl/uv.lock
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Verify secrets are present
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL_UNPOOLED secret is not set."; exit 1
+          fi
+          if [ -z "$GOVINFO_API_KEY" ]; then
+            echo "::error::GOVINFO_API_KEY secret is not set."; exit 1
+          fi
+          if [ -z "$CONGRESS_GOV_API_KEY" ]; then
+            echo "::error::CONGRESS_GOV_API_KEY secret is not set."; exit 1
+          fi
+
+      - name: Congressional Record granules
+        run: |
+          echo "Looking back $SINCE_DAYS day(s) for modified packages."
+          uv run civiclens-etl speeches --since-days "$SINCE_DAYS" $LIMIT_ARG $REFRESH_ARG
+
+      - name: Report freshness and speaker attribution
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import os, psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as c, c.cursor() as cur:
+              cur.execute("""
+                  select dataset, last_status, rows_upserted, last_success_at, data_current_as_of
+                  from dataset_sync_state where dataset like 'speech%' order by dataset
+              """)
+              print(f"{'dataset':<24}{'status':<9}{'rows':>8}  data current as of")
+              for d, st, rows, ok_at, cur_at in cur.fetchall():
+                  print(f"{d:<24}{st or '-':<9}{rows or 0:>8}  {cur_at}")
+
+              cur.execute("select message from dataset_sync_state where dataset = 'speeches'")
+              row = cur.fetchone()
+              if row and row[0]:
+                  print("\nnote: %s" % row[0])
+
+              cur.execute("""
+                  select count(*), min(speech_date), max(speech_date),
+                         count(*) filter (where bioguide_id is not null),
+                         coalesce(sum(word_count), 0)
+                  from speech
+              """)
+              n, lo, hi, attributed, words = cur.fetchone()
+              print("\nspeech: %d granules, %s .. %s" % (n, lo, hi))
+              print("  single named speaker: %d (%.1f%%)"
+                    % (attributed, 100.0 * attributed / n if n else 0.0))
+              print("  words stored: %d" % words)
+
+              # FR-S2's real coverage number. `speech.bioguide_id` holds a
+              # speaker only for granules that named exactly one, so counting
+              # it alone understates attribution by every colloquy.
+              cur.execute("""
+                  select count(distinct speech_id), count(*), count(distinct bioguide_id)
+                  from speech_speaker
+              """)
+              speeches, links, members = cur.fetchone()
+              print("  attributed via speech_speaker: %d granules, %d links, %d members"
+                    % (speeches, links, members))
+
+              cur.execute("""
+                  select section, count(*), count(*) filter (
+                           where exists (select 1 from speech_speaker x where x.speech_id = speech.id))
+                  from speech group by 1 order by 2 desc
+              """)
+              print("\n  %-24s %8s %12s" % ("section", "granules", "attributed"))
+              for section, total, attr in cur.fetchall():
+                  print("  %-24s %8d %12d" % (section or "(none)", total, attr))
+          PY
+
+      - name: Open an issue on failure
+        if: failure()
+        uses: ./.github/actions/report-etl-failure
+        with:
+          job-name: speeches
