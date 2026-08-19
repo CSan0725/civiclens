@@ -155,6 +155,13 @@ _STATE_CODE_BY_NAME = {
 }  # fmt: skip
 
 
+# The jurisdictions that send a Delegate or Resident Commissioner rather than a
+# Representative. They vote in the Committee of the Whole in some Congresses and
+# not others, and Voteview leaves them out of its roll-call tally columns
+# either way, so the reconciliation has to know which members they are.
+TERRITORIAL_JURISDICTIONS = frozenset({"DC", "AS", "GU", "MP", "PR", "VI"})
+
+
 def state_code_from_name(name: str | None) -> str | None:
     """Two-letter code for a full state name, or None if it is not one."""
     if not name:

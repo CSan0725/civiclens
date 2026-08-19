@@ -80,6 +80,12 @@ def reconcile(
         crosswalk = voteview.parse_members(voteview.fetch_members_csv(fetcher).payload)
         log.info("reconcile.crosswalk_loaded", entries=len(crosswalk))
 
+        # Delegates and the Resident Commissioner: Voteview records their casts
+        # but leaves them out of its tally columns, so their votes have to come
+        # out of ours before the two numbers mean the same thing.
+        territorial = repo.territorial_members(conn)
+        log.info("reconcile.territorial_members", count=len(territorial))
+
         totals = ReconcileCounts()
         for scope_congress, scope_chamber in scopes:
             _reconcile_scope(
@@ -88,6 +94,7 @@ def reconcile(
                 congress=scope_congress,
                 chamber=scope_chamber,
                 crosswalk=crosswalk,
+                territorial=territorial,
                 check_positions=check_positions,
                 dry_run=dry_run,
                 counts=totals,
@@ -108,6 +115,8 @@ class ReconcileCounts:
         self.disagreed = 0
         self.no_counterpart = 0
         self.not_comparable = 0
+        # Roll calls whose tallies only line up after the casts Voteview does not
+        # total are taken out — a Delegate's, or one of a member it never lists.
         self.roster_gap = 0
         self.reopened = 0
         self.flags = 0
@@ -129,8 +138,8 @@ class ReconcileCounts:
     def summary(self) -> str:
         return (
             f"reconciled {self.compared}: {self.agreed} agree "
-            f"({self.roster_gap} once members missing from Voteview's roster are "
-            f"excluded), {self.disagreed} disagree ({self.flags} flags, "
+            f"({self.roster_gap} of them once casts Voteview's tally columns do not "
+            f"count are excluded), {self.disagreed} disagree ({self.flags} flags, "
             f"{self.position_flags} per-member), "
             f"{self.no_counterpart} with no Voteview counterpart, "
             f"{self.not_comparable} not tally-comparable"
@@ -144,6 +153,7 @@ def _reconcile_scope(
     congress: CongressNo,
     chamber: str,
     crosswalk: dict[tuple[int, str, int], str],
+    territorial: frozenset[str],
     check_positions: bool,
     dry_run: bool,
     counts: ReconcileCounts,
@@ -174,10 +184,11 @@ def _reconcile_scope(
             chamber=chamber,
         )
 
-    # Who Voteview has for this Congress at all. Its tally columns count that
-    # roster and no one else, so a member missing from it moves the columns
-    # without anyone disagreeing about anything (`voteview.uncovered_casts`).
-    covered = voteview.covered_members(crosswalk, congress=congress, chamber=chamber)
+    # Whose casts Voteview's tally columns actually count, which is neither
+    # everyone who voted nor everyone Voteview lists (`voteview.counted_members`).
+    counted = voteview.counted_members(
+        crosswalk, congress=congress, chamber=chamber, territorial=territorial
+    )
 
     log.info(
         "reconcile.scope_loaded",
@@ -226,7 +237,7 @@ def _reconcile_scope(
                 )
                 continue
             counts.compared += 1
-            uncovered = voteview.uncovered_casts(stored_positions, covered=covered)
+            uncovered = voteview.uncovered_casts(stored_positions, counted=counted)
             if any(uncovered.values()):
                 counts.roster_gap += 1
             found = voteview.compare_tally(row, counterpart, uncovered=uncovered)

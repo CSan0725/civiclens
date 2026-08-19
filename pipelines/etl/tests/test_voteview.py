@@ -23,6 +23,8 @@ VOTES = "voteview_votes_h101.csv"
 MEMBERS = "voteview_members_101.csv"
 CLERK_1990_400 = "clerk_vote_1990_400.xml"
 SPEAKER_2015 = "clerk_vote_2015_581.xml"
+MEMBERS_103 = "voteview_members_103.csv"
+ROLLCALLS_103 = "voteview_rollcalls_h103.csv"
 
 
 # ---------------------------------------------------------------------------
@@ -149,11 +151,60 @@ def test_a_member_voteview_does_not_carry_explains_the_difference() -> None:
     )
     entry = voteview.parse_rollcalls(load_bytes(ROLLCALLS))[(101, "house", 2, 400)]
     crosswalk = voteview.parse_members(load_bytes(MEMBERS))
-    covered = voteview.covered_members(crosswalk, congress=101, chamber="house")
+    counted = voteview.counted_members(crosswalk, congress=101, chamber="house")
 
-    uncovered = voteview.uncovered_casts({"M000797": "Yea"}, covered=covered)
+    uncovered = voteview.uncovered_casts({"M000797": "Yea"}, counted=counted)
     assert uncovered == {"yea_count": 1, "nay_count": 0}
     assert voteview.compare_tally(clerk_row, entry, uncovered=uncovered) == []
+
+
+def _territorial_ids(fixture: str) -> frozenset[str]:
+    """Delegates in a captured member file, read the way the loader reads them.
+
+    `repository.territorial_members` asks OUR roster which members sit for a
+    territory; here the same question is asked of the fixture, so the test does
+    not hard-code five Bioguide IDs from memory.
+    """
+    import csv
+    import io
+
+    from sources.base import TERRITORIAL_JURISDICTIONS
+
+    rows = csv.DictReader(io.StringIO(load_bytes(fixture).decode("utf-8-sig")))
+    return frozenset(
+        r["bioguide_id"] for r in rows if r["state_abbrev"] in TERRITORIAL_JURISDICTIONS
+    )
+
+
+def test_voteview_carries_delegates_but_leaves_them_out_of_its_tally_columns() -> None:
+    """1993 roll 15: our nay is 244, Voteview's nay_count column is 239.
+
+    Its own votes file has 244 Nay codes — the five it does not total are
+    Norton, de Lugo, Faleomavaega and the Guam and Puerto Rico delegates, who
+    could vote in the Committee of the Whole in the 103rd. So unlike Mink
+    (finding 14) these members ARE in the roster; they are simply not in the
+    columns, and `counted_members` has to drop them for a different reason.
+    """
+    crosswalk = voteview.parse_members(load_bytes(MEMBERS_103))
+    territorial = _territorial_ids(MEMBERS_103)
+    assert len(territorial) == 5
+
+    covered = voteview.covered_members(crosswalk, congress=103, chamber="house")
+    assert territorial <= covered, "Voteview does carry them; that is the point"
+
+    counted = voteview.counted_members(
+        crosswalk, congress=103, chamber="house", territorial=territorial
+    )
+    assert not (territorial & counted)
+
+    entry = voteview.parse_rollcalls(load_bytes(ROLLCALLS_103))[(103, "house", 1, 15)]
+    stored = {"yea_count": 187, "nay_count": 244}
+    assert voteview.compare_tally(stored, entry) != [], "unexplained without the exclusion"
+
+    delegate_nays = dict.fromkeys(territorial, "Nay")
+    uncovered = voteview.uncovered_casts(delegate_nays, counted=counted)
+    assert uncovered == {"yea_count": 0, "nay_count": 5}
+    assert voteview.compare_tally(stored, entry, uncovered=uncovered) == []
 
 
 def test_a_difference_the_roster_gap_only_partly_explains_is_still_flagged() -> None:

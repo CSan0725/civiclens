@@ -63,7 +63,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -312,13 +312,7 @@ def parse_votes(payload: bytes, *, chamber: str) -> dict[int, dict[int, int]]:
 def covered_members(
     crosswalk: dict[tuple[int, str, int], str], *, congress: CongressNo, chamber: str
 ) -> frozenset[str]:
-    """Every Bioguide ID Voteview carries for one Congress and chamber.
-
-    Voteview's tally columns count the members in ITS roster, so its roster is
-    the population its numbers describe. Knowing who is missing from it is what
-    separates "the two sources disagree" from "one of them has never heard of
-    this member" — see `uncovered_casts`.
-    """
+    """Every Bioguide ID Voteview carries for one Congress and chamber."""
     return frozenset(
         bioguide_id
         for (row_congress, row_chamber, _icpsr), bioguide_id in crosswalk.items()
@@ -326,22 +320,50 @@ def covered_members(
     )
 
 
-def uncovered_casts(
-    stored_positions: Mapping[str, str | None], *, covered: frozenset[str]
-) -> dict[str, int]:
-    """Yea/Nay casts we recorded for members Voteview does not carry.
+def counted_members(
+    crosswalk: dict[tuple[int, str, int], str],
+    *,
+    congress: CongressNo,
+    chamber: str,
+    territorial: Collection[str] = (),
+) -> frozenset[str]:
+    """Members whose casts Voteview's tally COLUMNS count.
 
-    Voteview's roster is term-scoped and it misses members who arrive late in a
-    Congress: Patsy Mink won the HI-02 special election in September 1990 and
-    voted 146 times in the 101st, and Voteview's member file has no 101st row
-    for her at all. Every one of those roll calls therefore shows the Clerk's
-    official tally one yea above Voteview's column — 129 of 536 in 1990 alone,
-    a quarter of the year — and none of them is a disagreement about the
-    record. `compare_tally` subtracts these before deciding.
+    Two things put a member outside that population, and both move the columns
+    without anyone disagreeing about the record:
+
+    * Voteview does not carry them for this Congress at all (finding 14).
+    * They are a Delegate or the Resident Commissioner. Voteview records their
+      casts in the votes file but leaves them out of `yea_count`/`nay_count`,
+      while the Clerk's official total includes them — measured on 1993 roll
+      15, where Voteview's own file has 244 Nay codes and its nay_count column
+      says 239, the five being Norton, de Lugo, Faleomavaega, and the Guam and
+      Puerto Rico delegates. It only shows up in the three Congresses that gave
+      Delegates the Committee-of-the-Whole vote (103rd, 110th, 111th); in every
+      other Congress there are no territorial casts to leave out.
+    """
+    return covered_members(crosswalk, congress=congress, chamber=chamber) - frozenset(territorial)
+
+
+def uncovered_casts(
+    stored_positions: Mapping[str, str | None], *, counted: frozenset[str]
+) -> dict[str, int]:
+    """Yea/Nay casts of members Voteview's tally columns do not count.
+
+    `counted` comes from `counted_members`. Two populations land outside it:
+    members Voteview has never heard of for this Congress — Patsy Mink won the
+    HI-02 special election in September 1990, voted 146 times in the 101st, and
+    has no 101st row in Voteview's member file at all — and Delegates, whose
+    casts Voteview records but does not total.
+
+    Both move Voteview's columns away from the chamber's official tally without
+    contradicting it. `compare_tally` subtracts them before deciding. Left in,
+    they would have retracted 23% of 1990 and around a third of the 103rd,
+    110th and 111th Congresses.
     """
     out = dict.fromkeys(TALLY_FIELDS, 0)
     for bioguide_id, position in stored_positions.items():
-        if bioguide_id in covered:
+        if bioguide_id in counted:
             continue
         if position == "Yea":
             out["yea_count"] += 1
@@ -403,8 +425,9 @@ def compare_tally(
         note = None
         if gap:
             note = (
-                f"{gap} of these cast(s) belong to members Voteview does not carry for "
-                f"this Congress; {ours - gap} remain after excluding them"
+                f"{gap} of these cast(s) belong to members Voteview's tally columns do "
+                f"not count (a Delegate, or a member missing from its roster for this "
+                f"Congress); {ours - gap} remain after excluding them"
             )
         out.append(
             Discrepancy(

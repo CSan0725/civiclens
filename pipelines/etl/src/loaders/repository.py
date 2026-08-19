@@ -20,6 +20,7 @@ from sqlalchemy import Connection, func, select, text, tuple_, update
 from common.logging import get_logger
 from loaders.engine import reflect_table
 from loaders.upsert import bulk_upsert
+from sources.base import TERRITORIAL_JURISDICTIONS
 
 log = get_logger(__name__)
 
@@ -176,6 +177,18 @@ def votes_in_scope(conn: Connection, *, congress_no: int, chamber: str) -> list[
         .order_by(table.c.session, table.c.roll_number)
     )
     return [dict(row) for row in conn.execute(stmt).mappings()]
+
+
+def territorial_members(conn: Connection) -> frozenset[str]:
+    """Bioguide IDs of every Delegate and Resident Commissioner we have stored.
+
+    Read from OUR roster rather than inferred from Voteview, which is the point:
+    Voteview's tally columns are what these members are being excluded from, so
+    the list of who they are cannot come from the same place.
+    """
+    table = reflect_table("member")
+    stmt = select(table.c.bioguide_id).where(table.c.state.in_(sorted(TERRITORIAL_JURISDICTIONS)))
+    return frozenset(str(row[0]) for row in conn.execute(stmt))
 
 
 def vote_positions(
