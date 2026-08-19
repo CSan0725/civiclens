@@ -26,10 +26,12 @@ re-fetching text.
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Connection
+from sqlalchemy.exc import OperationalError
 
 from common.http import Fetcher
 from common.logging import get_logger
@@ -53,6 +55,13 @@ DATASET = "speeches"
 # later, so a week's window costs a handful of extra requests and closes the
 # gap left by a run that failed or a schedule that was skipped.
 DEFAULT_LOOKBACK_DAYS = 7
+
+# How many times one package may be retried after the DATABASE drops the
+# connection, as distinct from an upstream failure. Two is enough for the case
+# this exists for — a stale socket that reconnects immediately — without
+# hammering a database that is genuinely down.
+DB_RETRIES = 2
+DB_RETRY_BACKOFF_SECONDS = 5.0
 
 
 def backfill_dataset_name(congress: CongressNo) -> str:
@@ -202,24 +211,48 @@ def _collect_packages(
 
     for package in packages:
         package_id = package["package_id"]
-        try:
-            counts = load_package(
-                conn,
-                fetcher,
-                package_id=package_id,
-                last_modified=package.get("last_modified"),
-                tally=tally,
-                skip_existing=skip_existing,
-                member_fetcher=member_fetcher,
-                include_digest=include_digest,
-            )
-            conn.commit()
-            granules_seen += counts["granules"]
-            unmatched += counts["unattributed"]
-        except SourceError as exc:
-            conn.rollback()
-            skipped.append(package_id)
-            log.warning("speeches.skipped", package=package_id, error=str(exc))
+        for attempt in range(1, DB_RETRIES + 2):
+            try:
+                counts = load_package(
+                    conn,
+                    fetcher,
+                    package_id=package_id,
+                    last_modified=package.get("last_modified"),
+                    tally=tally,
+                    skip_existing=skip_existing,
+                    member_fetcher=member_fetcher,
+                    include_digest=include_digest,
+                )
+                conn.commit()
+                granules_seen += counts["granules"]
+                unmatched += counts["unattributed"]
+                break
+            except SourceError as exc:
+                _discard_transaction(conn)
+                skipped.append(package_id)
+                log.warning("speeches.skipped", package=package_id, error=str(exc))
+                break
+            except OperationalError as exc:
+                # A serverless database drops connections: Neon closes an
+                # idle-in-transaction session after five minutes, and a
+                # scale-to-zero instance can go away between packages. Over a
+                # six-hour backfill that is a matter of when, not whether, so
+                # one dead socket must cost one package rather than the run.
+                # The already-committed packages are untouched, and the retry
+                # re-reads what is stored, so nothing is collected twice.
+                _discard_transaction(conn)
+                conn.invalidate()
+                if attempt > DB_RETRIES:
+                    skipped.append(package_id)
+                    log.error("speeches.db_failed", package=package_id, error=str(exc))
+                    break
+                log.warning(
+                    "speeches.db_reconnecting",
+                    package=package_id,
+                    attempt=attempt,
+                    error=str(exc)[:200],
+                )
+                time.sleep(DB_RETRY_BACKOFF_SECONDS * attempt)
 
     # The speaker-match rate is the headline quality number for FR-S2, and CI
     # logs expire — so it goes in the database, where the freshness bar and any
@@ -236,6 +269,19 @@ def _collect_packages(
     if skipped:
         tally.note(f"skipped {len(skipped)} package(s): {', '.join(skipped[:20])}")
         log.warning("speeches.skipped_summary", count=len(skipped), packages=skipped)
+
+
+def _discard_transaction(conn: Connection) -> None:
+    """Roll back, tolerating a connection that is already gone.
+
+    `rollback()` on a socket the server has closed raises the same
+    OperationalError that got us here, and losing the recovery path to the
+    failure it is recovering from is not useful.
+    """
+    try:
+        conn.rollback()
+    except Exception as exc:  # noqa: BLE001 - recovery must not raise
+        log.debug("speeches.rollback_failed", error=str(exc)[:200])
 
 
 def load_package(
@@ -260,11 +306,27 @@ def load_package(
 
     Split out from the loop so tests can drive it straight from captured
     fixtures with no network beyond the respx mock.
+
+    THE PHASE SPLIT IS LOad-BEARING, not tidiness. A package needs one HTTP
+    request per granule — up to 315 of them, minutes of network — and an
+    earlier version of this function did that work with the read transaction
+    still open. Neon sets `idle_in_transaction_session_timeout` to 5 minutes
+    and killed the session 43 minutes into the 119th backfill. So: read what is
+    already stored, END that transaction, fetch with no transaction open, and
+    only then write. Nothing here may hold a transaction across a network call.
     """
     mods = govinfo.fetch_package_mods(fetcher, package_id)
     granules = govinfo.parse_granules(mods.payload, include_digest=include_digest)
 
+    # --- read phase -------------------------------------------------------
     stored = repo.stored_speeches(conn, [g["granule_id"] for g in granules])
+    package_archived = repo.provenance_exists(
+        conn, entity="package", entity_id=package_id, checksum=checksum(mods.payload)
+    )
+    # Ends the implicit transaction those two SELECTs opened. Read-only, so
+    # there is nothing to preserve, and leaving it open is what broke the run.
+    conn.rollback()
+
     pending = [
         g
         for g in granules
@@ -277,9 +339,32 @@ def load_package(
             skipped=len(granules) - len(pending),
         )
 
+    # --- fetch phase: all network, no transaction -------------------------
+    fetched: list[tuple[dict[str, Any], Any]] = []
+    for granule in pending:
+        text_result = govinfo.fetch_granule_text(
+            fetcher, package_id=package_id, granule_id=granule["granule_id"]
+        )
+        fetched.append((granule, text_result))
+
+    # Archive the package metadata only when these exact bytes are not already
+    # archived. The weekly revision sweep revisits every package the Congress
+    # published to find out whether GPO touched any of them; without this check
+    # it would re-upload ~350 MB of identical MODS to R2 each week and append
+    # an audit row per package recording that nothing had changed.
+    r2_key = (
+        None
+        if package_archived
+        else write_snapshot(source=SOURCE, entity="package", entity_id=package_id, result=mods)
+    )
+
+    # --- write phase ------------------------------------------------------
     # Every speaker in the package resolved in one pass: `ensure_members` is a
     # Congress.gov round trip per unknown member, and the same handful of
-    # speakers recur across a sitting's granules.
+    # speakers recur across a sitting's granules. It is bounded — usually zero
+    # members, occasionally one — so it is the only network left inside the
+    # write transaction, and it has to be there because the rows it writes are
+    # the FK targets of everything below.
     known = _resolve_members(conn, granules, member_fetcher=member_fetcher)
 
     rows: list[dict[str, Any]] = []
@@ -296,15 +381,11 @@ def load_package(
             {"bioguide_id": b, "ordinal": i} for i, b in enumerate(bioguides)
         ]
 
-    for granule in pending:
-        text_result = govinfo.fetch_granule_text(
-            fetcher, package_id=package_id, granule_id=granule["granule_id"]
-        )
-        text = govinfo.extract_text(text_result.payload)
+    for granule, text_result in fetched:
         row = govinfo.speech_row(
             granule,
             package_id=package_id,
-            text=text,
+            text=govinfo.extract_text(text_result.payload),
             source_url=text_result.source_url,
             retrieved_at=text_result.retrieved_at,
         )
@@ -316,6 +397,11 @@ def load_package(
         rows.append(row)
         entries.append(
             ProvenanceEntry(entity="speech", entity_id=granule["granule_id"], result=text_result)
+        )
+
+    if not package_archived:
+        entries.insert(
+            0, ProvenanceEntry(entity="package", entity_id=package_id, result=mods, r2_key=r2_key)
         )
 
     if rows:
@@ -343,18 +429,6 @@ def load_package(
         ),
     )
 
-    # Archive the package metadata only when these exact bytes are not already
-    # archived. The weekly revision sweep revisits every package the Congress
-    # published to find out whether GPO touched any of them; without this check
-    # it would re-upload ~350 MB of identical MODS to R2 each week and append
-    # an audit row per package recording that nothing had changed.
-    if not repo.provenance_exists(
-        conn, entity="package", entity_id=package_id, checksum=checksum(mods.payload)
-    ):
-        r2_key = write_snapshot(source=SOURCE, entity="package", entity_id=package_id, result=mods)
-        entries.insert(
-            0, ProvenanceEntry(entity="package", entity_id=package_id, result=mods, r2_key=r2_key)
-        )
     record_provenance(conn, entries, source=SOURCE)
     return {
         "granules": len(granules),

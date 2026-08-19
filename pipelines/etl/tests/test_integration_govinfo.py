@@ -25,6 +25,7 @@ from sqlalchemy import Connection, Engine, create_engine, text
 
 from conftest import load_bytes
 from loaders.sync_state import SyncTally
+from sources import govinfo as govinfo_module
 
 TEST_DB_URL = os.environ.get("CIVICLENS_TEST_DATABASE_URL")
 
@@ -329,6 +330,43 @@ def test_speaker_lists_are_rewritten_even_when_text_is_skipped(conn: Connection)
     assert counts["fetched"] == 0
     restored = conn.execute(text("SELECT count(*) FROM speech_speaker")).scalar_one()
     assert restored == 3, "two colloquy speakers plus the Extension's one"
+
+
+@respx.mock
+def test_no_transaction_is_open_while_granule_text_is_fetched(conn: Connection) -> None:
+    """The bug that killed the 119th backfill 43 minutes in.
+
+    A package needs one HTTP request per granule — up to 315, minutes of
+    network. Holding the read transaction open across them left the session
+    idle-in-transaction, and Neon closes those after five minutes. So the
+    invariant is: at the moment any granule body is fetched, this connection
+    must not be inside a transaction.
+
+    Asserted against `Connection.in_transaction()` rather than by timing,
+    because the failure is a property of the code and not of how slow the
+    network happened to be.
+    """
+    _mock_govinfo()
+
+    seen: list[bool] = []
+    real_fetch = govinfo_module.fetch_granule_text
+
+    def spy(*args: object, **kwargs: object) -> object:
+        seen.append(conn.in_transaction())
+        return real_fetch(*args, **kwargs)  # type: ignore[arg-type]
+
+    govinfo_module.fetch_granule_text = spy  # type: ignore[assignment]
+    try:
+        _load(conn, tally=SyncTally())
+    finally:
+        govinfo_module.fetch_granule_text = real_fetch  # type: ignore[assignment]
+    conn.commit()
+
+    assert seen, "the test proves nothing if no granule was fetched"
+    assert not any(seen), (
+        f"{sum(seen)} of {len(seen)} granule fetches ran inside an open "
+        "transaction; Neon kills those after five minutes"
+    )
 
 
 @respx.mock
