@@ -1,10 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
- * P0 placeholder.
+ * Placeholder for a route in PRD §10 that has no data behind it yet.
  *
- * Every route in PRD §10 exists and renders this, so the information
- * architecture is walkable before any data lands. Replace per-route in P5.
+ * Introduced in P0 so the whole information architecture was walkable before
+ * anything landed. P5 replaced it on /bills, /votes and /rankings. Still
+ * rendering it: /districts, which is blocked on the P4 boundary files, and
+ * /members and /methodology, which are interface work not yet done (§10
+ * footnote 5).
  */
 export function ComingSoon({
   title,
@@ -35,8 +38,10 @@ export function ComingSoon({
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
-            This route is a P0 scaffold. Data collection (P1) and the real
-            interface (P5) are still ahead.
+            This route is a scaffold. It is listed in the site&rsquo;s
+            information architecture so the shape of the whole is visible, but
+            it has nothing to show yet — either the data behind it has not been
+            collected, or the page has not been built.
           </p>
           {children ? <div className="text-foreground">{children}</div> : null}
         </CardContent>

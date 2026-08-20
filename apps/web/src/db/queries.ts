@@ -13,6 +13,7 @@ import {
   sponsorship,
   term,
   vote,
+  voteReconciliationFlag,
 } from "@/db/generated/schema";
 import { voteCast } from "@/db/schema";
 
@@ -581,4 +582,907 @@ export async function getSampleMembers(limit = 6) {
     .where(and(eq(member.status, "current"), isNotNull(member.chamber)))
     .orderBy(member.directOrderName)
     .limit(limit);
+}
+
+// ---------------------------------------------------------------------------
+// Bills (PRD §10 IA, FR-D2)
+// ---------------------------------------------------------------------------
+
+/** The bill types the schema knows, in the order readers expect to see them. */
+export const BILL_TYPES = [
+  "hr",
+  "s",
+  "hjres",
+  "sjres",
+  "hconres",
+  "sconres",
+  "hres",
+  "sres",
+] as const;
+export type BillTypeValue = (typeof BILL_TYPES)[number];
+
+export function isBillType(value: string): value is BillTypeValue {
+  return (BILL_TYPES as readonly string[]).includes(value);
+}
+
+export const CHAMBERS = ["house", "senate"] as const;
+export type ChamberValue = (typeof CHAMBERS)[number];
+
+export function isChamber(value: string): value is ChamberValue {
+  return (CHAMBERS as readonly string[]).includes(value);
+}
+
+/**
+ * Which Congresses the bill table actually holds.
+ *
+ * Offered as the filter's options rather than a hard-coded range: collection
+ * covers a bounded slice, and a dropdown listing Congresses with no rows would
+ * present empty results as if they were an absence of legislation.
+ */
+export async function getBillCongresses() {
+  const rows = await getDb()
+    .select({ congressNo: bill.congressNo, n: count() })
+    .from(bill)
+    .groupBy(bill.congressNo)
+    .orderBy(desc(bill.congressNo));
+  return rows.map((r) => ({ congressNo: r.congressNo, n: Number(r.n) }));
+}
+
+export type BillListItem = {
+  congressNo: number;
+  billType: string;
+  number: number;
+  title: string | null;
+  policyArea: string | null;
+  introducedDate: string | null;
+  latestActionDate: string | null;
+  latestActionText: string | null;
+  becameLaw: boolean;
+  lawNumber: string | null;
+  sponsorBioguideId: string | null;
+  sponsorName: string | null;
+  sponsorParty: string | null;
+  sponsorPartyCode: string | null;
+  sponsorState: string | null;
+  congressGovUrl: string | null;
+  sourceUrl: string | null;
+};
+
+export type BillFilters = {
+  q?: string;
+  congress?: number;
+  billType?: BillTypeValue;
+  sponsor?: string;
+  limit?: number;
+  offset?: number;
+};
+
+/**
+ * The bill list (PRD §10 `/bills`).
+ *
+ * Keyword search reuses the generated `bill.search_tsv` column and the same
+ * `websearch_to_tsquery` parser as /speeches, so the operators documented
+ * there — quoted phrases, `or`, `-exclusion` — behave identically on both
+ * pages. Anything else would make one search box lie about the other.
+ *
+ * Sponsor is filtered by bioguide rather than by name: names are not unique in
+ * Congress and the app already links members by their stable id.
+ */
+export async function searchBills({
+  q,
+  congress,
+  billType: type,
+  sponsor,
+  limit = 25,
+  offset = 0,
+}: BillFilters): Promise<{ rows: BillListItem[]; total: number }> {
+  const trimmed = (q ?? "").trim();
+  const filters = [];
+  if (congress !== undefined) filters.push(eq(bill.congressNo, congress));
+  if (type) filters.push(eq(bill.billType, type));
+  if (sponsor) filters.push(eq(bill.sponsorBioguideId, sponsor));
+  if (trimmed) {
+    filters.push(sql`${bill.searchTsv} @@ websearch_to_tsquery('english', ${trimmed})`);
+  }
+  const where = filters.length > 0 ? and(...filters) : undefined;
+
+  const db = getDb();
+  const [rows, totals] = await Promise.all([
+    db
+      .select({
+        congressNo: bill.congressNo,
+        billType: bill.billType,
+        number: bill.number,
+        title: bill.title,
+        policyArea: bill.policyArea,
+        introducedDate: bill.introducedDate,
+        latestActionDate: bill.latestActionDate,
+        latestActionText: bill.latestActionText,
+        becameLaw: bill.becameLaw,
+        lawNumber: bill.lawNumber,
+        sponsorBioguideId: bill.sponsorBioguideId,
+        sponsorName: member.directOrderName,
+        sponsorParty: member.party,
+        sponsorPartyCode: member.partyCode,
+        sponsorState: member.state,
+        congressGovUrl: bill.congressGovUrl,
+        sourceUrl: bill.sourceUrl,
+      })
+      .from(bill)
+      .leftJoin(member, eq(member.bioguideId, bill.sponsorBioguideId))
+      .where(where)
+      // Relevance first when there is a query, recency otherwise. NULLS LAST is
+      // explicit because Postgres sorts NULL first on DESC, which would put
+      // every bill with no recorded action at the top of "most recent".
+      .orderBy(
+        trimmed
+          ? sql`ts_rank_cd(${bill.searchTsv}, websearch_to_tsquery('english', ${trimmed})) desc, ${bill.latestActionDate} desc nulls last`
+          : sql`${bill.latestActionDate} desc nulls last, ${bill.congressNo} desc, ${bill.number} desc`,
+      )
+      .limit(limit)
+      .offset(offset),
+    db.select({ n: count() }).from(bill).where(where),
+  ]);
+
+  return { rows, total: Number(totals.at(0)?.n ?? 0) };
+}
+
+/** One bill by its natural key (congress, type, number). */
+export async function getBill(congressNo: number, type: BillTypeValue, number: number) {
+  const rows = await getDb()
+    .select({
+      id: bill.id,
+      congressNo: bill.congressNo,
+      billType: bill.billType,
+      number: bill.number,
+      title: bill.title,
+      shortTitle: bill.shortTitle,
+      policyArea: bill.policyArea,
+      summaryText: bill.summaryText,
+      status: bill.status,
+      introducedDate: bill.introducedDate,
+      latestActionDate: bill.latestActionDate,
+      latestActionText: bill.latestActionText,
+      becameLaw: bill.becameLaw,
+      lawNumber: bill.lawNumber,
+      congressGovUrl: bill.congressGovUrl,
+      textUrl: bill.textUrl,
+      sourceUrl: bill.sourceUrl,
+      retrievedAt: bill.retrievedAt,
+    })
+    .from(bill)
+    .where(
+      and(
+        eq(bill.congressNo, congressNo),
+        eq(bill.billType, type),
+        eq(bill.number, number),
+      ),
+    )
+    .limit(1);
+  return rows.at(0);
+}
+
+/**
+ * The bill's whole recorded history, oldest first.
+ *
+ * Chronological rather than newest-first: a timeline read top-down is how a
+ * bill's path through committee and floor actually happened, and the latest
+ * action is already stated in the header.
+ */
+export async function getBillActions(billId: number) {
+  return getDb()
+    .select({
+      id: billAction.id,
+      actionDate: billAction.actionDate,
+      actionTime: billAction.actionTime,
+      text: billAction.text,
+      actionType: billAction.actionType,
+      actionCode: billAction.actionCode,
+      sourceSystem: billAction.sourceSystem,
+      committeeId: billAction.committeeId,
+      committeeName: committee.name,
+      sourceUrl: billAction.sourceUrl,
+      retrievedAt: billAction.retrievedAt,
+    })
+    .from(billAction)
+    .leftJoin(committee, eq(committee.committeeId, billAction.committeeId))
+    .where(eq(billAction.billId, billId))
+    .orderBy(billAction.actionDate, billAction.actionTime, billAction.id);
+}
+
+/** Sponsor and cosponsors, sponsor first. */
+export async function getBillSponsorships(billId: number) {
+  return getDb()
+    .select({
+      bioguideId: sponsorship.bioguideId,
+      role: sponsorship.role,
+      sponsoredDate: sponsorship.sponsoredDate,
+      withdrawn: sponsorship.withdrawn,
+      withdrawnDate: sponsorship.withdrawnDate,
+      name: member.directOrderName,
+      party: member.party,
+      partyCode: member.partyCode,
+      state: member.state,
+      chamber: member.chamber,
+      district: member.district,
+      sourceUrl: sponsorship.sourceUrl,
+      retrievedAt: sponsorship.retrievedAt,
+    })
+    .from(sponsorship)
+    .innerJoin(member, eq(member.bioguideId, sponsorship.bioguideId))
+    .where(eq(sponsorship.billId, billId))
+    // 'cosponsor' sorts before 'sponsor' alphabetically, so the role ordering
+    // is spelled out rather than left to the enum's text collation.
+    .orderBy(
+      sql`case when ${sponsorship.role} = 'sponsor' then 0 else 1 end`,
+      sql`${sponsorship.sponsoredDate} asc nulls last`,
+      member.directOrderName,
+    );
+}
+
+/** Roll calls the pipeline linked to this bill (FC-3 filtered). */
+export async function getBillVotes(billId: number) {
+  return getDb()
+    .select({
+      id: vote.id,
+      congressNo: vote.congressNo,
+      chamber: vote.chamber,
+      session: vote.session,
+      rollNumber: vote.rollNumber,
+      voteDate: vote.voteDate,
+      question: vote.question,
+      result: vote.result,
+      yeaCount: vote.yeaCount,
+      nayCount: vote.nayCount,
+      presentCount: vote.presentCount,
+      notVotingCount: vote.notVotingCount,
+      reconciledAt: vote.reconciledAt,
+      sourceUrl: vote.sourceUrl,
+    })
+    .from(vote)
+    .where(and(eq(vote.billId, billId), publishedVote))
+    .orderBy(desc(vote.voteDate), desc(vote.rollNumber));
+}
+
+/**
+ * How many roll calls on THIS bill are withheld under FC-3.
+ *
+ * Without it the timeline would simply be missing a floor vote, and a missing
+ * vote is indistinguishable from a vote that never happened.
+ */
+export async function getBillWithheldVoteCount(billId: number) {
+  const rows = await getDb()
+    .select({ n: count() })
+    .from(vote)
+    .where(and(eq(vote.billId, billId), eq(vote.isPublished, false)));
+  return Number(rows.at(0)?.n ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// Votes (PRD §10 /votes, /votes/:id)
+// ---------------------------------------------------------------------------
+
+/** Congress/chamber pairs the vote table actually holds, for the filters. */
+export async function getVoteScopes() {
+  const rows = await getDb()
+    .select({ congressNo: vote.congressNo, chamber: vote.chamber, n: count() })
+    .from(vote)
+    .where(publishedVote)
+    .groupBy(vote.congressNo, vote.chamber)
+    .orderBy(desc(vote.congressNo), vote.chamber);
+  return rows.map((r) => ({
+    congressNo: r.congressNo,
+    chamber: r.chamber,
+    n: Number(r.n),
+  }));
+}
+
+export type VoteFilters = {
+  congress?: number;
+  chamber?: ChamberValue;
+  limit?: number;
+  offset?: number;
+};
+
+/** The roll-call list, newest first. FC-3 filtered like every other vote read. */
+export async function listVotes({
+  congress,
+  chamber,
+  limit = 25,
+  offset = 0,
+}: VoteFilters) {
+  const filters = [publishedVote];
+  if (congress !== undefined) filters.push(eq(vote.congressNo, congress));
+  if (chamber) filters.push(eq(vote.chamber, chamber));
+  const where = and(...filters);
+
+  const db = getDb();
+  const [rows, totals] = await Promise.all([
+    db
+      .select({
+        id: vote.id,
+        congressNo: vote.congressNo,
+        chamber: vote.chamber,
+        session: vote.session,
+        rollNumber: vote.rollNumber,
+        voteDate: vote.voteDate,
+        question: vote.question,
+        voteType: vote.voteType,
+        result: vote.result,
+        requiredMajority: vote.requiredMajority,
+        yeaCount: vote.yeaCount,
+        nayCount: vote.nayCount,
+        presentCount: vote.presentCount,
+        notVotingCount: vote.notVotingCount,
+        reconciledAt: vote.reconciledAt,
+        sourceUrl: vote.sourceUrl,
+        billCongress: bill.congressNo,
+        billType: bill.billType,
+        billNumber: bill.number,
+        billTitle: bill.title,
+      })
+      .from(vote)
+      .leftJoin(bill, eq(bill.id, vote.billId))
+      .where(where)
+      .orderBy(desc(vote.voteDate), desc(vote.rollNumber))
+      .limit(limit)
+      .offset(offset),
+    db.select({ n: count() }).from(vote).where(where),
+  ]);
+
+  return { rows, total: Number(totals.at(0)?.n ?? 0) };
+}
+
+/** Withheld count for the same filters the list is showing (PRD FC-3). */
+export async function getWithheldVoteCountFor({ congress, chamber }: VoteFilters) {
+  const filters = [eq(vote.isPublished, false)];
+  if (congress !== undefined) filters.push(eq(vote.congressNo, congress));
+  if (chamber) filters.push(eq(vote.chamber, chamber));
+  const rows = await getDb()
+    .select({ n: count() })
+    .from(vote)
+    .where(and(...filters));
+  return Number(rows.at(0)?.n ?? 0);
+}
+
+/**
+ * One roll call, read WITHOUT the FC-3 filter.
+ *
+ * The only query in this file that does. A withheld roll call still needs a
+ * page that says it is withheld and why — 404 would tell the reader the vote
+ * does not exist, which is the one thing that is not true. The page renders no
+ * tally and no positions for it; see the /votes/[id] route.
+ */
+export async function getVote(id: number) {
+  const rows = await getDb()
+    .select({
+      id: vote.id,
+      congressNo: vote.congressNo,
+      chamber: vote.chamber,
+      session: vote.session,
+      rollNumber: vote.rollNumber,
+      voteDate: vote.voteDate,
+      voteDatetime: vote.voteDatetime,
+      question: vote.question,
+      voteType: vote.voteType,
+      result: vote.result,
+      requiredMajority: vote.requiredMajority,
+      amendmentNumber: vote.amendmentNumber,
+      yeaCount: vote.yeaCount,
+      nayCount: vote.nayCount,
+      presentCount: vote.presentCount,
+      notVotingCount: vote.notVotingCount,
+      isPublished: vote.isPublished,
+      reconciledAt: vote.reconciledAt,
+      sourceSystem: vote.sourceSystem,
+      sourceUrl: vote.sourceUrl,
+      retrievedAt: vote.retrievedAt,
+      billId: vote.billId,
+      billCongress: bill.congressNo,
+      billType: bill.billType,
+      billNumber: bill.number,
+      billTitle: bill.title,
+      billCongressGovUrl: bill.congressGovUrl,
+    })
+    .from(vote)
+    .leftJoin(bill, eq(bill.id, vote.billId))
+    .where(eq(vote.id, id))
+    .limit(1);
+  return rows.at(0);
+}
+
+export type VoteCastRow = {
+  bioguideId: string;
+  name: string;
+  position: string | null;
+  rawPosition: string | null;
+  party: string | null;
+  partyCode: string | null;
+  state: string | null;
+  district: number | null;
+  sourceUrl: string | null;
+  retrievedAt: string | null;
+};
+
+/**
+ * Every recorded position on one roll call.
+ *
+ * `congressNo` is a REQUIRED argument, not something this function looks up:
+ * `vote_cast` is LIST partitioned by it, and a query without that predicate
+ * scans every partition instead of pruning to one.
+ *
+ * `party` and `state` come from the cast, not from `member`: they are what the
+ * source recorded at the time of the vote, and a member who later switched
+ * party must not be retroactively re-labelled in a 1997 roll call.
+ */
+export async function getVoteCasts(
+  voteId: number,
+  congressNo: number,
+): Promise<VoteCastRow[]> {
+  return getDb()
+    .select({
+      bioguideId: voteCast.bioguideId,
+      name: member.directOrderName,
+      position: voteCast.position,
+      rawPosition: voteCast.rawPosition,
+      party: voteCast.party,
+      partyCode: member.partyCode,
+      state: voteCast.state,
+      district: member.district,
+      sourceUrl: voteCast.sourceUrl,
+      retrievedAt: voteCast.retrievedAt,
+    })
+    .from(voteCast)
+    .innerJoin(member, eq(member.bioguideId, voteCast.bioguideId))
+    .where(and(eq(voteCast.voteId, voteId), eq(voteCast.congressNo, congressNo)))
+    .orderBy(member.directOrderName);
+}
+
+/**
+ * Open reconciliation flags on this roll call (PRD FC-2, FC-3).
+ *
+ * A published vote can still carry an open flag: only `yea_count` and
+ * `nay_count` gate publication (§9 footnote 3), so a discrepancy recorded
+ * against any other field stays visible AND stays disclosed.
+ */
+export async function getVoteFlags(voteId: number) {
+  return getDb()
+    .select({
+      id: voteReconciliationFlag.id,
+      field: voteReconciliationFlag.field,
+      primaryValue: voteReconciliationFlag.primaryValue,
+      comparedValue: voteReconciliationFlag.comparedValue,
+      comparedTo: voteReconciliationFlag.comparedTo,
+      status: voteReconciliationFlag.status,
+      detectedAt: voteReconciliationFlag.detectedAt,
+      note: voteReconciliationFlag.note,
+      bioguideId: voteReconciliationFlag.bioguideId,
+      memberName: member.directOrderName,
+    })
+    .from(voteReconciliationFlag)
+    .leftJoin(member, eq(member.bioguideId, voteReconciliationFlag.bioguideId))
+    .where(
+      and(
+        eq(voteReconciliationFlag.voteId, voteId),
+        eq(voteReconciliationFlag.status, "open"),
+      ),
+    )
+    .orderBy(desc(voteReconciliationFlag.detectedAt));
+}
+
+// ---------------------------------------------------------------------------
+// Rankings (PRD FR-R1–FR-R4, methodology §11)
+// ---------------------------------------------------------------------------
+
+/**
+ * The calendar span of a Congress, used to scope speech counts.
+ *
+ * A Congress convenes on 3 January of the odd year and its successor convenes
+ * two years later (20th Amendment, ratified 1933). `speech` carries a date but
+ * no `congress_no`, so this is how a statement is attributed to a Congress.
+ * The amendment predates every Congress this app holds speeches for — the
+ * Congressional Record's electronic run starts in 1994 (103rd) — so the
+ * pre-1935 March convening date never applies here.
+ */
+export function congressDateRange(congressNo: number) {
+  const startYear = 1789 + (congressNo - 1) * 2;
+  return { start: `${startYear}-01-03`, end: `${startYear + 2}-01-03` };
+}
+
+export type RankingRow = {
+  bioguideId: string;
+  name: string;
+  /** Party as recorded on this member's casts in this Congress, not today's. */
+  partyCode: string | null;
+  /** Full party name, only when it still agrees with the recorded code. */
+  partyName: string | null;
+  state: string | null;
+  district: number | null;
+  /** Roll calls held while this member served — the §11 denominator. */
+  eligible: number;
+  /** Roll calls with any recorded position for this member. */
+  recorded: number;
+  /** Yea + Nay + Present + other recorded positions (§11 footnote 1). */
+  participated: number;
+  notVoting: number;
+  /** Positions recorded outside the four-value enum, e.g. a Speaker candidate. */
+  otherPositions: number;
+  participationRate: number | null;
+  sponsored: number;
+  cosponsored: number;
+  speeches: number;
+  /** False when no `term` row bounds this member's service in this Congress. */
+  hasTerm: boolean;
+  windowStart: string | null;
+  windowEnd: string | null;
+};
+
+type RankingSqlRow = {
+  bioguide_id: string;
+  name: string;
+  cast_party: string | null;
+  member_party: string | null;
+  member_party_code: string | null;
+  state: string | null;
+  district: number | null;
+  has_term: boolean;
+  window_start: string | null;
+  window_end: string | null;
+  eligible: number;
+  recorded: number;
+  not_voting: number;
+  other_positions: number;
+  sponsored: number;
+  cosponsored: number;
+  speeches: number;
+};
+
+/**
+ * Every metric §11 defines, for one chamber of one Congress.
+ *
+ * Scoped to a (Congress, chamber) pair because that is the only comparison
+ * §11/FR-R2 permits: House against House, Senate against Senate, over one
+ * period. A cross-Congress table would rank a member who served three months
+ * against one who served two years.
+ *
+ * THE DENOMINATOR IS CORRECTED FOR SERVICE, not fixed at "every roll call".
+ * `term.start_date`/`end_date` bound each member's window, widened to include
+ * any roll call they are actually recorded as voting in — a cast is itself
+ * evidence of service, and it must never be possible for the numerator to
+ * exceed the denominator. Where no `term` row exists the window is the whole
+ * Congress and `hasTerm` is false, so the page can say the figure is
+ * uncorrected rather than quietly presenting it as if it were.
+ *
+ * Participation counts every recorded position INCLUDING non-enum ones: a
+ * member who answered an Election of the Speaker with a candidate's name
+ * voted, and excluding them would report 434 voting members as absent
+ * (§11 footnote 1).
+ *
+ * Nothing here is a score. Each column is a count, or a count divided by the
+ * roll calls it was drawn from, and the page ranks by whichever the reader
+ * picked (FC-4, N1).
+ */
+export async function getRankings(
+  congressNo: number,
+  chamberValue: ChamberValue,
+): Promise<RankingRow[]> {
+  const { start, end } = congressDateRange(congressNo);
+
+  const result = await getDb().execute<RankingSqlRow>(sql`
+    with rolls as (
+      select v.id, v.vote_date
+        from vote v
+       where v.congress_no = ${congressNo}
+         and v.chamber = ${chamberValue}::chamber
+         and v.is_published
+    ),
+    casts as (
+      select vc.bioguide_id,
+             count(*)::int as recorded,
+             count(*) filter (where vc.position = 'NotVoting')::int as not_voting,
+             count(*) filter (where vc.raw_position is not null)::int as other_positions,
+             min(r.vote_date) as first_cast,
+             max(r.vote_date) as last_cast,
+             -- What the chamber recorded beside this member's name at the
+             -- time. Taken as the modal value because a party switch mid
+             -- Congress is real and neither half should be discarded.
+             mode() within group (order by vc.party) as cast_party
+        from vote_cast vc
+        join rolls r on r.id = vc.vote_id
+       where vc.congress_no = ${congressNo}
+       group by vc.bioguide_id
+    ),
+    served as (
+      select t.bioguide_id,
+             min(t.start_date) as start_date,
+             case when bool_or(t.end_date is null) then null else max(t.end_date) end as end_date,
+             max(t.state) as state,
+             max(t.district) as district
+        from term t
+       where t.congress_no = ${congressNo}
+         and t.chamber = ${chamberValue}::chamber
+       group by t.bioguide_id
+    ),
+    roster as (
+      select bioguide_id from served
+      union
+      select bioguide_id from casts
+    ),
+    windows as (
+      select r.bioguide_id,
+             case when sv.bioguide_id is null then null
+                  else least(sv.start_date, c.first_cast) end as window_start,
+             case when sv.bioguide_id is null or sv.end_date is null then null
+                  else greatest(sv.end_date, c.last_cast) end as window_end,
+             (sv.bioguide_id is not null) as has_term
+        from roster r
+        left join served sv on sv.bioguide_id = r.bioguide_id
+        left join casts c on c.bioguide_id = r.bioguide_id
+    ),
+    sponsored as (
+      select s.bioguide_id,
+             count(*) filter (where s.role = 'sponsor')::int as sponsored,
+             count(*) filter (where s.role = 'cosponsor')::int as cosponsored
+        from sponsorship s
+        join bill b on b.id = s.bill_id
+       where b.congress_no = ${congressNo}
+       group by s.bioguide_id
+    ),
+    spoke as (
+      select ss.bioguide_id, count(*)::int as speeches
+        from speech_speaker ss
+        join speech sp on sp.id = ss.speech_id
+       where sp.speech_date >= ${start}::date
+         and sp.speech_date < ${end}::date
+       group by ss.bioguide_id
+    )
+    select w.bioguide_id,
+           m.direct_order_name as name,
+           c.cast_party,
+           m.party as member_party,
+           m.party_code as member_party_code,
+           coalesce(sv.state, m.state) as state,
+           coalesce(sv.district, m.district) as district,
+           w.has_term,
+           w.window_start,
+           w.window_end,
+           (select count(*) from rolls rr
+             where (w.window_start is null or rr.vote_date >= w.window_start)
+               and (w.window_end is null or rr.vote_date <= w.window_end))::int as eligible,
+           coalesce(c.recorded, 0) as recorded,
+           coalesce(c.not_voting, 0) as not_voting,
+           coalesce(c.other_positions, 0) as other_positions,
+           coalesce(sp.sponsored, 0) as sponsored,
+           coalesce(sp.cosponsored, 0) as cosponsored,
+           coalesce(sk.speeches, 0) as speeches
+      from windows w
+      join member m on m.bioguide_id = w.bioguide_id
+      left join casts c on c.bioguide_id = w.bioguide_id
+      left join served sv on sv.bioguide_id = w.bioguide_id
+      left join sponsored sp on sp.bioguide_id = w.bioguide_id
+      left join spoke sk on sk.bioguide_id = w.bioguide_id
+     order by m.direct_order_name
+  `);
+
+  return result.rows.map((r) => {
+    const recorded = Number(r.recorded);
+    const notVoting = Number(r.not_voting);
+    const eligible = Number(r.eligible);
+    const participated = recorded - notVoting;
+    return {
+      bioguideId: r.bioguide_id,
+      name: r.name,
+      partyCode: r.cast_party ?? r.member_party_code,
+      // The full name is only safe to show when the code recorded on the casts
+      // still matches the member's current party — otherwise "R" would be
+      // spelled out as the party they later joined.
+      partyName:
+        r.cast_party && r.cast_party !== r.member_party_code ? null : r.member_party,
+      state: r.state,
+      district: r.district === null ? null : Number(r.district),
+      eligible,
+      recorded,
+      participated,
+      notVoting,
+      otherPositions: Number(r.other_positions),
+      participationRate: eligible > 0 ? participated / eligible : null,
+      sponsored: Number(r.sponsored),
+      cosponsored: Number(r.cosponsored),
+      speeches: Number(r.speeches),
+      hasTerm: r.has_term,
+      windowStart: r.window_start,
+      windowEnd: r.window_end,
+    };
+  });
+}
+
+export type RankingBasisRoll = {
+  voteId: number;
+  rollNumber: number;
+  session: number;
+  voteDate: string;
+  question: string | null;
+  result: string | null;
+  position: string | null;
+  rawPosition: string | null;
+  recorded: boolean;
+  sourceUrl: string | null;
+};
+
+/**
+ * The roll calls one member's participation figure was computed from (FR-R4).
+ *
+ * Every roll call in the denominator, each with that member's recorded
+ * position or the absence of one — which is what "산출 근거" means: not the
+ * votes they cast, but the votes they were measured against. A reader can add
+ * the rows up and get the number back.
+ */
+export async function getRankingBasis(
+  congressNo: number,
+  chamberValue: ChamberValue,
+  bioguideId: string,
+): Promise<RankingBasisRoll[]> {
+  const result = await getDb().execute<{
+    vote_id: string;
+    roll_number: number;
+    session: number;
+    vote_date: string;
+    question: string | null;
+    result: string | null;
+    position: string | null;
+    raw_position: string | null;
+    source_url: string | null;
+  }>(sql`
+    with rolls as (
+      select v.id, v.session, v.roll_number, v.vote_date, v.question, v.result, v.source_url
+        from vote v
+       where v.congress_no = ${congressNo}
+         and v.chamber = ${chamberValue}::chamber
+         and v.is_published
+    ),
+    mine as (
+      select vc.vote_id, vc.position, vc.raw_position
+        from vote_cast vc
+       where vc.congress_no = ${congressNo}
+         and vc.bioguide_id = ${bioguideId}
+    ),
+    served as (
+      select min(t.start_date) as start_date,
+             case when bool_or(t.end_date is null) then null else max(t.end_date) end as end_date,
+             count(*) as n
+        from term t
+       where t.congress_no = ${congressNo}
+         and t.chamber = ${chamberValue}::chamber
+         and t.bioguide_id = ${bioguideId}
+    ),
+    span as (
+      select min(r.vote_date) as first_cast, max(r.vote_date) as last_cast
+        from mine
+        join rolls r on r.id = mine.vote_id
+    ),
+    win as (
+      select case when sv.n = 0 then null else least(sv.start_date, sp.first_cast) end as window_start,
+             case when sv.n = 0 or sv.end_date is null then null
+                  else greatest(sv.end_date, sp.last_cast) end as window_end
+        from served sv cross join span sp
+    )
+    select r.id as vote_id, r.roll_number, r.session, r.vote_date, r.question,
+           r.result, mine.position, mine.raw_position, r.source_url
+      from rolls r
+      cross join win w
+      left join mine on mine.vote_id = r.id
+     where (w.window_start is null or r.vote_date >= w.window_start)
+       and (w.window_end is null or r.vote_date <= w.window_end)
+     order by r.vote_date desc, r.roll_number desc
+  `);
+
+  return result.rows.map((r) => ({
+    voteId: Number(r.vote_id),
+    rollNumber: Number(r.roll_number),
+    session: Number(r.session),
+    voteDate: r.vote_date,
+    question: r.question,
+    result: r.result,
+    position: r.position,
+    rawPosition: r.raw_position,
+    recorded: r.position !== null || r.raw_position !== null,
+    sourceUrl: r.source_url,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Retrieval provenance (PRD NFR-5)
+// ---------------------------------------------------------------------------
+
+/**
+ * When each part of a record was last fetched.
+ *
+ * NFR-5 asks for `source_url` AND `retrieved_at` on every displayed fact. The
+ * URL is on the row; the timestamp is NOT — `bill.retrieved_at` and
+ * `vote.retrieved_at` are NULL on every row the pipeline has ever written, and
+ * the fetch time lives in the `provenance` table instead. So these two
+ * functions read it from there rather than letting the page quietly omit half
+ * of what NFR-5 requires.
+ *
+ * `provenance.entity_id` is a NATURAL key, not the surrogate `id`: a bill is
+ * `119/s/93` and a roll call is `<congress>/<session>/<roll>`.
+ */
+export type RetrievalRecord = { part: string; sourceUrl: string; retrievedAt: string };
+
+/**
+ * One row per part of the bill the pipeline fetches separately — the bill
+ * record, its actions, its cosponsors — because they are fetched on different
+ * calls and can be of different ages.
+ */
+export async function getBillProvenance(
+  congressNo: number,
+  type: BillTypeValue,
+  number: number,
+): Promise<RetrievalRecord[]> {
+  const entityId = `${congressNo}/${type}/${number}`;
+  const result = await getDb().execute<{
+    field: string | null;
+    source_url: string;
+    retrieved_at: string;
+  }>(sql`
+    select p.field,
+           (array_agg(p.source_url order by p.retrieved_at desc))[1] as source_url,
+           max(p.retrieved_at) as retrieved_at
+      from provenance p
+     where p.entity = 'bill' and p.entity_id = ${entityId}
+     group by p.field
+     order by p.field nulls first
+  `);
+  return result.rows.map((r) => ({
+    part: r.field ?? "Bill record",
+    sourceUrl: r.source_url,
+    retrievedAt: r.retrieved_at,
+  }));
+}
+
+/**
+ * When this roll call was fetched.
+ *
+ * Matched on the exact `source_url` as well as the natural key, and that is
+ * load-bearing: `entity_id` omits the chamber, so `119/2/1` names both a House
+ * and a Senate roll call. The URL disambiguates them exactly rather than by
+ * sniffing the host. Measured against the live database this resolves for
+ * 18,297 of 18,297 published roll calls.
+ */
+export async function getVoteRetrievedAt(v: {
+  congressNo: number;
+  session: number;
+  rollNumber: number;
+  sourceUrl: string | null;
+}): Promise<string | null> {
+  if (!v.sourceUrl) return null;
+  const entityId = `${v.congressNo}/${v.session}/${v.rollNumber}`;
+  const result = await getDb().execute<{ retrieved_at: string | null }>(sql`
+    select max(p.retrieved_at) as retrieved_at
+      from provenance p
+     where p.entity = 'vote'
+       and p.entity_id = ${entityId}
+       and p.source_url = ${v.sourceUrl}
+  `);
+  return result.rows.at(0)?.retrieved_at ?? null;
+}
+
+/**
+ * How many roll calls carry a bill reference at all.
+ *
+ * Asked so the bill page can tell two very different emptinesses apart. As of
+ * P5 the answer is zero: `vote.bill_id` is NULL on every one of the 18,544
+ * collected roll calls, because neither the Clerk XML path nor the Senate XML
+ * path resolves the measure a vote was held on. "No roll call on this bill"
+ * would therefore be true of every bill in the database and would read as a
+ * fact about the legislation rather than about the pipeline. When the linkage
+ * lands this returns non-zero and the page's wording changes with it — no copy
+ * edit required.
+ */
+export async function getVoteBillLinkageCount() {
+  const rows = await getDb()
+    .select({ n: count() })
+    .from(vote)
+    .where(isNotNull(vote.billId));
+  return Number(rows.at(0)?.n ?? 0);
 }

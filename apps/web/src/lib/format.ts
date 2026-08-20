@@ -36,19 +36,40 @@ export function formatDateTime(value?: string | Date | null): string {
   return Number.isNaN(d.getTime()) ? "—" : DATETIME.format(d);
 }
 
+/** Citation prefixes, keyed by the `bill_type` enum. */
+const BILL_TYPE_PREFIX: Record<string, string> = {
+  hr: "H.R.",
+  s: "S.",
+  hjres: "H.J.Res.",
+  sjres: "S.J.Res.",
+  hconres: "H.Con.Res.",
+  sconres: "S.Con.Res.",
+  hres: "H.Res.",
+  sres: "S.Res.",
+};
+
+/** What each measure actually is, for a filter menu where the prefix alone is opaque. */
+const BILL_TYPE_NAME: Record<string, string> = {
+  hr: "House bill",
+  s: "Senate bill",
+  hjres: "House joint resolution",
+  sjres: "Senate joint resolution",
+  hconres: "House concurrent resolution",
+  sconres: "Senate concurrent resolution",
+  hres: "House simple resolution",
+  sres: "Senate simple resolution",
+};
+
 /** "H.R. 3424", "S. 331" — the citation form readers recognise. */
 export function formatBillNumber(billType: string, number: number): string {
-  const pretty: Record<string, string> = {
-    hr: "H.R.",
-    s: "S.",
-    hjres: "H.J.Res.",
-    sjres: "S.J.Res.",
-    hconres: "H.Con.Res.",
-    sconres: "S.Con.Res.",
-    hres: "H.Res.",
-    sres: "S.Res.",
-  };
-  return `${pretty[billType] ?? billType.toUpperCase()} ${number}`;
+  return `${BILL_TYPE_PREFIX[billType] ?? billType.toUpperCase()} ${number}`;
+}
+
+/** "H.R. — House bill", for the /bills type filter. */
+export function formatBillTypeOption(billType: string): string {
+  const prefix = BILL_TYPE_PREFIX[billType] ?? billType.toUpperCase();
+  const name = BILL_TYPE_NAME[billType];
+  return name ? `${prefix} — ${name}` : prefix;
 }
 
 export function billHref(congress: number, billType: string, number: number): string {

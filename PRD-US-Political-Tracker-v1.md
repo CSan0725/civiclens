@@ -287,19 +287,28 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 ## 10. 정보구조 (IA) / 페이지 맵
 
 ```
-/                     대시보드(최근 법안·표결·발언, (v2)뉴스)
-/members              의원 검색·목록
-/members/:bioguide    의원 프로필
-/bills                법안 목록·검색
-/bills/:congress/:type/:number   법안 상세
-/votes                표결 목록
-/votes/:id            표결 상세(의원별 포지션)
-/districts            지도(내 지역구 찾기)
-/districts/:geoid     지역구 상세(대표 3인 + 최근 5년 후보)
-/rankings             출석률·표결참여율 등
-/speeches             발언 검색
-/methodology          지표 산출·데이터 출처·커버리지 한계
+/                     대시보드(최근 법안·표결·발언, (v2)뉴스)          [구현]
+/members              의원 검색·목록                                   [스텁]
+/members/:bioguide    의원 프로필                                      [구현]
+/bills                법안 목록·검색                                   [구현 P5]
+/bills/:congress/:type/:number   법안 상세                             [구현 P5]
+/votes                표결 목록                                        [구현 P5]
+/votes/:id            표결 상세(의원별 포지션)                          [구현 P5]
+/districts            지도(내 지역구 찾기)                              [스텁 — 경계 데이터 미수집]
+/districts/:geoid     지역구 상세(대표 3인 + 최근 5년 후보)              [스텁 — 경계 데이터 미수집]
+/rankings             출석률·표결참여율 등                              [구현 P5]
+/speeches             발언 검색                                        [구현]
+/methodology          지표 산출·데이터 출처·커버리지 한계               [스텁 — 각주 5]
 ```
+
+> **각주 5 — `/methodology`가 아직 스텁인 이유 (P5, 2026-08-20).**
+> §11이 요구하는 "방법론 각주 상시"는 `/rankings` **페이지 안에** 전문으로 넣었다.
+> 별도 페이지로 링크만 걸면 §11 각주를 클릭해야 볼 수 있게 되는데, 랭킹은 각주를
+> 읽지 않은 독자가 가장 오해하기 쉬운 화면이다. `/methodology`는 랭킹 방법론뿐 아니라
+> 수집 범위·소스 목록·PIT 정책을 모두 담는 문서 페이지이므로 별도 작업으로 남긴다.
+> **그때까지 신규 페이지는 "Coming soon" 스텁으로 링크하지 않는다** — 방법론을
+> 약속하는 링크가 빈 페이지로 가는 것이 링크가 없는 것보다 나쁘기 때문이다.
+> (`/members/:bioguide`의 기존 링크는 P5 이전부터 있던 것으로 그대로 둔다.)
 
 ---
 
@@ -382,6 +391,9 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 - **P3 발언:** GovInfo Congressional Record 수집 + FTS.
 - **P4 지도/지역구:** Census Geocoder + 경계 + MapLibre + 후보(FEC 5년).
 - **P5 프런트:** 대시보드·프로필·검색·랭킹.
+  - 2026-08-20: `/bills`, `/bills/:congress/:type/:number`, `/votes`, `/votes/:id`,
+    `/rankings` 구현 — 신규 ETL 없이 P1~P3 적재분 위의 쿼리·화면 작업. §10 IA 표 참조.
+    남은 스텁은 `/members`(목록), `/methodology`(§10 각주 5), `/districts` 2종(P4 의존).
 - **P6 하드닝:** 정합성·신선도·관측성·접근성.
 - **(v2)** 뉴스 계층 · 알림 · 고급검색.
 - **(v3)** 비교뷰 · UK 온보딩 · 공개 데이터.
@@ -409,6 +421,10 @@ Provenance(entity, entity_id, field, source_url, retrieved_at, checksum)
 - [x] GovInfo API 키 + Congressional Record granule 파싱 확인 — 실측(2026-08-19). 패키지(일자별 CR) → 그래뉼(개별 발언) 구조 확인, `granuleClass`가 House/Senate/Extensions of Remarks/Daily Digest를 구분한다. **P0 스텁의 가정이 틀렸다: CREC의 `<congMember>`는 1994년 시작 시점까지 전부 `bioGuideId`를 갖고 있다**(1995·2005·2015·2026 확인, 이름만 있는 항목 0건) → 이름 매칭 경로 자체가 불필요. **그래뉼의 7.2%는 화자가 둘 이상**(콜로퀴)이라 `speech.bioguide_id` 한 칼럼으로는 담을 수 없어 마이그레이션 0005로 `speech_speaker`를 추가. 화자 미상 47%는 매칭 실패가 아니라 기도·선서·의사일지·Constitutional Authority Statement 등 **누구의 발언도 아닌 기록**이며 NULL로 저장한다. 레이트리밋 실측 36,000 req/h(문서상 api.data.gov 1,000). 볼륨 실측: 119대 = **351개 패키지 / 26,985면 / 52,265 그래뉼 / 텍스트 약 329MB / 수집 약 3.5시간**. CREC 시작은 1990년대가 아니라 **1994년**이고 그 이전은 CRECB(권·부 단위, 구조가 다름). 상세: `docs/P3-source-verification.md`
 - [ ] FEC API 키 + 후보 5년 필터 확인
 - [ ] Census Geocoder 주소→지역구 응답 확인 + 119대 경계 파일 확보
+- [x] **P5 랭킹 수용기준 — "순위값이 원표결 재계산과 일치" 실측 확인(2026-08-20).** 라이브 DB(Neon)에 빌드본을 붙여 렌더한 값을, 앱 쿼리와 **다른 방식으로 작성한 SQL**(CTE 체인 대신 상관 서브쿼리)로 독립 재계산해 대조 — 7명 전원 일치. 근거: `B001314` 645/645 = 100.0%, `G000551`(임기 중 사망) **2/71 = 2.8%** — 분모가 645가 아니라 재임 기간 롤콜로 보정됨, `P000610` 42/645, `R000600` 15/645, `J000294` 643/645. 119대 하원 raw_position 434건 = 의장 선출 1건(roll 2: `Johnson (LA)` 218 · `Jeffries` 215 · `Emmer` 1 — §11 각주 1 실측치와 정확히 일치). FR-R4 근거 화면도 확인: `?basis=G000551`이 분모 71개 롤콜을 전건 나열하고 각 건이 `/votes/:id`로 연결된다.
+  - **실측으로 드러난 데이터 공백 2건(둘 다 P5 스코프 밖 — ETL 수정 필요).**
+    1. **`vote.bill_id`가 18,544건 전부 NULL.** Clerk XML·senate.gov XML 경로 모두 표결이 걸린 법안을 해석하지 않는다. 그래서 법안 상세의 "Roll-call votes" 섹션은 **모든 법안에서** 비어 있다. 화면은 이 사실을 그대로 말하도록 했고(연결 건수 0이면 문구가 바뀌는 조건부 empty state), 링크가 채워지면 문구도 자동으로 바뀐다.
+    2. **`retrieved_at`이 `speech`를 제외한 전 테이블에서 NULL** (bill 0/150, vote 0/18,544, member 0/1,694, term 0/11,412). 수집 시각은 `provenance` 테이블(72,544행)에 **자연키**로 들어 있다 — bill은 `119/s/93`, vote는 `<congress>/<session>/<roll>`. NFR-5를 실제로 충족시키려고 상세 페이지는 여기서 시각을 읽는다. vote는 `entity_id`에 챔버가 없어 하원·상원이 충돌하므로(`119/2/1`이 양쪽 모두) `source_url` 완전일치로 구분 — 공개 표결 18,297건 전건 해석 확인.
 - [x] Voteview 다운로드 필드(Members' Votes) 매핑 확인 — 실측(2026-08-18), **전 구간 대조 완료(2026-08-19): 18,348건 중 17,909 일치 / 247 불일치(1.36%) / 177 상대 없음 / 15 비교 불가**. **주의: Voteview의 `rollnumber`는 우리 roll_number가 아니다**(회기 통산 번호이고 정족수 호명을 건너뜀). 매칭 키는 `clerk_rollnumber` + `session`. 집계 대조는 `yea_count`/`nay_count` 컬럼만 — cast code에서 유도한 값은 관행 차이로 체계적으로 어긋난다(§9 각주 3). 상세: `docs/P2-source-verification.md`
 
 ---
