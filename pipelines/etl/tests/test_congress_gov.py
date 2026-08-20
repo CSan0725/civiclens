@@ -283,30 +283,38 @@ def test_house_vote_coverage_floor_is_the_115th() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bill_is_current_only_skips_when_our_fetch_is_no_older() -> None:
+def test_bill_is_current_waits_for_the_update_day_to_close() -> None:
     """The comparison that decides whether a 10-hour run re-fetches a bill.
 
-    Wrong in the permissive direction it silently skips bills that changed, and
-    the catalogue quietly goes stale — so every uncertain case must answer
-    False.
+    The bill list reports `updateDate` at DAY granularity — the live payload
+    carries "2026-08-20", not a timestamp — so a fetch during that day cannot
+    be shown to include a change made later the same day. Getting this wrong
+    in the permissive direction skips bills that changed, and the catalogue
+    goes stale with no error to notice.
     """
     from datetime import datetime, timedelta
 
     from sources.congress_gov_sync import _bill_is_current
 
-    upstream = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+    # What the API actually returns, parsed: midnight, no timezone.
+    day = datetime(2026, 8, 20, 0, 0)
+    end_of_day = datetime(2026, 8, 21, 0, 0, tzinfo=UTC)
 
-    # Fetched after the last upstream change, or at the same instant: current.
-    assert _bill_is_current(upstream + timedelta(hours=1), upstream) is True
-    assert _bill_is_current(upstream, upstream) is True
+    # Fetched during the update day: the change may still be coming. Refetch.
+    assert _bill_is_current(datetime(2026, 8, 20, 5, 31, tzinfo=UTC), day) is False
+    assert _bill_is_current(end_of_day - timedelta(seconds=1), day) is False
 
-    # Upstream moved after we fetched: stale, collect it.
-    assert _bill_is_current(upstream - timedelta(seconds=1), upstream) is False
+    # Fetched once the day has closed: provably current.
+    assert _bill_is_current(end_of_day, day) is True
+    assert _bill_is_current(end_of_day + timedelta(days=30), day) is True
 
-    # Never seen, or upstream gave no usable date: collect it.
-    assert _bill_is_current(None, upstream) is False
-    assert _bill_is_current(upstream, None) is False
+    # The ordinary backfill case: bill last changed months ago, collected now.
+    assert _bill_is_current(datetime(2026, 8, 20, 21, 15, tzinfo=UTC), datetime(2025, 3, 2)) is True
+
+    # Never seen, or no usable upstream date: collect it.
+    assert _bill_is_current(None, day) is False
+    assert _bill_is_current(end_of_day, None) is False
     assert _bill_is_current(None, None) is False
 
-    # Naive vs aware would raise on comparison; refetch rather than guess.
-    assert _bill_is_current(datetime(2026, 8, 2, 12, 0), upstream) is False
+    # A naive stored value is read as UTC rather than raising.
+    assert _bill_is_current(datetime(2026, 8, 22, 0, 0), day) is True

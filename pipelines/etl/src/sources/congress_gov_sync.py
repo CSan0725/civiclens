@@ -14,7 +14,7 @@ Every job:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Connection
@@ -222,22 +222,34 @@ def sync_bills(
 
 
 def _bill_is_current(retrieved_at: datetime | None, update_date: datetime | None) -> bool:
-    """True when our last fetch of this bill is at least as new as upstream's.
+    """True when our last fetch of this bill provably saw its latest change.
 
     Congress.gov bumps a bill's `updateDate` when anything hanging off it
-    changes, so an unchanged date means the actions and cosponsors we already
+    changes, so an unmoved date means the actions and cosponsors we already
     hold are still current — the same assumption the speech collector makes
-    against a package's `lastModified`. Conservative in both directions: with
-    no stored fetch, or no usable upstream date, or a naive/aware mismatch, the
-    answer is False and the bill is collected.
+    against a package's `lastModified`.
+
+    THE COMPARISON IS AGAINST THE END OF THE UPDATE DAY, not the update
+    instant, because the bill list reports `updateDate` at DAY granularity:
+    the live payload carries "2026-08-20", not a timestamp. Comparing a fetch
+    time directly against midnight of that day would call a bill current when
+    we fetched it at 05:31 and it changed at 14:00 the same day. The earliest
+    moment a fetch can be shown to include everything from day D is midnight
+    at the end of D, so that is the threshold. A bill touched today is
+    therefore re-fetched until tomorrow, which costs one extra fetch and
+    cannot go stale.
+
+    Conservative on every unusable input — no stored fetch, no upstream date —
+    and naive values are read as UTC, which the whole-day margin absorbs.
     """
     if retrieved_at is None or update_date is None:
         return False
-    try:
-        return retrieved_at >= update_date
-    except TypeError:
-        # One side lacks a timezone. Refetch rather than guess which clock won.
-        return False
+    if update_date.tzinfo is None:
+        update_date = update_date.replace(tzinfo=UTC)
+    if retrieved_at.tzinfo is None:
+        retrieved_at = retrieved_at.replace(tzinfo=UTC)
+    settled = (update_date + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return retrieved_at >= settled
 
 
 def sync_one_bill(
