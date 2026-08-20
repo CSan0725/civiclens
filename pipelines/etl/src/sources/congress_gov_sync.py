@@ -14,7 +14,7 @@ Every job:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Connection
@@ -248,8 +248,10 @@ def _bill_is_current(retrieved_at: datetime | None, update_date: datetime | None
         update_date = update_date.replace(tzinfo=UTC)
     if retrieved_at.tzinfo is None:
         retrieved_at = retrieved_at.replace(tzinfo=UTC)
-    settled = (update_date + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    return retrieved_at >= settled
+    # Both sides reduced to a UTC calendar day, and the fetch day must be
+    # STRICTLY later. Same-day means the change could have landed after we
+    # looked, and a date carries nothing finer to settle it with.
+    return retrieved_at.astimezone(UTC).date() > update_date.astimezone(UTC).date()
 
 
 def sync_one_bill(

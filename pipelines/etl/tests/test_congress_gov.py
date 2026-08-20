@@ -283,14 +283,15 @@ def test_house_vote_coverage_floor_is_the_115th() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bill_is_current_waits_for_the_update_day_to_close() -> None:
+def test_bill_is_current_needs_a_strictly_later_fetch_day() -> None:
     """The comparison that decides whether a 10-hour run re-fetches a bill.
 
     The bill list reports `updateDate` at DAY granularity — the live payload
-    carries "2026-08-20", not a timestamp — so a fetch during that day cannot
-    be shown to include a change made later the same day. Getting this wrong
-    in the permissive direction skips bills that changed, and the catalogue
-    goes stale with no error to notice.
+    carries "2026-08-20", not a timestamp — so a fetch on that same day cannot
+    be shown to include a change made later in it. Both sides reduce to a UTC
+    calendar day and the fetch day must be strictly later. Wrong in the
+    permissive direction this skips bills that changed, and the catalogue goes
+    stale with no error to notice.
     """
     from datetime import datetime, timedelta
 
@@ -298,23 +299,34 @@ def test_bill_is_current_waits_for_the_update_day_to_close() -> None:
 
     # What the API actually returns, parsed: midnight, no timezone.
     day = datetime(2026, 8, 20, 0, 0)
-    end_of_day = datetime(2026, 8, 21, 0, 0, tzinfo=UTC)
 
-    # Fetched during the update day: the change may still be coming. Refetch.
+    # Same UTC day as the update, however late: refetch.
     assert _bill_is_current(datetime(2026, 8, 20, 5, 31, tzinfo=UTC), day) is False
-    assert _bill_is_current(end_of_day - timedelta(seconds=1), day) is False
+    assert _bill_is_current(datetime(2026, 8, 20, 23, 59, 59, tzinfo=UTC), day) is False
 
-    # Fetched once the day has closed: provably current.
-    assert _bill_is_current(end_of_day, day) is True
-    assert _bill_is_current(end_of_day + timedelta(days=30), day) is True
+    # A strictly later day: provably current.
+    assert _bill_is_current(datetime(2026, 8, 21, 0, 0, tzinfo=UTC), day) is True
+    assert (
+        _bill_is_current(datetime(2026, 8, 21, 0, 0, tzinfo=UTC) + timedelta(days=30), day) is True
+    )
 
-    # The ordinary backfill case: bill last changed months ago, collected now.
+    # The ordinary backfill case: last changed months ago, collected today.
     assert _bill_is_current(datetime(2026, 8, 20, 21, 15, tzinfo=UTC), datetime(2025, 3, 2)) is True
+
+    # A fetch BEFORE the update day is never current.
+    assert _bill_is_current(datetime(2026, 8, 19, 23, 59, tzinfo=UTC), day) is False
 
     # Never seen, or no usable upstream date: collect it.
     assert _bill_is_current(None, day) is False
-    assert _bill_is_current(end_of_day, None) is False
+    assert _bill_is_current(datetime(2026, 8, 21, 0, 0, tzinfo=UTC), None) is False
     assert _bill_is_current(None, None) is False
 
     # A naive stored value is read as UTC rather than raising.
     assert _bill_is_current(datetime(2026, 8, 22, 0, 0), day) is True
+
+    # Non-UTC input is converted, not compared as wall-clock: 00:30 in Tokyo on
+    # the 21st is still the 20th in UTC, so it must not count as a later day.
+    from datetime import timezone
+
+    tokyo = timezone(timedelta(hours=9))
+    assert _bill_is_current(datetime(2026, 8, 21, 0, 30, tzinfo=tokyo), day) is False
