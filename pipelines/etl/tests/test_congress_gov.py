@@ -330,3 +330,49 @@ def test_bill_is_current_needs_a_strictly_later_fetch_day() -> None:
 
     tokyo = timezone(timedelta(hours=9))
     assert _bill_is_current(datetime(2026, 8, 21, 0, 30, tzinfo=tokyo), day) is False
+
+
+def test_duplicate_actions_in_one_payload_collapse_before_insert() -> None:
+    """Congress.gov ships the same action twice; Postgres will not take both.
+
+    119/hres/1377 lists "The House Committee on Rules reported an original
+    measure, H. Rept. 119-707, by Mr. Jack." twice — identical date, code,
+    committee, source system and text. `ON CONFLICT DO UPDATE` rejects a
+    statement proposing one key twice, which failed the whole bill and, before
+    per-bill commits, would have failed the whole run.
+    """
+    from datetime import date
+
+    from loaders.repository import _deduplicate_actions
+
+    same = {
+        "bill_id": 3910,
+        "action_date": date(2026, 6, 23),
+        "action_time": None,
+        "text": (
+            "The House Committee on Rules reported an original measure, "
+            "H. Rept. 119-707, by Mr. Jack."
+        ),
+        "action_code": "1010",
+        "committee_id": "hsru00",
+        "source_system": "Library of Congress",
+    }
+    # Same key, different payload column: the later row must win, as DO UPDATE
+    # would have done.
+    later = {**same, "action_type": "Committee", "source_url": "second"}
+    earlier = {**same, "action_type": "Committee", "source_url": "first"}
+
+    out = _deduplicate_actions([earlier, later])
+    assert len(out) == 1
+    assert out[0]["source_url"] == "second"
+
+    # Rows differing in any key column are NOT collapsed. These two are the
+    # real pair from that bill: same text and committee, different code and
+    # source system.
+    house = {**same, "action_code": "H12100", "source_system": "House floor actions"}
+    assert len(_deduplicate_actions([same, house])) == 2
+
+    # NULL time and code normalise the same way the index's COALESCE does, so a
+    # NULL and an explicit default collide exactly as Postgres would collide them.
+    explicit = {**same, "action_time": "00:00:00"}
+    assert len(_deduplicate_actions([same, explicit])) == 1

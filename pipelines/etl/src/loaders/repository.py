@@ -90,10 +90,45 @@ def upsert_bill_actions(conn: Connection, rows: Sequence[dict[str, Any]]) -> int
     return bulk_upsert(
         conn,
         table,
-        rows,
+        _deduplicate_actions(rows),
         conflict_elements=elements,
         update_columns=("action_type", "source_url", "retrieved_at"),
     )
+
+
+def _deduplicate_actions(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse rows that share the natural key before they reach Postgres.
+
+    Congress.gov sometimes lists the same action twice in one payload —
+    119/hres/1377 carries "The House Committee on Rules reported an original
+    measure, H. Rept. 119-707, by Mr. Jack." twice, identical in date, code,
+    committee, source system and text. `ON CONFLICT DO UPDATE` refuses a
+    statement that proposes the same key twice ("cannot affect row a second
+    time") and the whole bill fails, so the duplicate has to go before the
+    insert rather than be resolved by it.
+
+    `bulk_upsert` already guards this via `_assert_unique_keys`, but only for
+    callers that pass `conflict_columns`. This table's key is an expression
+    index, so it takes the `conflict_elements` path and never reaches that
+    check — hence the key is restated here, matching
+    `idx_bill_action_natural_key` in migration 0002.
+
+    Last occurrence wins, which is what `DO UPDATE` would have done had
+    Postgres allowed it.
+    """
+    by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for row in rows:
+        key = (
+            row.get("bill_id"),
+            row.get("action_date"),
+            row.get("action_time") or "00:00:00",
+            row.get("action_code") or "",
+            row.get("committee_id") or "",
+            row.get("source_system") or "",
+            row.get("text"),
+        )
+        by_key[key] = row
+    return list(by_key.values())
 
 
 def upsert_vote(conn: Connection, row: dict[str, Any]) -> int:
