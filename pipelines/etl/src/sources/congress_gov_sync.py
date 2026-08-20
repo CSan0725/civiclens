@@ -14,6 +14,7 @@ Every job:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Connection
@@ -162,25 +163,81 @@ def sync_bills(
     congress: CongressNo,
     limit: int | None = None,
 ) -> SyncTally:
-    """Collect bills with their actions, cosponsors and latest summary."""
+    """Collect bills with their actions, cosponsors and latest summary.
+
+    Two properties make a full-Congress run (18,396 bills, ~73,700 requests,
+    ~10 hours) survivable, and both matter at that scale rather than on the
+    150-bill daily slice this job used to be run as:
+
+    RESTARTABLE. Each bill commits on its own, so an interrupted run keeps
+    everything collected before the interruption. Committing once at the end
+    would hold a single Postgres transaction open across ten hours of network
+    fetching — the failure mode `ad253e2` removed from the speech backfill.
+
+    RESUMABLE. A bill whose upstream `updateDate` is no newer than our last
+    recorded fetch of it is skipped without touching the network, so a resumed
+    run costs only the bills that are actually left. The list walk still visits
+    every bill (74 pages), which is what supplies the `updateDate` to compare.
+    """
     with sync_run(conn, "bills", source_system=SOURCE.value) as tally:
-        targets: list[tuple[str, int]] = []
+        targets: list[tuple[str, int, datetime | None]] = []
         for page in cg.fetch_bills(fetcher, congress=congress):
             for b in page.json().get("bills", []):
-                targets.append((str(b["type"]).lower(), int(b["number"])))
+                targets.append(
+                    (
+                        str(b["type"]).lower(),
+                        int(b["number"]),
+                        cg._parse_datetime(b.get("updateDate")),
+                    )
+                )
+                # Observed before any skip decision: `data_current_as_of`
+                # should track the newest timestamp upstream reports, whether
+                # or not this run needed to re-fetch the bill behind it.
                 tally.observe(cg._parse_datetime(b.get("updateDate")))
             if limit is not None and len(targets) >= limit:
                 break
         if limit is not None:
             targets = targets[:limit]
 
+        stored = repo.stored_bill_retrievals(conn, [f"{congress}/{t}/{n}" for t, n, _ in targets])
+
         log.info("bills.discovered", count=len(targets), congress=congress)
-        for bill_type, number in targets:
+        skipped = 0
+        for bill_type, number, update_date in targets:
+            if _bill_is_current(stored.get(f"{congress}/{bill_type}/{number}"), update_date):
+                skipped += 1
+                continue
             sync_one_bill(
                 conn, fetcher, congress=congress, bill_type=bill_type, number=number, tally=tally
             )
+            # Per bill, mirroring sync_house_votes: one unparseable bill must
+            # not discard everything collected before it, and progress has to
+            # survive a mid-run failure.
+            conn.commit()
+        if skipped:
+            log.info("bills.skipped_unchanged", count=skipped, congress=congress)
+            tally.note(f"{skipped} bills unchanged since last fetch")
         conn.commit()
     return tally
+
+
+def _bill_is_current(retrieved_at: datetime | None, update_date: datetime | None) -> bool:
+    """True when our last fetch of this bill is at least as new as upstream's.
+
+    Congress.gov bumps a bill's `updateDate` when anything hanging off it
+    changes, so an unchanged date means the actions and cosponsors we already
+    hold are still current — the same assumption the speech collector makes
+    against a package's `lastModified`. Conservative in both directions: with
+    no stored fetch, or no usable upstream date, or a naive/aware mismatch, the
+    answer is False and the bill is collected.
+    """
+    if retrieved_at is None or update_date is None:
+        return False
+    try:
+        return retrieved_at >= update_date
+    except TypeError:
+        # One side lacks a timezone. Refetch rather than guess which clock won.
+        return False
 
 
 def sync_one_bill(

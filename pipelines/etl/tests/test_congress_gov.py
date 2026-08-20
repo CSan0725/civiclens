@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from conftest import load_json
@@ -274,3 +276,37 @@ def test_speaker_election_detail_reports_no_yea_nay() -> None:
 def test_house_vote_coverage_floor_is_the_115th() -> None:
     """Verified live: the beta serves the 115th onward, not the 118th."""
     assert cg.HOUSE_VOTE_EARLIEST_CONGRESS == 115
+
+
+# ---------------------------------------------------------------------------
+# Resume skip (full-Congress bill collection)
+# ---------------------------------------------------------------------------
+
+
+def test_bill_is_current_only_skips_when_our_fetch_is_no_older() -> None:
+    """The comparison that decides whether a 10-hour run re-fetches a bill.
+
+    Wrong in the permissive direction it silently skips bills that changed, and
+    the catalogue quietly goes stale — so every uncertain case must answer
+    False.
+    """
+    from datetime import datetime, timedelta
+
+    from sources.congress_gov_sync import _bill_is_current
+
+    upstream = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+
+    # Fetched after the last upstream change, or at the same instant: current.
+    assert _bill_is_current(upstream + timedelta(hours=1), upstream) is True
+    assert _bill_is_current(upstream, upstream) is True
+
+    # Upstream moved after we fetched: stale, collect it.
+    assert _bill_is_current(upstream - timedelta(seconds=1), upstream) is False
+
+    # Never seen, or upstream gave no usable date: collect it.
+    assert _bill_is_current(None, upstream) is False
+    assert _bill_is_current(upstream, None) is False
+    assert _bill_is_current(None, None) is False
+
+    # Naive vs aware would raise on comparison; refetch rather than guess.
+    assert _bill_is_current(datetime(2026, 8, 2, 12, 0), upstream) is False

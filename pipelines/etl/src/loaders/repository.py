@@ -215,6 +215,39 @@ def find_bill_id(conn: Connection, *, congress_no: int, bill_type: str, number: 
     return int(result) if result is not None else None
 
 
+def stored_bill_retrievals(conn: Connection, naturals: Sequence[str]) -> dict[str, datetime]:
+    """`{"119/hr/3424": <when we last fetched its detail>}` for bills already collected.
+
+    Read from `provenance`, NOT from `bill.updated_at`. That column looks like
+    the right thing and is not: `bill_set_updated_at` (migration 0001) forces
+    it to `now()` on every UPDATE, so it records when WE wrote the row, and
+    comparing it against Congress.gov's `updateDate` would compare two
+    unrelated clocks. Nothing on `bill` carries the upstream timestamp —
+    `parse_bill_detail` does not persist `updateDate` at all.
+
+    `provenance` does carry it, keyed by the bill's natural key, and only the
+    base record (`field IS NULL`) is considered: `actions` and `cosponsors`
+    rows are written in the same transaction, so the base row's presence means
+    the whole bill completed.
+
+    Mirrors `stored_speeches` above, which is what makes the speech backfill
+    restartable.
+    """
+    if not naturals:
+        return {}
+    table = reflect_table("provenance")
+    stmt = (
+        select(table.c.entity_id, func.max(table.c.retrieved_at).label("retrieved_at"))
+        .where(
+            table.c.entity == "bill",
+            table.c.field.is_(None),
+            table.c.entity_id.in_(list(naturals)),
+        )
+        .group_by(table.c.entity_id)
+    )
+    return {str(row.entity_id): row.retrieved_at for row in conn.execute(stmt)}
+
+
 def existing_member_ids(conn: Connection, bioguide_ids: Iterable[str]) -> set[str]:
     """Return the subset of bioguide IDs already present in `member`."""
     wanted = sorted(set(bioguide_ids))
