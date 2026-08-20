@@ -224,7 +224,7 @@ Milestones follow `PRD-US-Political-Tracker-v1.md` §14.
 | **P0** | Repo, CI, DB schema, ETL skeleton | **Done** |
 | **P1** | Members, bills, actions, votes (House 2017~, Senate) | **Done**, green on GitHub Actions |
 | P2 | Clerk XML backfill **1990–2016** + Voteview reconciliation | **Done and loaded.** 17,433 roll calls, 7,849,148 casts, 1.31 GiB; reconciled over all 18,348 stored roll calls |
-| P3 | GovInfo Congressional Record speeches + full-text search | **Done.** Collector, `/speeches` search and the profile Speeches tab; 119th Congress backfill pending the live database |
+| P3 | GovInfo Congressional Record speeches + full-text search | **Done and loaded.** 49,171 granules, 40.3M words, 333 MB; 57.0% attributed across 546 members |
 | P4 | Census geocoding, district boundaries, MapLibre, FEC candidates | Not started |
 | P5 | Dashboard, profiles, search, rankings — the real interface | **Dashboard + member profile done**; 10 routes still placeholders |
 | P6 | Consistency, freshness, observability, accessibility | Not started |
@@ -337,10 +337,17 @@ Four things the probe changed about the plan:
   edition, packaged per volume-part, and are not collected.
 
 Scope, decided from the measurement rather than by assumption: **the 119th
-Congress only** — 351 packages, 26,985 pages, 52,265 granules, ~329 MB of text,
-~3.5 hours of collection. The full 1994– history extrapolates to roughly 15×
-that, which is a storage decision to take separately;
+Congress only**. Loaded on 2026-08-19/20: **49,171 granules, 40.3M words,
+333 MB, 57.0% attributed to a named member across 546 of them**, in about six
+hours. The full 1994– history extrapolates to roughly 15× that, which is a
+storage decision to take separately (PRD OQ-8);
 `civiclens-etl backfill-speeches --congress N` already accepts any Congress.
+
+One operational lesson generalises beyond P3: Neon closes an
+idle-in-transaction session after five minutes AND suspends an idle compute,
+so a multi-hour job must never hold a transaction across network I/O, and must
+retry its writes without re-running the fetch that preceded them. Finding 10 in
+the verification doc has the detail; the P4 backfills will want the same shape.
 
 ### What P1 deliberately did not do
 

@@ -376,9 +376,16 @@ of the traffic and everything else is text:
 
 | Run | Requests | Wall clock |
 |---|---|---|
-| 119th backfill | 351 + 52,265 ≈ **52,600** | **~3.5 h** at 4.2 req/s |
+| 119th backfill | 350 + 52,265 ≈ **52,600** | **~6 h** — see below |
 | Nightly, 7-day window | ~7 + text for what moved | minutes |
-| Weekly 400-day sweep | ~351 + text for what moved | minutes |
+| Weekly 400-day sweep | ~350 + text for what moved | minutes |
+
+The 4.2 req/s above was measured with **no politeness delay**, which is not how
+the pipeline runs. `ETL_REQUEST_DELAY` defaults to 0.2 s, and the sustained
+rate against Neon came out at **2.2 granules/s** — so the honest figure for the
+backfill is about six hours, not three and a half. The delay was kept: 2.2 req/s
+is 22% of GovInfo's advertised ceiling, and a one-off overnight job is not worth
+rushing a government service for.
 
 **Whole-history extrapolation, for the record.** CREC averages ~170 packages a
 year over 1994–2026, so the full collection is roughly **5,500 packages, 800k
@@ -466,9 +473,130 @@ killed at ten minutes mid-package; re-running the identical command skipped 164,
 193 and 237 already-stored granules in the packages it had finished and resumed
 at the one it had not.
 
-### The full 119th Congress
+### The full 119th Congress (2026-08-19/20) — 49,171 granules
 
-_Pending — the live run writes to Neon; filled in by the commit that does it._
+Collected into Neon. `sync.ok`, no package skipped, no granule dropped.
+
+| | Predicted | **Actual** | |
+|---|---|---|---|
+| Granules stored | ~49,000 | **49,171** | +0.3% |
+| Packages | 350 | **349** | see Finding 9 |
+| Text | 329 MB | **292,764,932 chars** | −11% |
+| Words | — | **40,263,070** | |
+| `speech` + `speech_speaker` on disk | ~285 MB | **333 MB** | +17% |
+| Database total | — | 1,346 → **1,705 MB** | +359 MB |
+| Collection time | ~3.5 h | **~6 h** | the delay, above |
+
+The two size predictions missed in opposite directions and roughly cancel: the
+text is 11% smaller than the page-based extrapolation implied, and it costs 17%
+more on disk than the 12-package slice suggested — 6,979 bytes per granule
+against 6,058 measured on the slice. The slice under-represented the large
+appropriations-day granules that TOAST actually compresses, so its
+bytes-per-granule was drawn from an unusually inline-heavy sample.
+
+**Speaker attribution, measured over everything collected:**
+
+| | Granules | Attributed | Rate |
+|---|---|---|---|
+| `speech.bioguide_id` (exactly one speaker) | 49,171 | 24,678 | 50.2% |
+| `speech_speaker` (any speaker) | 49,171 | **28,012** | **57.0%** |
+| Extensions of Remarks | 6,504 | 6,334 | **97.4%** |
+| Senate | 20,770 | 14,892 | **71.7%** |
+| House | 21,897 | 6,786 | **31.0%** |
+
+38,601 speaker links across **546 distinct members**.
+
+Two numbers to read together. **3,334 granules are colloquies** — 6.8% of the
+collection, matching the 7.2% the probe sample predicted — and they are the
+gap between the two top rows. Without migration 0005 every one of them would
+either have been misattributed to whoever GPO listed first, or missing from
+those members' profiles entirely.
+
+And the **House/Senate split is a real property of the two chambers' records,
+not a collection defect**. The House column is dominated by filings rather than
+speech: Constitutional Authority Statements alone are 70 of one sitting's 265
+granules, and they name no speaker by design. The Senate publishes proportionally
+more floor statement and less paperwork. Both are stored either way.
+
+The final rate (57.0%) came out above the 52.8% the 17-day probe sample
+measured, and well above the 40.9% of the first 12 packages — that slice was
+the opening of a Congress, which is almost entirely procedural.
+
+---
+
+### Finding 9 — one sitting can be published under several package ids, sharing granules
+
+350 packages were listed for the 119th; 349 appear in `speech`. The missing one
+is not missing data.
+
+11 March 2025 was published three times over:
+
+| Package | Kept granules | Relationship |
+|---|---|---|
+| `CREC-2025-03-11` | 279 | the sitting |
+| `CREC-2025-03-11-i45` | 265 | a strict **subset** of the above — same granule ids |
+| `CREC-2025-03-11-i46` | 14 | disjoint from both |
+
+Union: 293 distinct granules across 558 package-granule pairs. The granule ids
+inside all three carry the `CREC-2025-03-11-pt1-…` prefix regardless of which
+package lists them, so `granule_id` — the natural key — correctly collapses
+them to one row each. Nothing is stored twice and nothing is lost.
+
+`-i45` ends up owning no rows because the freshness check does its job: by the
+time it is visited, every one of its granules was fetched moments earlier under
+`CREC-2025-03-11` and is current, so none is re-fetched and none is re-attributed
+to it. `speech.package_id` therefore means "the package this text was actually
+fetched from", which is the honest reading.
+
+This also explains the one arithmetic discrepancy in the run:
+`dataset_sync_state` reports **49,436** granules seen against **49,171** rows
+stored. The difference is exactly 265 — `-i45`'s granules, counted once per
+package visited and stored once per granule. The tally counts work; the table
+counts facts.
+
+---
+
+### Finding 10 — a six-hour job on serverless Postgres needs to expect the connection to die
+
+Not a GovInfo finding, but the thing that actually cost this milestone its time,
+and it applies to every long job this project runs against Neon (the P4 Census
+and FEC backfills included).
+
+Neon enforces two separate idle limits, and the backfill hit both in turn:
+
+1. **`idle_in_transaction_session_timeout = 5min`.** The first version of
+   `load_package` opened its transaction on the "what do I already have?" read
+   and held it through every granule fetch — up to 315 HTTP requests. Neon
+   closed the session 43 minutes in. Holding a transaction across network I/O
+   is wrong regardless of provider; the timeout just made it fail loudly.
+
+2. **Compute suspension.** Ending the transaction was not enough. Neon suspends
+   an idle compute after about five minutes and kills the connection when it
+   does — `AdminShutdown: terminating connection due to administrator command`.
+   A package whose fetch phase runs longer than that reaches the write phase
+   holding a dead socket whether or not a transaction was open.
+
+The second one also broke the obvious fix. A retry wrapped around the whole
+package re-ran the six-minute fetch, recreated the same idle window, and failed
+at the same query: `CREC-2026-04-22` burned three attempts and ~18 minutes
+before it would have been skipped, and every slow package remaining would have
+gone the same way.
+
+What works, and is what the code does now:
+
+* **read → END the transaction → fetch → write.** No transaction may span a
+  network call.
+* **Invalidate the connection deliberately after fetching.** It has been idle
+  for minutes and is probably dead; a reconnect costs ~100 ms against minutes of
+  fetching, and it makes the healthy path deterministic rather than
+  exception-driven.
+* **Retry the write, never the fetch.** The expensive half is idempotent but
+  slow; the failing half is cheap. Retrying the cheap half succeeds in seconds
+  and creates no new idle window.
+
+With all three in place the final run processed all 350 packages with **zero
+reconnect events and zero skipped packages** — the drops stopped happening
+because the connection is no longer left idle long enough to be reclaimed.
 
 ---
 
