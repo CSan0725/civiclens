@@ -45,6 +45,15 @@ on:
         type: boolean
         required: false
         default: false
+      refresh_votes:
+        description: >-
+          Re-collect roll calls already stored, instead of skipping them.
+          Needed to fill vote.bill_id on votes collected before their bill
+          existed — the nightly run skips those forever otherwise. Raise
+          vote_limit to cover the whole session when using this.
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: collect-daily
@@ -74,6 +83,7 @@ jobs:
       CONGRESS_ARG: ${{ inputs.congress && format('--congress {0}', inputs.congress) || '' }}
       BILL_LIMIT: ${{ inputs.bill_limit || '150' }}
       VOTE_LIMIT: ${{ inputs.vote_limit || '50' }}
+      REFRESH: ${{ (inputs.refresh_votes == true || inputs.refresh_votes == 'true') && '--refresh' || '' }}
       CHAMBER: ${{ inputs.chamber || 'both' }}
 
     steps:
@@ -113,7 +123,7 @@ jobs:
 
       - name: House roll calls
         if: ${{ env.CHAMBER == 'both' || env.CHAMBER == 'house' }}
-        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber house --limit "$VOTE_LIMIT"
+        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber house --limit "$VOTE_LIMIT" $REFRESH
 
       # Senate is a separate step so a senate.gov outage does not mask a
       # successful House run in the logs. Skipping one chamber also lets a
@@ -122,7 +132,7 @@ jobs:
       # rate-sensitive.
       - name: Senate roll calls
         if: ${{ env.CHAMBER == 'both' || env.CHAMBER == 'senate' }}
-        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber senate --limit "$VOTE_LIMIT"
+        run: uv run civiclens-etl votes $CONGRESS_ARG --chamber senate --limit "$VOTE_LIMIT" $REFRESH
 
       # PRD FC-2/FC-3. Scoped to the sitting Congress on purpose: an unscoped
       # run re-downloads a Voteview file per Congress in `vote`, which after
