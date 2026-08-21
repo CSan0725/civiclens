@@ -155,8 +155,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--refresh",
         action="store_true",
         help=(
-            "speeches only: re-fetch granule text even when the stored copy is "
-            "newer than the package's upstream lastModified"
+            "re-collect records already stored. speeches: re-fetch granule text "
+            "even when the stored copy is newer than the package's upstream "
+            "lastModified. votes/backfill: re-collect roll calls whose natural "
+            "key is already present, which is how a bill_id resolved after the "
+            "vote was first stored gets filled in"
         ),
     )
     parser.add_argument(
@@ -235,6 +238,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     sync_bills(conn, fetcher, congress=args.congress, limit=args.limit)
 
             elif args.job == "votes":
+                # `--refresh` re-collects roll calls already stored. Without it
+                # both jobs skip anything whose natural key is present, which is
+                # right for the nightly run and wrong when a field on the
+                # existing rows needs recomputing: `bill_id` is resolved during
+                # collection, so a vote stored before its bill was collected
+                # keeps a NULL link forever unless the vote is collected again.
                 if args.chamber in ("house", "both"):
                     with cg.open_fetcher() as fetcher:
                         sync_house_votes(
@@ -243,6 +252,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             congress=args.congress,
                             session=args.session,
                             limit=args.limit,
+                            skip_existing=not args.refresh,
                         )
                 if args.chamber in ("senate", "both"):
                     sessions = [args.session] if args.session else [1, 2]
@@ -254,6 +264,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 congress=args.congress,
                                 session=session,
                                 limit=args.limit,
+                                skip_existing=not args.refresh,
                                 member_fetcher=mfetcher,
                             )
 
