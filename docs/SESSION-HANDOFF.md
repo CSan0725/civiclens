@@ -37,37 +37,54 @@ CivicLens: 미국 연방의회(Congress) 투명성 대시보드. 이념/평가 �
 - P3: GovInfo Congressional Record 발언 수집 — 49,171건 granule, 화자 매칭 57%, `/speeches` 전문검색 라이브
 - **P5 확장 (최신, 2026-08-20 완료·배포됨)**: `/bills`, `/bills/[congress]/[type]/[number]`, `/votes`, `/votes/[id]`, `/rankings` 5개 라우트 전부 실데이터로 구현·라이브 배포 확인 완료. 커밋 `efd70c4`.
 
-## ✅ 완료된 백필 (2026-08-21) — 작업 A 종료, 상원 한 스텝만 남음
+## ✅ 완료 — 작업 A 종료 (2026-08-21)
 
-**vote.bill_id NULL 원인조사 → 근본 원인 확정 → 119대 bill 전량 백필 완료.**
+**vote.bill_id NULL 원인조사 → 근본 원인 확정 → 119대 bill 전량 백필 → 양원 링크 완료.**
 
-- **근본 원인**: vote 링크 코드는 정상이었다. `bill` 테이블이 `--limit` 걸린 **150행 샘플**이라 링크할 대상 자체가 없었던 것. 그 150이라는 숫자의 출처는 `collect-daily.yml`의 `BILL_LIMIT` 기본값이다.
-- **백필 결과**: `bill` 150 → **18,396건(119대 전량)**, `bill_action` 486 → 74,391, `sponsorship` 1,458 → 189,661. 14h 28m 소요, 정산 일치(collected 9,426 + skipped 8,970 = discovered 18,396).
-- **하원 링크 완료**: 645건 중 **638건 링크(98.9%)**. 미링크 7건은 정족수 호명 2·의장선출 1·산회동의 4로 **법안이 존재하지 않는 표결**이므로 실질 100%다.
-- **상원 미완**: senate.gov가 이 개발 네트워크에서 403(WAF, PRD §16 각주 2). **GitHub Actions에서만 가능.**
+- **근본 원인**: vote 링크 코드는 정상이었다. `bill` 테이블이 `--limit` 걸린 **150행 샘플**이라 링크할 대상 자체가 없었던 것. 그 150의 출처는 `collect-daily.yml`의 `BILL_LIMIT` 기본값이다.
+- **카탈로그**: `bill` 150 → **18,396건(119대 전량)**, `bill_action` 486 → 74,391, `sponsorship` 1,458 → 189,661.
+- **링크 최종**:
 
-### 다음 세션이 할 일 (짧음)
+| chamber | 표결 | 링크됨 | NULL | 링크 가능분 기준 |
+|---|---:|---:|---:|---:|
+| house | 645 | 638 | 7 | **638/638 = 100%** |
+| senate | 831 | 430 | 401 | **430/430 = 100%** |
 
-1. **`collect-daily` 워크플로 수동 디스패치** — `congress`=119, `skip_bills`=true, `chamber`=senate, `vote_limit`=600, **`refresh_votes`=true**.
-   `refresh_votes` 입력은 이번에 추가했다. 없으면 크론은 `skip_existing` 때문에 기존 상원 466건을 **영원히** 안 채운다.
-2. 완료 후 상원 링크율 재측정. 분모에서 지명·조약 256건 제외.
-3. 후속(별도): `BILL_LIMIT=150` 상향 또는 `--since` 배선 — 안 하면 카탈로그 재드리프트. skip 덕에 재fetch 비용은 이제 값쌈.
+  남은 NULL 408건은 전부 **법안이 존재하지 않는 표결**이다 — 하원은 정족수 호명·의장선출·산회동의 7건,
+  상원은 지명·조약 401건. 수집 갭이 아니다.
+- **FC-3 상태 정상**: 하원 645 공개, 상원 829 공개 / 2 미공개(open flag 보유 = 반증된 집계, 정당한 보류).
 
-상세 수치·근거는 `docs/vote-bill_id-null-investigation.md` §백필 완료 결과.
+### 남은 후속 (작업 A와 무관, 별도 착수)
 
-### 이 백필에서 드러난 코드 결함 4건 (전부 수정·푸시됨)
+- **daily job `BILL_LIMIT=150`** — 그대로 두면 카탈로그가 다시 드리프트한다. resume skip 덕에 재fetch가
+  값싸졌으므로 상향 또는 `--since` 배선 검토. **이것만 남았다.**
 
-18,396건을 처음으로 전량 훑으면서 나온 것들이라, 150건짜리 daily 잡으로는 영원히 안 보였을 문제들이다.
+상세 수치·근거는 `docs/vote-bill_id-null-investigation.md`.
+
+### 이 작업에서 드러난 코드 결함 6건 (전부 수정·푸시·CI 그린)
+
+18,396건을 처음 전량 훑고 상원을 처음 재수집하면서 나온 것들이라, 150건짜리 daily 잡으로는 영원히 안 보였을 문제들이다.
 
 | 커밋 | 문제 |
 |---|---|
-| `545a338` `248b9f7` | `sync_bills`가 전체 런을 단일 트랜잭션으로 커밋 → 10시간짜리 트랜잭션. bill당 커밋 + provenance 기반 resume skip으로 변경 |
+| `545a338` `248b9f7` | `sync_bills`가 전체 런을 단일 트랜잭션으로 커밋 → 10시간짜리 트랜잭션. bill당 커밋 + provenance 기반 resume skip |
 | `eb0cb3c` | Congress.gov가 동일 액션 2회 반환 → `ON CONFLICT DO UPDATE` 거부. 삽입 전 dedupe |
-| `3e1e038` `4204b2e` | 동일 의원이 cosponsor로 2회 등장(철회 후 재발의). 최신 에피소드를 날짜 기준 선택 |
+| `3e1e038` `4204b2e` | 동일 의원이 cosponsor 2회 등장(철회 후 재발의). 최신 에피소드를 날짜 기준 선택 |
 | `e1202c6` | **"votes 재실행하면 bill_id가 소급 채워진다"는 전제가 틀렸다.** `skip_existing=True`가 기본이라 upsert 자체가 안 돈다. `--refresh`를 votes에 배선 |
-| `540ec6a` | **재수집이 하원 645건을 `is_published=false`로 만들어 사이트에서 숨겼다.** 파서가 0004 이전 규칙을 유지 중이었음. 세 파서 모두 이 컬럼을 안 쓰도록 변경 + 데이터 복구 완료 |
+| `540ec6a` | **재수집이 하원 645건을 `is_published=false`로 만들어 사이트에서 숨겼다.** 파서가 0004 이전 규칙 유지 중. 세 파서 모두 이 컬럼 미기입으로 변경 + 데이터 복구 |
+| `6eed6fb` | 상원 수정안 표결 161건이 모법안에 링크 안 됨. `<document>`는 수정안 자신을 기술하고 모법안은 `<amendment_to_document_number>`에 "S.Con.Res. 7" 형태 완전인용으로 존재(type 필드 없음) → 인용문 분해 후 기존 `_resolve_bill` 재사용 |
 
-⚠️ `540ec6a`는 라이브 사이트가 실제로 깨졌던 건이다. **`votes --refresh`를 돌린 뒤에는 반드시 `is_published` 분포를 확인할 것** (지금은 파서가 고쳐졌으므로 재발하지 않아야 하지만, 상원 디스패치 후 한 번 더 확인 권장).
+⚠️ `540ec6a`는 라이브 사이트가 실제로 깨졌던 건이다. **`votes --refresh` 후에는 `is_published` 분포를 확인할 것.**
+(파서 수정 후 상원 재수집에서는 재발하지 않음을 실측 확인했다.)
+
+### senate.gov 접근 (반복해서 걸리는 부분)
+
+- 개발 네트워크에서 **403** — 샌드박스 해제해도, WebFetch로도 동일. UA 스푸핑은 하지 않는다(P1 Finding 7).
+- GitHub Actions 러너는 정상. **원본 XML이 필요하면** `verify-senate-live`를 `roll_number` 지정해 디스패치하면
+  `<document>`/`<amendment>`를 로그에 찍고 원본을 `senate-vote-xml` 아티팩트로 올린다(`7d254b0`).
+- `gh` CLI는 이 머신에 설치돼 있고(`C:\Program Files\GitHub CLI`, `~/.local/bin/gh` 심링크),
+  토큰은 `repo`+`workflow` 스코프면 충분하다. `gh auth login --with-token`은 `read:org`를 요구하므로
+  **`GH_TOKEN` 환경변수로 넘기는 편이 낫다**(로그인 검증을 건너뛰고 실제 스코프만 사용).
 
 ## 알려진 갭 (백로그, 막히지 않고 진행 중)
 
@@ -78,11 +95,11 @@ CivicLens: 미국 연방의회(Congress) 투명성 대시보드. 이념/평가 �
 
 ## 다음 단계 후보 (사용자 결정 대기)
 
-- (A) `vote.bill_id` NULL 원인조사 — ✅ **완료.** 하원 링크 100%(링크 가능분 기준). 상원만 GitHub Actions 디스패치 1회 남음.
+- (A) `vote.bill_id` NULL 원인조사 — ✅ **완전 종료.** 양원 링크 가능분 100%. 남은 건 daily `BILL_LIMIT` 상향뿐(별건).
 - (B) P4: Census Geocoder + 지역구 경계 + MapLibre 지도 + FEC 후보 데이터
 - (C) 백로그 항목(로비 데이터, 구독 아키텍처) 착수
 
-직전 대화에서의 추천: A(백필 완료·검증) → B 순서. A의 남은 검증 단계는 짧으니 다음 세션에서 마무리 후 B 착수.
+A는 끝났다. 다음은 B(P4 지역구/지도) 착수를 권장한다.
 
 ## 자격증명 프로토콜 (반드시 지킬 것)
 
