@@ -28,6 +28,13 @@ on:
         description: Session (1 or 2)
         required: false
         default: "2"
+      roll_number:
+        description: >-
+          Specific roll call to fetch (blank = newest). Use this to capture a
+          known amendment vote, e.g. 119/1/64 is "On the Amendment S.Amdt. 473
+          to S.Con.Res. 7".
+        required: false
+        default: ""
 
 jobs:
   probe:
@@ -53,6 +60,7 @@ jobs:
         env:
           CONGRESS: ${{ inputs.congress }}
           SESSION: ${{ inputs.session }}
+          ROLL: ${{ inputs.roll_number }}
         run: |
           uv run python - <<'PY'
           import os
@@ -86,15 +94,46 @@ jobs:
                       print("::error::menu parsed but contained no roll calls")
                       sys.exit(1)
 
-                  newest = max(listed, key=lambda v: v["roll_number"])
-                  roll = int(newest["roll_number"])
-                  print(f"MENU  newest roll call: #{roll} — {newest.get('question')}")
+                  requested = os.environ.get("ROLL", "").strip()
+                  if requested:
+                      roll = int(requested)
+                      print(f"MENU  requested roll call: #{roll}")
+                  else:
+                      newest = max(listed, key=lambda v: v["roll_number"])
+                      roll = int(newest["roll_number"])
+                      print(f"MENU  newest roll call: #{roll} — {newest.get('question')}")
                   print()
 
                   vote = senate_xml.fetch_vote(
                       fetcher, congress=congress, session=session, roll_number=roll
                   )
                   print(f"VOTE  {vote.status_code}  {len(vote.payload):,} bytes  {vote.source_url}")
+
+              # The <document> and <amendment> elements, verbatim.
+              #
+              # Amendment roll calls do not link to their parent measure and we
+              # cannot see why from the development network: senate.gov answers
+              # 403 there, so the field names have to be read off a real
+              # payload rather than guessed. Printed raw, and the whole XML is
+              # uploaded as an artifact so it can be committed as a fixture
+              # byte-for-byte.
+              import re
+
+              text = vote.payload.decode("utf-8", "replace")
+              for tag in ("document", "amendment"):
+                  m = re.search(rf"<{tag}>.*?</{tag}>", text, re.S)
+                  print()
+                  print(f"RAW <{tag}> ---------------------------------------------")
+                  print(m.group(0) if m else f"(no <{tag}> element present)")
+              print()
+              print("RAW <vote_question_text>:", re.search(r"<vote_question_text>(.*?)</vote_question_text>", text, re.S).group(1).strip() if re.search(r"<vote_question_text>(.*?)</vote_question_text>", text, re.S) else "(absent)")
+              print("RAW <vote_title>:", re.search(r"<vote_title>(.*?)</vote_title>", text, re.S).group(1).strip() if re.search(r"<vote_title>(.*?)</vote_title>", text, re.S) else "(absent)")
+              print()
+
+              out = f"senate_vote_{congress}_{session}_{roll:05d}.xml"
+              with open(out, "wb") as fh:
+                  fh.write(vote.payload)
+              print(f"WROTE {out} ({len(vote.payload):,} bytes) for artifact upload")
 
               row = senate_xml.parse_vote(vote.payload, source_url=vote.source_url)
               print(
@@ -145,3 +184,13 @@ jobs:
               print(f"::error::{message[:500]}")
               sys.exit(1)
           PY
+
+      # Byte-for-byte, so it can be committed straight into
+      # pipelines/etl/tests/fixtures/ (see .gitattributes: fixtures are -text).
+      - name: Upload the raw roll call XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senate-vote-xml
+          path: pipelines/etl/senate_vote_*.xml
+          if-no-files-found: warn
