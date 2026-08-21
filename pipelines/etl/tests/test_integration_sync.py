@@ -328,7 +328,10 @@ def test_sync_house_vote_routes_casts_to_the_right_partition(conn: Connection) -
     conn.commit()
 
     vote = conn.execute(
-        text("SELECT congress_no, chamber, session, roll_number, is_published FROM vote")
+        text(
+            "SELECT congress_no, chamber, session, roll_number, is_published, "
+            "reconciled_at FROM vote"
+        )
     ).one()
     assert (vote.congress_no, vote.chamber, vote.session, vote.roll_number) == (
         119,
@@ -336,7 +339,18 @@ def test_sync_house_vote_routes_casts_to_the_right_partition(conn: Connection) -
         1,
         240,
     )
-    assert vote.is_published is False, "PRD FC-3: unreconciled votes stay hidden"
+    # FC-3 as settled in migration 0004: publish unless CONTRADICTED. A roll
+    # call nobody has disputed is visible on arrival — the column's DEFAULT —
+    # and "not yet cross-checked" is carried by reconciled_at being NULL, not
+    # by hiding the vote. This asserted the opposite, which was the pre-0004
+    # rule; the parser kept satisfying it by writing the column itself, and
+    # that is what silently unpublished 645 House roll calls when they were
+    # re-collected.
+    assert vote.is_published is True, "PRD FC-3: published unless contradicted"
+    assert vote.reconciled_at is None, (
+        "published AND uncompared at the same time — the state 0004 introduced, "
+        "which the page renders as a caption rather than by withholding the vote"
+    )
 
     # The partition key must actually route rows to vote_cast_c119.
     partitions = (
