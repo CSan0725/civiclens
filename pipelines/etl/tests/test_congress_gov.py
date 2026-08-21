@@ -396,10 +396,26 @@ def test_repeated_cosponsor_collapses_to_the_current_state() -> None:
     assert _one_per_member([withdrawn, active], "119/hr/1")[0]["withdrawn"] is False
     assert _one_per_member([active, withdrawn], "119/hr/1")[0]["withdrawn"] is False
 
-    # Two of the same kind: the later row wins.
-    later = {**withdrawn, "withdrawn_date": "2026-05-05"}
-    out = _one_per_member([withdrawn, later], "119/hr/1")
-    assert len(out) == 1 and out[0]["withdrawn_date"] == "2026-05-05"
+    # Two withdrawn episodes: the latest BY DATE wins, whichever order the
+    # payload lists them in. Real case, 119/s/1383 — Sen. Warnock cosponsored
+    # 2025-07-10 and withdrew 2025-07-14, then cosponsored 2025-09-18 and
+    # withdrew 2026-02-25. The second is the state the record is in today.
+    first = {
+        **base,
+        "withdrawn": True,
+        "sponsored_date": "2025-07-10",
+        "withdrawn_date": "2025-07-14",
+    }
+    second = {
+        **base,
+        "withdrawn": True,
+        "sponsored_date": "2025-09-18",
+        "withdrawn_date": "2026-02-25",
+    }
+    for order in ([first, second], [second, first]):
+        out = _one_per_member(order, "119/s/1383")
+        assert len(out) == 1
+        assert out[0]["sponsored_date"] == "2025-09-18", "latest episode must win"
 
     # Different role is a different key and must NOT be collapsed.
     sponsor = {**base, "role": "sponsor", "withdrawn": False}

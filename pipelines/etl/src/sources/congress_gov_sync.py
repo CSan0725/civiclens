@@ -233,11 +233,34 @@ def _one_per_member(rows: list[dict[str, Any]], natural: str) -> list[dict[str, 
     WHICH ONE SURVIVES: an entry that is not withdrawn beats one that is,
     because a member who withdrew and then re-cosponsored is currently a
     cosponsor and recording them as withdrawn would be false. Between two of
-    the same kind the later row wins. The collapse is logged with both rows so
-    real instances are on the record rather than silently resolved — the shape
-    of this upstream duplication has not been directly observed yet, and the
-    log is how it gets observed.
+    the same kind the LATEST EPISODE BY DATE wins — not the last row in the
+    payload. Those coincided in the case observed, but nothing documents the
+    ordering as chronological, and picking by position would silently store a
+    superseded episode the day it is not.
+
+    Observed on 119/s/1383, which is what this rule is checked against:
+
+        Sen. Warnock (W000790)  cosponsored 2025-07-10, withdrew 2025-07-14
+                                cosponsored 2025-09-18, withdrew 2026-02-25
+
+    Both episodes are withdrawn, so the tie-break decides it, and the answer
+    has to be the second: that is the state the record is in today.
+
+    Collapses are logged so instances stay visible rather than silently
+    resolved.
     """
+
+    def episode(row: dict[str, Any]) -> tuple[Any, ...]:
+        # Sorts worst-to-best so max() picks the survivor. Dates are `date`
+        # objects from the parser; str() keeps the comparison total when one
+        # side is missing, and an absent date sorts first so a dated episode
+        # always beats an undated one.
+        return (
+            0 if row.get("withdrawn") else 1,
+            str(row.get("sponsored_date") or ""),
+            str(row.get("withdrawn_date") or ""),
+        )
+
     by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
     collapsed: list[str] = []
     for row in rows:
@@ -247,11 +270,7 @@ def _one_per_member(rows: list[dict[str, Any]], natural: str) -> list[dict[str, 
             by_key[key] = row
             continue
         collapsed.append(f"{row.get('bioguide_id')}/{row.get('role')}")
-        if (
-            prior.get("withdrawn")
-            and not row.get("withdrawn")
-            or prior.get("withdrawn") == row.get("withdrawn")
-        ):
+        if episode(row) > episode(prior):
             by_key[key] = row
     if collapsed:
         log.warning(
