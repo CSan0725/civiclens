@@ -376,3 +376,35 @@ def test_duplicate_actions_in_one_payload_collapse_before_insert() -> None:
     # NULL and an explicit default collide exactly as Postgres would collide them.
     explicit = {**same, "action_time": "00:00:00"}
     assert len(_deduplicate_actions([same, explicit])) == 1
+
+
+def test_repeated_cosponsor_collapses_to_the_current_state() -> None:
+    """Congress.gov lists a member twice when they withdrew and re-cosponsored.
+
+    sponsorship's primary key is (bill_id, bioguide_id, role), so both rows
+    carry the same key and the upsert's duplicate guard aborts the whole bill —
+    it killed the full-Congress run at 48%.
+    """
+    from sources.congress_gov_sync import _one_per_member
+
+    base = {"bill_id": 9578, "bioguide_id": "W000790", "role": "cosponsor"}
+    withdrawn = {**base, "withdrawn": True, "withdrawn_date": "2026-03-01"}
+    active = {**base, "withdrawn": False, "withdrawn_date": None}
+
+    # Not-withdrawn wins regardless of order: a member who withdrew and came
+    # back is currently a cosponsor, and recording them as withdrawn is false.
+    assert _one_per_member([withdrawn, active], "119/hr/1")[0]["withdrawn"] is False
+    assert _one_per_member([active, withdrawn], "119/hr/1")[0]["withdrawn"] is False
+
+    # Two of the same kind: the later row wins.
+    later = {**withdrawn, "withdrawn_date": "2026-05-05"}
+    out = _one_per_member([withdrawn, later], "119/hr/1")
+    assert len(out) == 1 and out[0]["withdrawn_date"] == "2026-05-05"
+
+    # Different role is a different key and must NOT be collapsed.
+    sponsor = {**base, "role": "sponsor", "withdrawn": False}
+    assert len(_one_per_member([active, sponsor], "119/hr/1")) == 2
+
+    # Different members are untouched.
+    other = {**active, "bioguide_id": "A000001"}
+    assert len(_one_per_member([active, other], "119/hr/1")) == 2

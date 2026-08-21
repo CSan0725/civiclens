@@ -221,6 +221,48 @@ def sync_bills(
     return tally
 
 
+def _one_per_member(rows: list[dict[str, Any]], natural: str) -> list[dict[str, Any]]:
+    """Collapse repeated (bill, member, role) sponsorship rows from one payload.
+
+    Congress.gov lists some cosponsors twice on the same bill — a member who
+    withdrew and cosponsored again appears once per episode. `sponsorship`'s
+    primary key is (bill_id, bioguide_id, role), so both rows carry the same
+    key and `bulk_upsert`'s duplicate guard aborts the whole bill. It aborted
+    the full-Congress run once already.
+
+    WHICH ONE SURVIVES: an entry that is not withdrawn beats one that is,
+    because a member who withdrew and then re-cosponsored is currently a
+    cosponsor and recording them as withdrawn would be false. Between two of
+    the same kind the later row wins. The collapse is logged with both rows so
+    real instances are on the record rather than silently resolved — the shape
+    of this upstream duplication has not been directly observed yet, and the
+    log is how it gets observed.
+    """
+    by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
+    collapsed: list[str] = []
+    for row in rows:
+        key = (row.get("bill_id"), row.get("bioguide_id"), row.get("role"))
+        prior = by_key.get(key)
+        if prior is None:
+            by_key[key] = row
+            continue
+        collapsed.append(f"{row.get('bioguide_id')}/{row.get('role')}")
+        if (
+            prior.get("withdrawn")
+            and not row.get("withdrawn")
+            or prior.get("withdrawn") == row.get("withdrawn")
+        ):
+            by_key[key] = row
+    if collapsed:
+        log.warning(
+            "bill.sponsorship_duplicates",
+            bill=natural,
+            entries=sorted(set(collapsed)),
+            collapsed=len(collapsed),
+        )
+    return list(by_key.values())
+
+
 def _bill_is_current(retrieved_at: datetime | None, update_date: datetime | None) -> bool:
     """True when our last fetch of this bill provably saw its latest change.
 
@@ -353,7 +395,7 @@ def sync_one_bill(
             log.warning(
                 "bill.sponsorships_dropped", bill=natural, dropped=len(sponsorships) - len(kept)
             )
-        tally.add("sponsorship", repo.upsert_sponsorships(conn, kept))
+        tally.add("sponsorship", repo.upsert_sponsorships(conn, _one_per_member(kept, natural)))
 
     record_provenance(conn, entries, source=SOURCE)
     tally.observe(cg._parse_datetime(detail.json().get("bill", {}).get("updateDate")))
