@@ -6,7 +6,7 @@ import pytest
 
 from conftest import load_bytes
 from sources import legislators, senate_xml
-from sources.base import SourceError
+from sources.base import SourceError, normalize_bill_type
 
 MENU = "senate_vote_menu_119_2.xml"
 VOTE = "senate_vote_119_2_00231.xml"
@@ -136,3 +136,77 @@ def test_not_voting_maps_onto_the_enum() -> None:
     # The fixture keeps one member per distinct vote_cast value, including
     # "Not Voting", which must not survive as a literal.
     assert all(" " not in r["position"] for r in rows)
+
+
+# ---------------------------------------------------------------------------
+# Amendment votes: linking to the measure being amended
+# ---------------------------------------------------------------------------
+
+
+def test_amendment_vote_resolves_the_measure_it_amends() -> None:
+    """119/1/64 — "On the Amendment S.Amdt. 473 to S.Con.Res. 7".
+
+    <document> describes the AMENDMENT, not what it amends: document_type is
+    "S.Amdt." and document_number is empty. normalize_bill_type correctly
+    rejects "S.Amdt.", so before this fallback the roll call linked to nothing
+    — along with 160 others in the 119th Senate.
+    """
+    row = senate_xml.parse_vote(
+        load_bytes("senate_vote_119_1_00064.xml"), source_url="https://example/v"
+    )
+    assert row["_document_type"] == "S.Con.Res."
+    assert row["_document_number"] == "7"
+    # normalize_bill_type is what _resolve_bill feeds the lookup; the citation
+    # split has to survive it.
+    assert normalize_bill_type(row["_document_type"]) == "sconres"
+    assert row["amendment_number"] == "S.Amdt. 473"
+
+
+def test_amendment_to_an_amendment_resolves_the_underlying_measure() -> None:
+    """119/1/185 — a motion to waive the CBA against Cortez Masto Amdt. 1690.
+
+    Second-order: S.Amdt. 1690 amends S.Amdt. 1717, which amends H.Con.Res. 14.
+    senate.gov records the ultimate measure in amendment_to_document_number, and
+    H.Con.Res. 14 is the right answer — the roll call belongs on that measure's
+    page, not on an amendment's.
+
+    Worth pinning because this case was predicted to have NO parent: its
+    vote_question_text names only the amendment, so a text-based guess would
+    have called it structurally unlinkable.
+    """
+    row = senate_xml.parse_vote(
+        load_bytes("senate_vote_119_1_00185.xml"), source_url="https://example/v"
+    )
+    assert row["_document_type"] == "H.Con.Res."
+    assert row["_document_number"] == "14"
+    assert normalize_bill_type(row["_document_type"]) == "hconres"
+    assert row["amendment_number"] == "S.Amdt. 1690"
+
+
+def test_a_plain_bill_vote_still_reads_the_document_element() -> None:
+    """The fallback must not shadow the ordinary path."""
+    row = senate_xml.parse_vote(
+        load_bytes("senate_vote_119_2_00231.xml"), source_url="https://example/v"
+    )
+    assert (row["_document_type"], row["_document_number"]) == ("S.", "5271")
+    assert row["amendment_number"] is None
+
+
+@pytest.mark.parametrize(
+    ("citation", "expected"),
+    [
+        ("S.Con.Res. 7", ("S.Con.Res.", "7")),
+        ("H.Con.Res. 14", ("H.Con.Res.", "14")),
+        ("H.R. 1", ("H.R.", "1")),
+        ("S.J.Res. 210", ("S.J.Res.", "210")),
+        ("  S. 5271  ", ("S.", "5271")),
+        # No number, no measure — must not invent one.
+        ("No short title on file", None),
+        ("", None),
+        (None, None),
+        # A bare number names no type; refuse rather than guess.
+        ("14", None),
+    ],
+)
+def test_split_measure_citation(citation: str | None, expected: tuple[str, str] | None) -> None:
+    assert senate_xml.split_measure_citation(citation) == expected

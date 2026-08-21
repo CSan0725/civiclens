@@ -34,6 +34,7 @@ vote_119_2_00231.xml); both are checked in under tests/fixtures/.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from datetime import datetime
 from typing import Any
@@ -236,9 +237,76 @@ def parse_vote(payload: bytes, *, source_url: str) -> dict[str, Any]:
         # false resurrects the pre-0004 behaviour and hides the vote, writing
         # true republishes one that reconciliation has already withdrawn.
         # Carried for bill linkage; stripped before the row is written.
-        "_document_type": _text(document, "document_type"),
-        "_document_number": _text(document, "document_number"),
+        **_parent_measure(document, amendment),
     }
+
+
+def _parent_measure(document: Any, amendment: Any) -> dict[str, str | None]:
+    """The measure this roll call is about, as `_document_type`/`_document_number`.
+
+    `<document>` first. On a vote about a bill it holds the bill outright:
+
+        <document_type>S.</document_type>
+        <document_number>5271</document_number>
+
+    On an AMENDMENT vote it does not. Measured on 119/1/64, an amendment to
+    S.Con.Res. 7:
+
+        <document>
+          <document_type>S.Amdt.</document_type>
+          <document_number/>          <- empty
+        </document>
+        <amendment>
+          <amendment_number>S.Amdt. 473</amendment_number>
+          <amendment_to_document_number>S.Con.Res. 7</amendment_to_document_number>
+        </amendment>
+
+    So `<document>` describes the amendment, not what it amends, and the
+    parent lives in `amendment_to_document_number` as a FULL CITATION —
+    type and number in one string, with no separate type field anywhere in
+    the element. That is why this splits the citation rather than reading a
+    second tag.
+
+    Falling back matters for 161 of the 119th Senate's roll calls, every one
+    of which failed to link: `normalize_bill_type("S.Amdt.")` is correctly
+    None, and the number is empty, so `_resolve_bill` had nothing to work
+    with.
+
+    Amendments to amendments still resolve to the underlying measure —
+    119/1/185 amends S.Amdt. 1717 and records
+    `amendment_to_document_number` as H.Con.Res. 14 — which is the right
+    answer: the roll call belongs on H.Con.Res. 14's page.
+    """
+    doc_type = _text(document, "document_type")
+    doc_number = _text(document, "document_number")
+    if doc_type and doc_number:
+        return {"_document_type": doc_type, "_document_number": doc_number}
+
+    citation = _text(amendment, "amendment_to_document_number")
+    parsed = split_measure_citation(citation)
+    if parsed:
+        return {"_document_type": parsed[0], "_document_number": parsed[1]}
+
+    # Neither route named a measure — a nomination, a treaty, or a procedural
+    # vote attached to nothing. `_resolve_bill` turns this into a NULL bill_id,
+    # which is the correct record of "there is no bill here".
+    return {"_document_type": doc_type, "_document_number": doc_number}
+
+
+def split_measure_citation(value: str | None) -> tuple[str, str] | None:
+    """`"S.Con.Res. 7"` -> `("S.Con.Res.", "7")`. None when there is no number.
+
+    The type half is handed to `normalize_bill_type`, which already strips
+    dots, spaces and case, so no punctuation needs handling here — only the
+    split. Everything before the trailing digits is the type, which keeps
+    "H.J.Res." and "S.Con.Res." intact.
+    """
+    if not value:
+        return None
+    match = re.fullmatch(r"\s*(?P<type>.*?)\s*(?P<number>\d+)\s*", value)
+    if not match or not match.group("type"):
+        return None
+    return match.group("type"), match.group("number")
 
 
 def parse_vote_members(
