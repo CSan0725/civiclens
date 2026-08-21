@@ -39,7 +39,8 @@ def test_parse_vote_builds_row() -> None:
     assert row["yea_count"] == 52
     assert row["nay_count"] == 46
     assert row["source_system"] == "senate_xml"
-    assert row["is_published"] is False
+    # Owned by reconciliation, never by the collector (FC-3, migration 0004).
+    assert "is_published" not in row
 
 
 def test_question_text_is_whitespace_collapsed() -> None:

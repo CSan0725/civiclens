@@ -189,12 +189,20 @@ def test_parse_house_vote_detail_totals_and_threshold() -> None:
     assert row["source_system"] == "congress_gov"
 
 
-def test_house_vote_starts_unpublished() -> None:
-    """PRD FC-3: nothing is shown before Voteview reconciliation clears it."""
+def test_house_vote_parser_leaves_is_published_alone() -> None:
+    """PRD FC-3 after migration 0004: publish unless contradicted.
+
+    This asserted `is_published is False` — the pre-0004 rule, which 0004
+    replaced and which the parser kept enforcing. Because the collector
+    supplied the column, the table's `DEFAULT true` never applied and the
+    upsert overwrote reconciliation's decision on every re-collection: a
+    --refresh pass over the 119th set all 645 House roll calls unpublished and
+    hid them from the site with no contradiction recorded against any of them.
+    """
     row = cg.parse_house_vote_detail(
         load_json("house_vote_detail_119_1_240.json"), source_url="https://example/v"
     )
-    assert row["is_published"] is False
+    assert "is_published" not in row
 
 
 @pytest.mark.parametrize(

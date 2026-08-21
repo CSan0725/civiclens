@@ -512,9 +512,13 @@ def parse_house_vote_detail(payload: dict[str, Any], *, source_url: str) -> dict
         "not_voting_count": totals["notVoting"],
         "source_system": "congress_gov",
         "source_url": source_url,
-        # Stays false until Voteview reconciliation clears it (PRD FC-2/FC-3).
-        # P2 owns that; until then nothing is surfaced to users.
-        "is_published": False,
+        # `is_published` is deliberately NOT written here. It belongs to
+        # reconciliation (PRD FC-3, migration 0004): the column defaults to
+        # true, so a newly collected roll call is published on arrival, and
+        # only Voteview contradicting the tally retracts it. A collector that
+        # sets the column re-decides that on every re-collection — writing
+        # false resurrects the pre-0004 behaviour and hides the vote, writing
+        # true republishes one that reconciliation has already withdrawn.
         # Carried for bill linkage, stripped before the row is written.
         "_legislation_type": v.get("legislationType"),
         "_legislation_number": v.get("legislationNumber"),

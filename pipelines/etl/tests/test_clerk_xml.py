@@ -128,10 +128,16 @@ def test_parse_vote_rejects_the_wrong_root_element() -> None:
         clerk_xml.parse_vote(other, source_url="https://example/v")
 
 
-def test_is_published_true_on_arrival() -> None:
-    """FC-3 as settled in migration 0004: publish unless contradicted."""
+def test_parser_leaves_is_published_to_reconciliation() -> None:
+    """FC-3 as settled in migration 0004: publish unless contradicted.
+
+    The parser must not carry the column at all. The table defaults it to true
+    so a new roll call is published on arrival, and only reconciliation
+    retracts it — a parser that writes the column re-decides that on every
+    re-collection and would republish a vote Voteview has contradicted.
+    """
     row = clerk_xml.parse_vote(load_bytes(VOTE_2016), source_url="https://example/v", year=2016)
-    assert row["is_published"] is True
+    assert "is_published" not in row
 
 
 @pytest.mark.parametrize(
