@@ -1,0 +1,36 @@
+{
+ "result": {
+  "addressMatches": [
+   {
+    "matchedAddress": "1100 CONGRESS AVE, AUSTIN, TX, 78701",
+    "coordinates": {
+     "x": -97.739752095692,
+     "y": 30.276444701663
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "4837",
+       "CENTLAT": "+30.3190046",
+       "CDSESSN": "119",
+       "AREAWATER": "9133990",
+       "BASENAME": "37",
+       "STATE": "48",
+       "OID": "2119035951825220",
+       "LSADC": "C2",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+30.3005289",
+       "NAME": "Congressional District 37",
+       "OBJECTID": 334,
+       "CENTLON": "-097.7881955",
+       "CD119": "37",
+       "AREALAND": "578851013",
+       "INTPTLON": "-097.7743605",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

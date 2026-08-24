@@ -1,0 +1,36 @@
+{
+ "result": {
+  "addressMatches": [
+   {
+    "matchedAddress": "2020 CAREY AVE, CHEYENNE, WY, 82001",
+    "coordinates": {
+     "x": -104.818932628325,
+     "y": 41.136062086599
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "5600",
+       "CENTLAT": "+42.9960999",
+       "CDSESSN": "119",
+       "AREAWATER": "1868032440",
+       "BASENAME": "Congressional District (at Large)",
+       "STATE": "56",
+       "OID": "2119035963375329",
+       "LSADC": "C1",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+42.9738766",
+       "NAME": "Congressional District (at Large)",
+       "OBJECTID": 236,
+       "CENTLON": "-107.5514568",
+       "CD119": "00",
+       "AREALAND": "251458183340",
+       "INTPTLON": "-107.5290542",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

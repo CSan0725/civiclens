@@ -1,0 +1,36 @@
+{
+ "result": {
+  "addressMatches": [
+   {
+    "matchedAddress": "1600 PENNSYLVANIA AVE NW, WASHINGTON, DC, 20500",
+    "coordinates": {
+     "x": -77.03518753691,
+     "y": 38.89869893252
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "1198",
+       "CENTLAT": "+38.9047586",
+       "CDSESSN": "119",
+       "AREAWATER": "18707004",
+       "BASENAME": "Delegate District (at Large)",
+       "STATE": "11",
+       "OID": "2119035963374576",
+       "LSADC": "C4",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+38.9042429",
+       "NAME": "Delegate District (at Large)",
+       "OBJECTID": 409,
+       "CENTLON": "-077.0162860",
+       "CD119": "98",
+       "AREALAND": "158318974",
+       "INTPTLON": "-077.0165243",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

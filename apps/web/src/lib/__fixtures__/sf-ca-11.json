@@ -1,0 +1,81 @@
+{
+ "result": {
+  "addressMatches": [
+   {
+    "matchedAddress": "1 DR CARLTON P GOODLETT PL, SAN FRANCISCO, CA, 94102",
+    "coordinates": {
+     "x": -122.418308756397,
+     "y": 37.778532096981
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "0611",
+       "CENTLAT": "+37.7610378",
+       "CDSESSN": "119",
+       "AREAWATER": "479611122",
+       "BASENAME": "11",
+       "STATE": "06",
+       "OID": "2119035951820666",
+       "LSADC": "C2",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+37.7272391",
+       "NAME": "Congressional District 11",
+       "OBJECTID": 118,
+       "CENTLON": "-122.7004073",
+       "CD119": "11",
+       "AREALAND": "107152329",
+       "INTPTLON": "-123.0322294",
+       "MTFCC": "G5200"
+      }
+     ],
+     "States": [
+      {
+       "STATENS": "01779778",
+       "GEOID": "06",
+       "CENTLAT": "+37.1547616",
+       "AREAWATER": "20288576961",
+       "STATE": "06",
+       "BASENAME": "California",
+       "STUSAB": "CA",
+       "OID": "2749018475066",
+       "LSADC": "00",
+       "FUNCSTAT": "A",
+       "INTPTLAT": "+37.1626642",
+       "DIVISION": "9",
+       "NAME": "California",
+       "REGION": "4",
+       "OBJECTID": 2,
+       "CENTLON": "-119.5277735",
+       "AREALAND": "403676491638",
+       "INTPTLON": "-119.5713456",
+       "MTFCC": "G4000"
+      }
+     ],
+     "Counties": [
+      {
+       "GEOID": "06075",
+       "CENTLAT": "+37.7600883",
+       "AREAWATER": "479701999",
+       "STATE": "06",
+       "BASENAME": "San Francisco",
+       "OID": "27590355701186",
+       "LSADC": "06",
+       "FUNCSTAT": "C",
+       "INTPTLAT": "+37.7272391",
+       "NAME": "San Francisco County",
+       "OBJECTID": 1964,
+       "CENTLON": "-122.6941393",
+       "COUNTYCC": "H6",
+       "COUNTYNS": "00277302",
+       "AREALAND": "120913551",
+       "INTPTLON": "-123.0322294",
+       "MTFCC": "G4020",
+       "COUNTY": "075"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

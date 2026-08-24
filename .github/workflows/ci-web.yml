@@ -55,5 +55,12 @@ jobs:
       - name: Typecheck
         run: pnpm --filter @civiclens/web run typecheck
 
+      # NO LIVE UPSTREAM CALLS and no database, matching the rule ci-etl states
+      # for the Python suite: Census responses come from captured fixtures and
+      # the queries are mocked, so CI cannot be broken by an outage or by Neon
+      # being asleep. Runs before Build because it is seconds, not minutes.
+      - name: Test
+        run: pnpm --filter @civiclens/web run test
+
       - name: Build
         run: pnpm --filter @civiclens/web run build

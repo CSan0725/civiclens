@@ -1,0 +1,96 @@
+{
+ "result": {
+  "addressMatches": [
+   {
+    "matchedAddress": "1 CENTER ST, TARBORO, NC, 27886",
+    "coordinates": {
+     "x": -77.517652302188,
+     "y": 35.873650866782
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "3701",
+       "CENTLAT": "+36.0354967",
+       "CDSESSN": "119",
+       "AREAWATER": "2444425658",
+       "BASENAME": "1",
+       "STATE": "37",
+       "OID": "2119035952747009",
+       "LSADC": "C2",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+36.0379001",
+       "NAME": "Congressional District 1",
+       "OBJECTID": 126,
+       "CENTLON": "-077.1843437",
+       "CD119": "01",
+       "AREALAND": "21605934805",
+       "INTPTLON": "-077.1782646",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   },
+   {
+    "matchedAddress": "1 CENTER ST, CHADBOURN, NC, 28431",
+    "coordinates": {
+     "x": -78.803125802442,
+     "y": 34.311434384221
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "3707",
+       "CENTLAT": "+34.4556219",
+       "CDSESSN": "119",
+       "AREAWATER": "1126125835",
+       "BASENAME": "7",
+       "STATE": "37",
+       "OID": "2119035952747018",
+       "LSADC": "C2",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+34.4593003",
+       "NAME": "Congressional District 7",
+       "OBJECTID": 230,
+       "CENTLON": "-078.4045004",
+       "CD119": "07",
+       "AREALAND": "12538790165",
+       "INTPTLON": "-078.4057422",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   },
+   {
+    "matchedAddress": "1 CENTER ST, FAIR BLUFF, NC, 28439",
+    "coordinates": {
+     "x": -79.026358474294,
+     "y": 34.310301448574
+    },
+    "geographies": {
+     "119th Congressional Districts": [
+      {
+       "GEOID": "3707",
+       "CENTLAT": "+34.4556219",
+       "CDSESSN": "119",
+       "AREAWATER": "1126125835",
+       "BASENAME": "7",
+       "STATE": "37",
+       "OID": "2119035952747018",
+       "LSADC": "C2",
+       "FUNCSTAT": "N",
+       "INTPTLAT": "+34.4593003",
+       "NAME": "Congressional District 7",
+       "OBJECTID": 230,
+       "CENTLON": "-078.4045004",
+       "CD119": "07",
+       "AREALAND": "12538790165",
+       "INTPTLON": "-078.4057422",
+       "MTFCC": "G5200"
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

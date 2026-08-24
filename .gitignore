@@ -38,6 +38,23 @@ output/
 .mypy_cache/
 .pytest_cache/
 
+# --- Next.js 16 generated files ---
+# All three are rewritten by `next dev` / `next build`, so tracking them means
+# a dirty tree after every local run and a diff that flips back and forth
+# between the dev and build variants.
+#
+# next-env.d.ts points at .next/dev/types under `next dev` and .next/types
+# under `next build`; CI builds, developers dev, and the file churned between
+# them. It is generated on demand and marked "should not be edited".
+#
+# AGENTS.md / CLAUDE.md are re-emitted by `next dev` (see
+# node_modules/next/dist/server/lib/generate-agent-files.js). Whether this repo
+# wants Next's agent instructions is a project decision, not a build artifact
+# to accumulate; the workspace charter lives at D:\William_Workspace\CLAUDE.md.
+apps/web/next-env.d.ts
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+
 # --- tooling ---
 .tools/
 coverage/
