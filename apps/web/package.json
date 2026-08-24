@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/vendor-maplibre-worker.mjs && next dev",
+    "build": "node scripts/vendor-maplibre-worker.mjs && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -12,19 +12,22 @@
     "clean": "rimraf .next",
     "db:check": "node scripts/check-schema-drift.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vendor:maplibre": "node scripts/vendor-maplibre-worker.mjs"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "drizzle-orm": "0.45.2",
     "lucide-react": "1.31.0",
+    "maplibre-gl": "^6.6.0",
     "next": "16.3.1",
     "pg": "8.23.0",
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "tailwind-merge": "3.6.0"
+    "tailwind-merge": "3.6.0",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
@@ -32,6 +35,8 @@
     "@types/pg": "8.21.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.1",

@@ -51,6 +51,11 @@ output/
 # node_modules/next/dist/server/lib/generate-agent-files.js). Whether this repo
 # wants Next's agent instructions is a project decision, not a build artifact
 # to accumulate; the workspace charter lives at D:\William_Workspace\CLAUDE.md.
+# MapLibre's web worker, copied out of node_modules at dev/build time by
+# apps/web/scripts/vendor-maplibre-worker.mjs. Vendored rather than committed
+# so it cannot drift from the installed maplibre-gl version.
+apps/web/public/maplibre/
+
 apps/web/next-env.d.ts
 apps/web/AGENTS.md
 apps/web/CLAUDE.md

@@ -1523,6 +1523,7 @@ export async function getDistrictByGeoid(
         bioguideId: member.bioguideId,
         name: member.directOrderName,
         party: member.party,
+        partyCode: member.partyCode,
         state: member.state,
         photoUrl: member.photoUrl,
         officialUrl: member.officialUrl,
@@ -1564,6 +1565,7 @@ export async function getSittingSenators(
       bioguideId: member.bioguideId,
       name: member.directOrderName,
       party: member.party,
+      partyCode: member.partyCode,
       state: term.state,
       startDate: term.startDate,
       photoUrl: member.photoUrl,
@@ -1598,4 +1600,28 @@ export async function getStatesWithBoundaries(
     .where(eq(district.congressNo, congressNo))
     .orderBy(district.state);
   return rows.map((r) => r.state);
+}
+
+/**
+ * The R2 object key holding this Congress's district TopoJSON, if any.
+ *
+ * Every district in a Congress points at the same object, so this collapses to
+ * one key. It returns a list rather than a scalar so a partial or in-progress
+ * load — two keys where there should be one — is visible to the caller instead
+ * of being hidden by a LIMIT 1.
+ *
+ * The key is fingerprinted with the content hash, so it changes whenever the
+ * geometry is rebuilt. Reading it from the database rather than constructing
+ * it is what lets the map pick up a new build without a deploy.
+ */
+export async function getDistrictTopojsonKeys(
+  congressNo: number = CURRENT_CONGRESS,
+): Promise<string[]> {
+  const rows = await getDb()
+    .selectDistinct({ key: district.topojsonR2Key })
+    .from(district)
+    .where(
+      and(eq(district.congressNo, congressNo), isNotNull(district.topojsonR2Key)),
+    );
+  return rows.map((r) => r.key).filter((k): k is string => Boolean(k));
 }
