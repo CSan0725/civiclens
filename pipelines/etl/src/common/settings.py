@@ -42,6 +42,19 @@ class Settings(BaseSettings):
     r2_bucket: str = "civiclens-snapshots"
     r2_endpoint: str = ""
 
+    # A SECOND bucket, public-read with a CORS rule, for artefacts the browser
+    # fetches directly — today that is the district TopoJSON the map renders
+    # (Deployment-Architecture-Report §2c). Kept apart from the snapshot bucket
+    # on purpose: raw provenance payloads must never become world-readable.
+    r2_public_bucket: str = "civiclens-public"
+    r2_public_base_url: str = Field(
+        default="",
+        description=(
+            "Public HTTPS base for `r2_public_bucket` — the r2.dev subdomain or a "
+            "custom domain. The web app joins it with `district.topojson_r2_key`."
+        ),
+    )
+
     # --- run behaviour ------------------------------------------------------
     etl_request_delay: float = Field(
         default=0.2,

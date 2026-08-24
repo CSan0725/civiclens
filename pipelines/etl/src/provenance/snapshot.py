@@ -21,19 +21,14 @@ take the pipeline down.
 from __future__ import annotations
 
 import hashlib
-import threading
 from datetime import datetime
-from typing import Any
 
+from common import r2
 from common.logging import get_logger
 from common.settings import get_settings
 from sources.base import FetchResult, SourceSystem
 
 log = get_logger(__name__)
-
-_client_lock = threading.Lock()
-_client: Any | None = None
-_warned = False
 
 
 def checksum(payload: bytes) -> str:
@@ -64,42 +59,8 @@ def snapshot_key(
 
 
 def is_configured() -> bool:
-    """True when enough R2 settings are present to attempt an upload."""
-    s = get_settings()
-    return bool(s.r2_access_key_id and s.r2_secret_access_key and s.r2_bucket and s.r2_endpoint)
-
-
-def _get_client() -> Any | None:
-    """Lazily build the S3 client, or None when R2 is not configured."""
-    global _client, _warned
-
-    if not is_configured():
-        with _client_lock:
-            if not _warned:
-                log.warning(
-                    "r2.not_configured",
-                    detail=(
-                        "R2 not configured, skipping raw snapshot. Provenance rows are "
-                        "still written with source_url and retrieved_at; only the "
-                        "byte-level archive is skipped."
-                    ),
-                )
-                _warned = True
-        return None
-
-    with _client_lock:
-        if _client is None:
-            import boto3  # imported lazily: unused when R2 is unconfigured
-
-            s = get_settings()
-            _client = boto3.client(
-                "s3",
-                endpoint_url=s.r2_endpoint,
-                aws_access_key_id=s.r2_access_key_id,
-                aws_secret_access_key=s.r2_secret_access_key,
-                region_name="auto",
-            )
-    return _client
+    """True when enough R2 settings are present to attempt a snapshot upload."""
+    return r2.is_configured() and bool(get_settings().r2_bucket)
 
 
 def write_snapshot(
@@ -115,7 +76,7 @@ def write_snapshot(
     fails. The caller stores the return value in `provenance.r2_key`, where
     NULL correctly means "no archived copy".
     """
-    client = _get_client()
+    client = r2.get_client()
     if client is None:
         return None
 
@@ -146,7 +107,7 @@ def read_snapshot(r2_key: str) -> bytes | None:
     Used to reprocess without re-fetching, and to serve last-good data during
     an upstream outage (NFR-3).
     """
-    client = _get_client()
+    client = r2.get_client()
     if client is None:
         return None
     try:

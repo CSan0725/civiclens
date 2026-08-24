@@ -72,7 +72,7 @@ def _truncate(connection: Connection) -> None:
     connection.execute(
         text(
             "TRUNCATE vote_reconciliation_flag, vote_cast, vote, sponsorship, "
-            "bill_action, bill, term, member, committee, provenance, "
+            "bill_action, bill, district, term, member, committee, provenance, "
             "dataset_sync_state RESTART IDENTITY CASCADE"
         )
     )
@@ -713,3 +713,154 @@ def test_a_resolved_flag_does_not_block_re_detection(conn: Connection) -> None:
         )
     ).one()
     assert counts == (1, 1)
+
+
+# ---------------------------------------------------------------------------
+# District boundaries (P4)
+# ---------------------------------------------------------------------------
+
+
+def _seed_wyoming_representative(conn: Connection) -> None:
+    """WY's at-large seat, as `members` stores it.
+
+    `term.district` is NULL for an at-large seat — measured across all 12 such
+    seats in the 119th — while the shapefile calls it CD '00'. The link has to
+    bridge that, and this is the fixture that proves it does.
+    """
+    conn.execute(
+        text(
+            "INSERT INTO member (bioguide_id, direct_order_name, state, chamber, party) "
+            "VALUES ('H001096', 'Harriet M. Hageman', 'WY', 'house', 'Republican')"
+        )
+    )
+    conn.execute(
+        text(
+            "INSERT INTO term (bioguide_id, congress_no, chamber, state, district, party, "
+            "start_date) VALUES "
+            "('H001096', 119, 'house', 'WY', NULL, 'Republican', DATE '2025-01-03')"
+        )
+    )
+    conn.commit()
+
+
+@respx.mock
+def test_boundaries_load_writes_valid_4326_geometry_and_links_the_member(
+    conn: Connection,
+) -> None:
+    """The whole boundaries path against real PostGIS and a real shapefile.
+
+    The three things that can only be checked here: the NAD83 GeoJSON survives
+    the trip into a `geometry(MultiPolygon, 4326)` column as a VALID polygon,
+    the at-large member link bridges NULL district to CD 0, and the stored
+    geometry answers point-in-polygon for a real address.
+    """
+    from geo.topojson import point_in_district
+    from sources import census_tiger
+    from sources.census_tiger_sync import sync_boundaries
+
+    _seed_wyoming_representative(conn)
+    respx.get(census_tiger.boundary_url(congress=119)).mock(
+        return_value=httpx.Response(
+            200,
+            content=load_bytes("cb_2024_us_cd119_500k_wy_dc.zip"),
+            headers={"content-type": "application/zip"},
+        )
+    )
+
+    with census_tiger.open_fetcher() as fetcher:
+        tally = sync_boundaries(conn, fetcher, congress=119, states=["WY"], publish=False)
+    assert tally.rows_upserted == 1
+
+    row = conn.execute(
+        text(
+            "SELECT geoid, state, state_fips, cd_number, at_large, "
+            "       ST_SRID(boundary) AS srid, ST_IsValid(boundary) AS valid, "
+            "       ST_GeometryType(boundary) AS gtype, "
+            "       ST_NPoints(boundary) AS pts, "
+            "       ST_NPoints(boundary_simplified) AS simple_pts, "
+            "       current_member_bioguide_id AS member, legal_area_sqm, source_url "
+            "FROM district WHERE congress_no = 119"
+        )
+    ).one()
+    assert row.geoid == "5600"
+    assert (row.state, row.state_fips, row.cd_number, row.at_large) == ("WY", "56", 0, True)
+    assert (row.srid, row.valid, row.gtype) == (4326, True, "ST_MultiPolygon")
+    assert row.simple_pts < row.pts, "boundary_simplified must actually be simpler"
+    assert row.member == "H001096"
+    assert row.legal_area_sqm == pytest.approx(251_458_190_512)
+    assert row.source_url.endswith("cb_2024_us_cd119_500k.zip")
+
+    # Cheyenne. FR-G1's PostGIS fallback, and the check that the polygon is
+    # where it claims to be rather than merely well-formed.
+    assert point_in_district(conn, longitude=-104.8202, latitude=41.1400, congress=119) == "5600"
+    assert point_in_district(conn, longitude=-77.0365, latitude=38.8977, congress=119) is None
+
+    provenance_rows = conn.execute(
+        text("SELECT count(*) FROM provenance WHERE entity = 'district'")
+    ).scalar_one()
+    assert provenance_rows == 1
+
+
+@respx.mock
+def test_boundaries_load_is_idempotent(conn: Connection) -> None:
+    """Re-running a Congress converges instead of duplicating (PRD §6)."""
+    from sources import census_tiger
+    from sources.census_tiger_sync import sync_boundaries
+
+    _seed_wyoming_representative(conn)
+    respx.get(census_tiger.boundary_url(congress=119)).mock(
+        return_value=httpx.Response(
+            200,
+            content=load_bytes("cb_2024_us_cd119_500k_wy_dc.zip"),
+            headers={"content-type": "application/zip"},
+        )
+    )
+
+    with census_tiger.open_fetcher() as fetcher:
+        sync_boundaries(conn, fetcher, congress=119, states=["WY"], publish=False)
+        sync_boundaries(conn, fetcher, congress=119, states=["WY"], publish=False)
+
+    assert conn.execute(text("SELECT count(*) FROM district")).scalar_one() == 1
+
+
+@respx.mock
+def test_topojson_is_built_from_the_stored_geometry(conn: Connection) -> None:
+    """The map contract: one object named `districts`, quantised and delta-encoded.
+
+    The frontend calls `topojson.feature(topo, topo.objects.districts)`; the
+    library names its object "data" unless told otherwise, so the rename is a
+    contract worth a test.
+    """
+    import json as json_module
+
+    from geo.topojson import build_topojson
+    from sources import census_tiger
+    from sources.census_tiger_sync import sync_boundaries
+
+    _seed_wyoming_representative(conn)
+    respx.get(census_tiger.boundary_url(congress=119)).mock(
+        return_value=httpx.Response(
+            200,
+            content=load_bytes("cb_2024_us_cd119_500k_wy_dc.zip"),
+            headers={"content-type": "application/zip"},
+        )
+    )
+    with census_tiger.open_fetcher() as fetcher:
+        sync_boundaries(conn, fetcher, congress=119, states=["WY"], publish=False)
+
+    document = json_module.loads(build_topojson(conn, congress=119, states=["WY"]))
+
+    assert document["type"] == "Topology"
+    assert list(document["objects"]) == ["districts"]
+    geometries = document["objects"]["districts"]["geometries"]
+    assert [g["id"] for g in geometries] == ["5600"]
+    assert geometries[0]["properties"] == {
+        "geoid": "5600",
+        "state": "WY",
+        "cd": 0,
+        "at_large": True,
+    }
+    # The sitting member is deliberately NOT baked in: the object is served
+    # with a one-year immutable cache and seats change mid-Congress.
+    assert "current_member_bioguide_id" not in geometries[0]["properties"]
+    assert "transform" in document, "quantisation is what makes this smaller than GeoJSON"

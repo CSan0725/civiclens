@@ -54,6 +54,7 @@ IMPLEMENTED = {
     "backfill",
     "backfill-speeches",
     "reconcile",
+    "boundaries",
 }
 
 
@@ -171,6 +172,38 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--states",
+        default=None,
+        help=(
+            "boundaries only: comma-separated two-letter codes to load "
+            "(default: every state and territory in the file). The P4 slice-0 "
+            "run is --states WY,NC,CA"
+        ),
+    )
+    parser.add_argument(
+        "--resolution",
+        choices=("500k", "5m", "20m"),
+        default="500k",
+        help="boundaries only: cartographic-boundary generalisation (default: 500k)",
+    )
+    parser.add_argument(
+        "--no-publish",
+        action="store_true",
+        help=(
+            "boundaries only: load the geometry but do not build or upload the "
+            "TopoJSON. Use it when R2 is not configured yet."
+        ),
+    )
+    parser.add_argument(
+        "--include-non-voting",
+        action="store_true",
+        help=(
+            "boundaries only: also load Delegate and Resident Commissioner "
+            "districts. They use CD code '98', which the district_cd_range "
+            "CHECK (0-60) rejects, so this needs a migration first."
+        ),
+    )
+    parser.add_argument(
         "--report-only",
         action="store_true",
         help=(
@@ -218,8 +251,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Imported here so `--help` and the not-implemented path stay free of
     # database and network dependencies.
     from loaders.engine import get_engine
-    from sources import clerk_xml, govinfo, senate_xml, voteview
+    from sources import census_tiger, clerk_xml, govinfo, senate_xml, voteview
     from sources import congress_gov as cg
+    from sources.census_tiger_sync import sync_boundaries
     from sources.clerk_xml_sync import backfill
     from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
     from sources.govinfo_sync import backfill_speeches, sync_speeches
@@ -319,6 +353,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                         to_year=args.to_year or clerk_xml.LATEST_BACKFILL_YEAR,
                         limit=args.limit,
                         member_fetcher=mfetcher,
+                    )
+
+            elif args.job == "boundaries":
+                # One national zip per Congress, filtered to --states. Manual
+                # and per-Congress: boundaries only move when a Congress turns
+                # over or a court orders mid-term redistricting.
+                with census_tiger.open_fetcher() as tfetcher:
+                    sync_boundaries(
+                        conn,
+                        tfetcher,
+                        congress=args.congress,
+                        resolution=args.resolution,
+                        states=(
+                            [s.strip() for s in args.states.split(",") if s.strip()]
+                            if args.states
+                            else None
+                        ),
+                        include_non_voting=args.include_non_voting,
+                        publish=not args.no_publish,
+                        limit=args.limit,
                     )
 
             elif args.job == "reconcile":

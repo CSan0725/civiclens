@@ -24,6 +24,12 @@ dependencies = [
     "structlog>=24.4",
     # Provenance snapshots -> Cloudflare R2 (S3-compatible)
     "boto3>=1.35",
+    # Geometry: Census cartographic-boundary shapefiles -> PostGIS -> TopoJSON.
+    # pyshp is a pure-Python .shp/.dbf reader (no GDAL); `topojson` brings
+    # numpy + shapely, which is what makes topology-preserving simplification
+    # possible. Deliberately NOT geopandas/GDAL — see geo/topojson.py.
+    "pyshp>=2.3",
+    "topojson>=1.9",
 ]
 
 [project.scripts]
@@ -81,7 +87,7 @@ warn_unused_ignores = true
 disallow_empty_bodies = false
 
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*"]
+module = ["boto3.*", "botocore.*", "shapefile.*", "topojson.*", "shapely.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
