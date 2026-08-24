@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -7,6 +7,7 @@ import {
   committee,
   committeeMembership,
   datasetSyncState,
+  district,
   member,
   speech,
   speechSpeaker,
@@ -16,6 +17,7 @@ import {
   voteReconciliationFlag,
 } from "@/db/generated/schema";
 import { voteCast } from "@/db/schema";
+import { CURRENT_CONGRESS } from "@/lib/congress";
 
 /**
  * Read queries for the pages that exist.
@@ -1485,4 +1487,115 @@ export async function getVoteBillLinkageCount() {
     .from(vote)
     .where(isNotNull(vote.billId));
   return Number(rows.at(0)?.n ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// Districts (PRD FR-G1, FR-G3, FR-G5)
+// ---------------------------------------------------------------------------
+
+/**
+ * One district and the Representative currently holding the seat.
+ *
+ * `current_member_bioguide_id` is resolved by the boundaries loader rather
+ * than joined here, because picking the sitting member out of `term` needs
+ * rules this query has no business repeating: at-large seats store a NULL
+ * district, and a seat can carry two terms in one Congress when someone
+ * resigns mid-term.
+ *
+ * A NULL member is a real state, not an error — the seat may be vacant.
+ */
+export async function getDistrictByGeoid(
+  geoid: string,
+  congressNo: number = CURRENT_CONGRESS,
+) {
+  const rows = await getDb()
+    .select({
+      geoid: district.geoid,
+      congressNo: district.congressNo,
+      state: district.state,
+      stateFips: district.stateFips,
+      cdNumber: district.cdNumber,
+      atLarge: district.atLarge,
+      topojsonR2Key: district.topojsonR2Key,
+      sourceUrl: district.sourceUrl,
+      retrievedAt: district.retrievedAt,
+      representative: {
+        bioguideId: member.bioguideId,
+        name: member.directOrderName,
+        party: member.party,
+        state: member.state,
+        photoUrl: member.photoUrl,
+        officialUrl: member.officialUrl,
+      },
+    })
+    .from(district)
+    .leftJoin(member, eq(member.bioguideId, district.currentMemberBioguideId))
+    .where(
+      and(eq(district.geoid, geoid), eq(district.congressNo, congressNo)),
+    )
+    .limit(1);
+  return rows.at(0);
+}
+
+/**
+ * The two sitting Senators for a state (PRD FR-G5 — the Senate has no
+ * districts, so representation is per state).
+ *
+ * SELECTED BY `end_date IS NULL`, NOT BY `senate_class`. Measured against Neon
+ * on 2026-08-24: `term.senate_class` is NULL on all 104 Senate terms of the
+ * 119th, so a `DISTINCT ON (state, senate_class)` would collapse every state
+ * to a single Senator and quietly drop one of the two.
+ *
+ * The open end_date is what actually identifies a sitting Senator, and it
+ * handles the mid-term replacements that make a plain count wrong: four states
+ * (FL, OH, OK, SC) carry three Senate terms in this Congress because someone
+ * left and was replaced. Under this rule all 50 states return exactly two,
+ * with no member appearing twice — verified, not assumed.
+ *
+ * A state returning fewer than two is a vacancy, which is a fact worth showing
+ * rather than an error to hide.
+ */
+export async function getSittingSenators(
+  state: string,
+  congressNo: number = CURRENT_CONGRESS,
+) {
+  return getDb()
+    .select({
+      bioguideId: member.bioguideId,
+      name: member.directOrderName,
+      party: member.party,
+      state: term.state,
+      startDate: term.startDate,
+      photoUrl: member.photoUrl,
+      officialUrl: member.officialUrl,
+    })
+    .from(term)
+    .innerJoin(member, eq(member.bioguideId, term.bioguideId))
+    .where(
+      and(
+        eq(term.congressNo, congressNo),
+        eq(term.chamber, "senate"),
+        eq(term.state, state),
+        isNull(term.endDate),
+      ),
+    )
+    .orderBy(member.directOrderName);
+}
+
+/**
+ * States whose boundaries are loaded, for the coverage notice (PRD FR-C4).
+ *
+ * P4 loads boundaries in slices, so "we have no district for this GEOID" and
+ * "this address has no district" are different answers and the caller has to
+ * be able to tell the reader which one it hit.
+ */
+export async function getStatesWithBoundaries(
+  congressNo: number = CURRENT_CONGRESS,
+): Promise<string[]> {
+  const rows = await getDb()
+    .selectDistinct({ state: district.state })
+    .from(district)
+    .where(eq(district.congressNo, congressNo))
+    .orderBy(district.state);
+  return rows.map((r) => r.state);
 }
