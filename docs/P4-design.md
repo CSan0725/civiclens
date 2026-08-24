@@ -142,7 +142,7 @@ WY+NC+CA 경계 적재 → TopoJSON → R2 공개버킷 → 공개 URL fetch →
 - TopoJSON → `civiclens-public/districts/congress-119.0257c273c137.topojson` (206,595 B, 67 geometries, arcs 225).
 - 공개 URL 200 OK, `Content-Type: application/json`, `Cache-Control: public, max-age=31536000, immutable`.
 - 내려받은 바이트의 sha256 앞 12자 = 키의 지문 `0257c273c137` — 빌드 산출물과 공개 서빙 오브젝트가 바이트 동일함을 확인.
-- 빌드는 결정적: 재실행해도 같은 206,595 B·같은 지문 → 키가 안 바뀌고 `topojson_r2_key` UPDATE도 no-op.
+- 빌드는 결정적 — **단, 같은 DB 안에서만**. 재실행해도 같은 206,595 B·같은 지문 → 키가 안 바뀌고 `topojson_r2_key` UPDATE도 no-op. PostGIS 버전이 다르면 산출 바이트가 달라진다(§12 발견 4에서 교정).
 - 2회 실행 후 오브젝트 수: 공개 버킷 **1개**(지문 고정 → 멱등), 스냅샷 버킷 **2개**(키가 타임스탬프 —
   fetch 1회당 1개가 남는 게 감사추적의 의도된 동작이다).
 
@@ -190,3 +190,65 @@ GET + Origin
 
 `configure_logging`이 stdlib 기본 핸들러를 쓰면 로그 한 줄의 비ASCII 문자에서 `UnicodeEncodeError`가 나
 잡 전체가 죽는다. 핸들러 스트림의 에러 정책만 `backslashreplace`로 바꿨다(인코딩은 터미널 선언값 유지 → CI UTF-8 무영향).
+
+## 12. 슬라이스 0 · 2단계 착수 — Neon 적재 (2026-08-24)
+
+앱 런타임(Neon)에 WY+NC+CA를 적재. 로컬 `.env`는 `localhost:55432` 그대로 두고, 그 한 번의 호출에만
+`DATABASE_URL`을 Neon **direct(unpooled)** 로 줬다.
+
+### Preflight (읽기전용)
+
+| 항목 | 값 |
+|---|---|
+| 엔드포인트 | direct (`-pooler` 아님) — 대량 geometry 쓰기라 PgBouncer 우회 필수 |
+| postgis | 3.6.0 |
+| 최신 마이그레이션 | 0005 |
+| `district` 테이블 | 존재, **0행** (클린 적재) |
+| `term` 119대 하원 | 449행 / 슬라이스 0: CA 53(현직 51), NC 14(14), WY 1(1) |
+
+`term` 확인이 핵심이었다 — 비어 있었으면 경계는 들어가고 `current_member_bioguide_id`만 전부 NULL로
+조용히 남았을 것이다. CA가 53 term / 현직 51인 건 정상이다: 52지역구 중 1곳이 승계(LaMalfa→Gallagher),
+1곳이 공석이라 `end_date IS NULL` 우선 + 최신 `start_date` 폴백 규칙이 그대로 필요한 사례다.
+
+### 적재 결과 (Neon 실측)
+
+```
+CA: districts=52 geom=52 valid=52 member=52 keys=1
+NC: districts=14 geom=14 valid=14 member=14 keys=1
+WY: districts=1  geom=1  valid=1  member=1  at_large=1 keys=1
+합계 67 / invalid=0 / no_member=0 / wrong_srid=0 / wrong_type=0 / no_simplified=0
+GEOID 왕복 불일치 0/67
+topojson_r2_key = districts/congress-119.aaad7416d0af.topojson  x67
+provenance: 67행, 스냅샷 1개
+```
+
+멤버 링크 스팟체크 — `0601 CA-01 → James Gallagher`(승계 후임이 잡힘), `5600 WY-00 at_large → Harriet M. Hageman`,
+`3701 NC-01 → Donald G. Davis`.
+
+PIP 자체검증(FR-G1 폴백, NFR-3): Cheyenne → `5600`, Raleigh → `3702`, San Francisco → `0611`. 전부 일치.
+
+공개 URL 재검증: `aaad7416d0af` 오브젝트도 프리플라이트 204 + `Access-Control-Allow-Origin: *`,
+GET 200, 내려받은 바이트 sha256 앞 12자 = 키 지문 일치.
+
+### 실측 발견 4 — 같은 입력·같은 코드인데 PostGIS 버전이 다르면 geometry가 달라진다
+
+Neon이 만든 TopoJSON은 **206,596 B**로 로컬(206,595 B)과 1바이트 다르고 지문도 다르다. 추적한 결과:
+
+- 67개 중 **5개**(`0601 0602 3705 3711 3714`)의 **저장된 geometry(WKB)가 다르다**. 정점 수는 동일.
+- 단계 격리 결과 갈리는 지점은 **`ST_Transform(4269→4326)`** 하나다. parse까지는 동일,
+  transform부터 다르다. `ST_MakeValid`는 원본이 이미 valid라(양쪽 `ST_IsValid=true`) 무영향.
+- 원인은 **PROJ 버전**: 로컬 PostGIS 3.4.3 / GEOS 3.9.0 / **PROJ 7.2.1** vs Neon 3.6.0 / GEOS 3.12.1 / **PROJ 9.4.0**.
+  PROJ 9가 NAD83→WGS84 변환 파이프라인을 다르게 고른다.
+- 크기: 좌표 차이 약 **1e-6도(≈10 cm)**. 지도 산출물에서는 225개 arc 중 6개가 양자화 1스텝(≈4 m) 다르다.
+  원본이 1:500,000 일반화 도면이라 이 정도는 소스 자체 정확도보다 **훨씬** 아래다. 렌더링·PIP 모두 무의미한 차이.
+
+**중요한 건 결과가 아니라 이게 드러낸 것이다.** 고정 키였다면 Neon 실행이 로컬 오브젝트를
+1년 `immutable` 캐시 아래에서 조용히 덮어썼을 것이고, 바이트가 1개 다른 걸 아무도 눈치채지 못했고
+무효화도 못 했다. 지문 키가 정확히 이 사고를 잡아낸 것이다(§11 발견 1).
+
+**정본은 Neon이다.** 앱은 `district.topojson_r2_key`를 Neon에서 읽으므로 `aaad7416d0af`를 받는다 — 정합적이다.
+로컬이 만든 `0257c273c137`는 버킷에 남겨 둔다(로컬 DB를 보는 개발 실행이 참조).
+
+**미결(사용자 결정)**: 로컬 Docker PostGIS를 프로덕션과 맞출지. `postgis/postgis:16-3.4` →
+Neon의 3.6/PROJ 9 계열로 올리면 dev·prod 산출물이 일치해 로컬에서 계산한 지문으로 프로덕션을 검증할 수 있다.
+급하지는 않다 — 기능 차이가 아니라 재현성 문제다.
