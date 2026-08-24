@@ -123,7 +123,7 @@ P4의 1차 성공 정의(PRD §2): 사용자가 **주소를 넣으면 내 지역
 
 ## 11. 슬라이스 0 · 1단계 실측 (2026-08-24)
 
-WY+NC+CA 경계 적재 → TopoJSON → R2 공개버킷 → 공개 URL fetch까지 관통 완료. 측정값만 기록한다.
+WY+NC+CA 경계 적재 → TopoJSON → R2 공개버킷 → 공개 URL fetch → CORS까지 관통 완료. **1단계 종료.** 측정값만 기록한다.
 
 ### 적재 결과
 
@@ -143,6 +143,8 @@ WY+NC+CA 경계 적재 → TopoJSON → R2 공개버킷 → 공개 URL fetch까�
 - 공개 URL 200 OK, `Content-Type: application/json`, `Cache-Control: public, max-age=31536000, immutable`.
 - 내려받은 바이트의 sha256 앞 12자 = 키의 지문 `0257c273c137` — 빌드 산출물과 공개 서빙 오브젝트가 바이트 동일함을 확인.
 - 빌드는 결정적: 재실행해도 같은 206,595 B·같은 지문 → 키가 안 바뀌고 `topojson_r2_key` UPDATE도 no-op.
+- 2회 실행 후 오브젝트 수: 공개 버킷 **1개**(지문 고정 → 멱등), 스냅샷 버킷 **2개**(키가 타임스탬프 —
+  fetch 1회당 1개가 남는 게 감사추적의 의도된 동작이다).
 
 ### 실측 발견 1 — 고정 키 + `immutable`은 캐시 독성
 
@@ -151,7 +153,7 @@ CDN·브라우저는 최대 1년간 3개 주짜리 문서를 계속 낸다. 무�
 **키에 내용 지문을 넣어** 해결했다(`districts/congress-{no}.{sha256[:12]}.topojson`). 새 문서 = 새 URL이므로
 DB 포인터만 옮기면 되고 캐시를 건드릴 필요가 없다. 이전 오브젝트는 남겨 둔다(롤백 1 UPDATE, 수백 KB).
 
-### 실측 발견 2 — r2.dev 공개 URL은 CORS를 주지 않는다 ⚠️ 미해결
+### 실측 발견 2 — r2.dev 공개 URL은 CORS를 주지 않는다 ✅ 해결
 
 R2에서 **public-read와 CORS는 별개 스위치**다. curl로는 200이지만 `Origin` 헤더를 붙여도 응답에
 `Access-Control-Allow-Origin`이 없고, `OPTIONS` 프리플라이트는 **403**이다. 즉 바이트는 누구나 읽을 수 있는데
@@ -164,6 +166,25 @@ Admin 토큰 재발급 또는 대시보드에서 CORS 규칙 적용이 선행돼
 
 `*` 오리진을 고른 이유: 오브젝트는 이미 curl로 공개이므로 브라우저에 추가 권한을 주는 게 아니고,
 프로덕션 도메인으로 고정하면 Vercel 프리뷰 배포(배포마다 호스트명이 다름)가 전부 깨진다.
+
+**해결(2026-08-24)**: 사용자가 Cloudflare 대시보드에서 civiclens-public에 규칙(GET/HEAD, origin `*`)을 적용.
+재검증 실측:
+
+```
+OPTIONS + Origin + Access-Control-Request-Method: GET
+  -> 204, Access-Control-Allow-Origin: *, Access-Control-Allow-Methods: GET, HEAD
+     Access-Control-Max-Age: 3600, Vary: Origin
+GET + Origin
+  -> 200, Access-Control-Allow-Origin: *, 206,595 B
+```
+
+브라우저 `fetch()` 경로가 열렸다. 슬라이스 0 1단계 종료.
+
+⚠️ **선언값과 라이브 값이 다르다.** 코드의 `PUBLIC_CORS_RULES`는 `MaxAgeSeconds` 86400 +
+`ExposeHeaders`(ETag, Content-Length)인데, 대시보드로 넣은 라이브 규칙은 max-age 3600 + expose-headers 없음이다.
+지도 fetch에는 기능적으로 동일하지만(프리플라이트 캐시 수명 차이뿐, JS가 ETag를 읽지 않음), 나중에 Admin 범위
+토큰으로 `ensure_public_cors()`가 실제로 성공하면 **코드 쪽 값으로 덮인다**. 그때 값이 바뀌는 건 의도된 것이지
+회귀가 아니다.
 
 ### 실측 발견 3 — Windows 콘솔 cp949
 
