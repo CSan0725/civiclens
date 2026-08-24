@@ -252,3 +252,93 @@ Neon이 만든 TopoJSON은 **206,596 B**로 로컬(206,595 B)과 1바이트 다�
 **미결(사용자 결정)**: 로컬 Docker PostGIS를 프로덕션과 맞출지. `postgis/postgis:16-3.4` →
 Neon의 3.6/PROJ 9 계열로 올리면 dev·prod 산출물이 일치해 로컬에서 계산한 지문으로 프로덕션을 검증할 수 있다.
 급하지는 않다 — 기능 차이가 아니라 재현성 문제다.
+
+## 13. 슬라이스 0 · 2단계 (2026-08-25)
+
+### 2a — 지오코더 라우트 + 대표 3인
+
+`POST /api/districts/lookup`. 이 앱 최초의 API route이고, `db/queries.ts`에 적힌 "API 레이어 두지 않는다"
+관례를 의도적으로 깬 자리다 — 여기만 클라이언트 입력 + 서드파티 호출이 중간에 낀다. 주소는 **서버에서만**
+Census로 나가고, GET이 아니라 POST다(request line은 액세스로그·프록시로그·리퍼러·히스토리에 남는다). 저장하지 않는다.
+
+**Census Geocoder는 senate.gov와 다르다** — 개발 네트워크에서 200, 0.6초, WAF 없음. 우회 불필요.
+
+실측이 코드를 바꾼 것 3가지:
+
+1. **`term.senate_class`가 119대 상원 104건 전부 NULL이다.** 자연스러운
+   `DISTINCT ON (state, senate_class)`를 썼다면 **주당 상원의원이 1명으로 접혀** 조용히 1명을 떨궜다.
+   채택 규칙은 **`end_date IS NULL`** — 50개 주 전부 정확히 2명, 중복 0으로 검증. 임기 중 교체로 상원 term이
+   3개인 4개 주(FL·OH·OK·SC)도 이 규칙으로 정확히 2명이 된다.
+2. **지역구 번호는 GEOID에서 뽑는다.** `CD119` 필드는 회기마다 이름이 바뀌고, `BASENAME`은 숫자가 아닐 때가
+   있다(WY `"Congressional District (at Large)"`, DC `"Delegate District (at Large)"`). GEOID = state FIPS + CD는
+   `district_geoid()`가 저장 키를 만드는 방식과 동일하다.
+3. **레이어 키도 회기 번호를 단다**(`"119th Congressional Districts"`). 패턴 매칭 + 레코드의 `CDSESSN`으로 읽고,
+   `CURRENT_CONGRESS`와 다르면 `congress_mismatch`로 **말한다**. 새 GEOID를 낡은 경계에 조용히 조인하는 게
+   FR-G4가 막으려는 사고다.
+
+**빈 결과는 없다(FR-C4)**: 미커버 주소도 상원 2인을 돌려주고(`term`은 50개 주 완비) 적재된 주 목록을 명시한다.
+DC/준주는 `non_voting_delegate`로 따로 답한다 — "못 찾음"은 실재하는 관할구역을 오기술하는 것이다.
+
+### 2b — MapLibre 지도
+
+`/districts`가 스텁을 벗었다. MapLibre v6가 R2의 TopoJSON으로 67개 지역구를 그리고, 주소 또는 클릭으로
+지역구를 선택하면 대표 3인 카드가 뜬다(기존 `/members/[bioguide]` 프로필로 링크).
+
+- **베이스맵 없음(의도)**: 배경색 1개 + 우리 레이어 2개. 호스티드 베이스맵은 전부 API 키·과금·타일마다
+  독자 IP가 실린 서드파티 요청을 요구하는데, 이 지도가 답해야 할 질문에는 아무 도움이 안 된다.
+  네트워크 의존은 R2 오브젝트 하나뿐이고 유출될 키가 없다.
+- **클릭은 별도 `GET /api/districts/[geoid]`** — GEOID는 공개 식별자라 PII가 없고 Census 호출도 불필요하다.
+  상원은 저장된 행의 `state`로 조회하므로 임의 GEOID로 남의 주 대표단을 요청할 수 없다.
+
+### 실측 발견 5 — 빈 캔버스가 감춘 죽은 워커 ⚠️ 이번 단계 시간의 대부분
+
+지도가 `"67 districts drawn"`을 찍고, 패널은 정상 동작하고, R2 fetch는 200이고, `addSource`/`addLayer` 둘 다
+성공하고, 예외도 map `error` 이벤트도 없는데 **아무것도 그려지지 않았다.**
+
+MapLibre는 GeoJSON 파싱을 **웹 워커**에서 한다. Next 번들러 아래에서는 MapLibre가 워커를 **blob으로** 만드는
+경로로 빠지고, 그 blob 워커가 생성 즉시 죽는다. 그러면 모든 source가 영원히 `sourceLoaded=false`로 남는다.
+**`next dev`와 프로덕션 `next build` 양쪽에서 동일하게 재현**됐다.
+
+원인을 가른 결정타는 **점 5개짜리 임시 폴리곤을 두 번째 source로 추가한 것**이다. 그것도 로드되지 않았고,
+그 한 번으로 데이터·레이어 paint·TopoJSON 변환이 전부 용의선상에서 빠지고 인스턴스가 지목됐다.
+같은 maplibre 빌드·같은 파일을 쓰는 순수 정적 페이지는 정상 렌더됐고, 워커 URL이 나머지를 말해줬다 —
+정적 페이지는 진짜 모듈(`maplibre-gl-worker.mjs`), Next는 blob을 가리키는 페이지 URL.
+
+**수정**: `setWorkerUrl`로 같은 오리진의 실제 파일을 가리킨다. 파일은
+`scripts/vendor-maplibre-worker.mjs`가 dev/build 때 node_modules에서 복사하고 git-ignore한다 —
+커밋해두면 maplibre 버전과 어긋날 수 있다. 워커는 ES 모듈이라 형제 `maplibre-gl-shared.mjs`를 상대경로로
+import하므로 **둘을 같이** 놔야 한다.
+
+곁가지 2건: `bboxOf`가 **GeometryCollection을 처리 못 했다**(`coordinates`를 찾는데 collection엔 없다) —
+초기 fit이 null을 반환해 지도가 적재된 주를 잡지 않고 하드코딩된 대륙 뷰로 열렸다. 그리고 effect 본문의
+`setState`는 이제 lint 에러다 — "그릴 지도가 없다"는 prop에서 첫 렌더에 알 수 있으므로 초기 상태로 옮겼다.
+
+### 검증 (프로덕션 빌드 + 실제 브라우저)
+
+| 입력 | 결과 |
+|---|---|
+| SF City Hall | CA-11, **Nancy Pelosi** + Schiff · Padilla |
+| Cheyenne WY | WY-AL(at-large), **Harriet M. Hageman** + Lummis · Barrasso |
+| Raleigh NC | NC-02, **Deborah K. Ross** + Budd · Tillis |
+| Austin TX | `not_covered` — TX-37 명시 + Cornyn · Cruz + "CA, NC, WY만 적재됨" |
+| White House | `non_voting_delegate`, 상원 0 |
+| 쓰레기 문자열 | `not_found` |
+| "1 Center St, NC" | `ambiguous` — 후보 버튼 목록 |
+| 지도에서 WY 클릭 | `GET /api/districts/5600` → WY-AL 대표 3인 (주소 없이) |
+
+워커는 자기 URL에서 로드되고, 69개 feature가 렌더된다.
+
+### 웹 첫 테스트 스위트
+
+vitest 하나만(jsdom·React 플러그인·path 리졸버 없음). 서버 로직만 대상이라 Node 환경이면 충분하다.
+**32개 테스트**, ci-web에 `Test` 스텝 연결. ci-etl과 같은 규칙 — 라이브 업스트림 호출 없음, DB 없음
+(Census 응답은 2026-08-25 실캡처 픽스처, 쿼리는 목). 스위트가 Neon을 깨우지도 않는다.
+
+셋업에서 걸린 것 2개: vitest 4는 rolldown 네이티브 바인딩이 **pnpm+Windows에서 해결되지 않아** 3.x로 고정했고
+(안 그러면 CI(리눅스)는 통과하는데 개발자는 못 돌린다), 설정 파일은 `apps/web`이 `"type": "module"`이 아니라
+**`.mts`**여야 한다(아니면 vitest가 ESM vite를 require해서 테스트 수집 전에 죽는다).
+
+### ⚠️ 배포 전 필요 — Vercel 환경변수
+
+`R2_PUBLIC_BASE_URL`을 Vercel에 설정해야 한다. 없으면 지도가 "No published district map to load"로 뜬다.
+비밀값이 아니다(공개 버킷 URL). 로컬 `.env`에는 추가해뒀다.
