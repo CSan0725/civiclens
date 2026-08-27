@@ -1,29 +1,17 @@
 /**
  * The formatting decisions that carry meaning.
  *
- * Not a test of `Intl` — a test of the three places where a formatting choice
- * would otherwise state something false: an at-large seat written as "CA-0",
- * a missing FEC figure rendered as "$0", and a candidate's party shown as a
- * bare code beside a member's spelled-out one.
+ * Not a test of `Intl` — a test of the places where a formatting choice would
+ * otherwise state something false: a missing FEC figure rendered as "$0", and
+ * a candidate's party shown as a bare code beside a member's spelled-out one.
+ *
+ * District labels moved to `jurisdiction.test.ts`, with the rest of what
+ * separates a state's district from a Delegate's.
  */
 
 import { describe, expect, it } from "vitest";
 
-import { fecParty, formatDistrictLabel, formatMoney } from "./format";
-
-describe("formatDistrictLabel", () => {
-  it("zero-pads a numbered district", () => {
-    expect(formatDistrictLabel("CA", 11)).toBe("CA-11");
-    expect(formatDistrictLabel("NC", 2)).toBe("NC-02");
-  });
-
-  it("writes an at-large seat as AL, not as district zero", () => {
-    // Wyoming's district number IS 0 — it is a real district, and "WY-0" is
-    // not how anyone writes it.
-    expect(formatDistrictLabel("WY", 0, true)).toBe("WY-AL");
-    expect(formatDistrictLabel("WY", 0)).toBe("WY-AL");
-  });
-});
+import { fecParty, formatMoney } from "./format";
 
 describe("formatMoney", () => {
   it("rounds to whole dollars", () => {

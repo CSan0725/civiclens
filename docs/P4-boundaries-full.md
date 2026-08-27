@@ -312,3 +312,129 @@ nonvoting AS,DC,GU,MP,PR,VI
 
 (3)(4)(5)는 사실관계가 틀린 진술이라 FC-1 위반에 가깝고, (1)은 낡은 진술이다.
 3단계에서 함께 고친다.
+
+---
+
+# 3단계 — 관할구 유형에 따라 정직하게 렌더
+
+측정일 2026-08-28.
+
+2단계가 남긴 **틀린 진술 6건**을 고쳤다. 전부 "빠진 사실"이 아니라 **"틀린 사실"**이고,
+FC-1이 금지하는 건 후자다.
+
+## 1. 원인은 카피가 아니라 전제였다
+
+여섯 문장은 각자 잘못 쓰인 게 아니다. 네 곳이 **각자** "지역구란 이런 것"을 가정하고 있었고,
+슬라이스 0이 CA·NC·WY뿐이라 셋 다 주였기 때문에 그 가정이 한 번도 틀리지 않았을 뿐이다.
+441개가 들어오자 여섯 개가 그 가정을 깨뜨렸다.
+
+그래서 카피를 여섯 번 고치는 대신 **답을 한 곳에 모았다** — `lib/jurisdiction.ts`.
+지역구 상세 페이지·지도 패널·주소 조회 API·지역구 API 넷이 같은 모듈에 묻는다.
+각자 판단하게 두는 것이 애초에 넷이 어긋난 방식이다.
+
+**`cd_number`가 아니라 관할구 코드로 판정한다.** DB는 같은 사실을 Census 센티널
+`cd_number = 98`(마이그레이션 0008)로 말하고 둘은 구성상 일치하지만, 코드는 어디서나 쓸 수 있다 —
+주소 조회는 DB를 만지기 전에 이미 주를 알고, 지역구 행이 없는 관할구도 정확히 설명돼야 한다.
+
+## 2. 고친 6건 (+ 실측 중 발견한 1건)
+
+| # | 있던 문장 | 지금 |
+|---|---|---|
+| 1 | `/districts` "Other states are being added." | 적재 현황에서 **도출**: 전량이면 "all 50 states, the District of Columbia, and the five territories … every district in the Congress", 부분이면 "Still to load: …" |
+| 2 | 제목 `DC-AL` · 부제 "at-large district" | 제목 `DC` · 부제 "**Delegate district · non-voting**" (PR은 "Resident Commissioner district") |
+| 3 | "One House member … and both of **the state's** Senators" | "District of Columbia elects one **Delegate** to the House and **no Senators**." |
+| 4 | "**Every state elects two.** An empty list here means the roster has not been collected" | "**District of Columbia elects no Senators** / Senators represent states. District of Columbia is not a state, so there is no Senate seat to show — **this is not missing data**." |
+| 5 | "Candidates for **DC Senate seats**" 섹션 | 상원 의석이 있는 주에만 렌더. **쿼리 자체를 안 던진다** |
+| 6 | 표결권 언급 없음 | 카드에 "**Does not vote on final passage of legislation on the House floor.**" + 커버리지 문단에 설명 |
+| **7** | **주소 조회가 "CivicLens does not carry these seats yet"** | **제거. DC 주소가 Norton을 반환한다** |
+
+### 7번은 사용자가 준 목록에 없다 — `/districts/1198`에서는 안 보이기 때문이다
+
+`/api/districts/lookup`이 **DB를 묻기도 전에** `cd_number === 98`에서 끊고
+`non_voting_delegate` + "CivicLens does not carry these seats yet"를 돌려주고 있었다.
+스키마 cd 범위가 0-60이던 시절에는 참이었다 — 그런 행이 존재할 수 없었으니까.
+0008과 전량 적재가 그걸 **자신 있는 오답**으로 바꿨고, 그건 이 라우트가 존재하는 이유 그 자체다.
+
+**주소 조회는 이 사이트의 1차 경로다.** 상세 페이지만 봤다면 놓쳤을 것이다.
+
+### 왜 "-AL"을 빌려주지 않는가
+
+Census LSAD는 이 여섯을 at-large로 표시하고 로더도 `at_large = true`로 싣는다. 그래서 페이지가
+"at-large district"에 손을 뻗은 것이다. 하지만 **at-large 주**는 주 전체를 덮는 지역구 하나에
+표결권 있는 의원이 있는 것이고, Delegate 지역구는 그 둘 다 아니다. 쓸 지역구 번호도 없다 —
+CD 98은 번호가 아니라 센티널이다. 그래서 라벨은 `DC`, `PR`이다.
+
+### 상원 쿼리를 조건부로 만든 이유
+
+의석이 없는 곳에 `getSittingSenators`를 던져 빈 배열을 받으면, **명부가 안 실린 주와 구별되지 않는다.**
+2d의 "빈 셀의 세 가지 의미"와 같은 문제다. 그래서 묻지 않는다.
+
+## 3. 실측 — 실제 페이지
+
+`next start`를 **Neon(정본)**에 붙여 렌더한 결과다.
+
+| 페이지 | 제목/부제 | 하원측 카드 | 상원 | 상원 후보 섹션 |
+|---|---|---|---|---|
+| `/districts/0611` CA-11 | `CA-11` · California | `HOUSE · CA-11` Pelosi | 2인 | 있음 |
+| `/districts/5600` WY-AL | `WY-AL` · **at-large district** | `HOUSE · WY-AL` Hageman | 2인 | 있음 |
+| `/districts/1198` DC | `DC` · **Delegate district · non-voting** | `DELEGATE · DC` Norton + 비표결 문구 | **"elects no Senators"** | **없음** |
+| `/districts/7298` PR | `PR` · **Resident Commissioner district · non-voting** | `RESIDENT COMMISSIONER · PR` Hernández + 비표결 문구 | **"elects no Senators"** | **없음** |
+
+HTML 단위 대조 — "Senate seats" 섹션은 0611·5600에만, "Every state elects two"는 **어디에도 없고**,
+"at-large district"는 5600에만, "Delegate district"는 1198에만, "Resident Commissioner district"는
+7298에만, 비표결 문구는 1198·7298에만.
+
+`/districts` 커버리지: "Boundaries are loaded for **all 50 states, the District of Columbia, and the
+five territories** that send a Delegate or Resident Commissioner — every district in the Congress."
+지도 상태줄 "441 districts drawn."
+
+### 주소 조회 (CDP로 실제 브라우저 구동)
+
+| 입력 | 패널 |
+|---|---|
+| 1600 Pennsylvania Ave NW, DC | `DELEGATE · DC` / Eleanor Holmes Norton / 비표결 문구 / "District of Columbia is not a state and elects no Senators." |
+| 250 Calle San Francisco, PR | `RESIDENT COMMISSIONER · PR` / Pablo José Hernández / 비표결 문구 / "Puerto Rico is not a state…" |
+| 1 Marine Corps Dr, GU | `DELEGATE · GU` / James C. Moylan / 비표결 문구 |
+| 1 Dr Carlton B Goodlett Pl, CA | `HOUSE · CA-11` / Pelosi + 상원 2인, 비표결 문구 **없음** |
+
+### 실측이 드러낸 상류 한계 1건 (우리 결함 아님)
+
+Census **주소** 지오코더는 여섯 관할구를 고르게 다루지 않는다. 실측:
+
+| 관할구 | 주소 매칭 |
+|---|---|
+| DC · PR | 1/1 |
+| GU | 2건 중 1건 |
+| VI · AS · MP | 0/4 |
+
+**좌표 조회는 여섯 곳 전부 정상**이고(2단계 §5), 지도 클릭 경로는 GEOID로 가므로 전부 동작한다.
+막히는 것은 VI·AS·MP의 **주소 입력** 경로뿐이고, 그때 나오는 답은 M4에서 고친
+`not_found` 문구다 — 정직한 답이다. 이건 상류 커버리지이지 우리 버그가 아니다.
+
+## 4. 테스트
+
+`lib/jurisdiction.test.ts` **15건 신규** — 여섯 문장 하나하나를 회귀로 고정했다.
+"Delegate 지역구를 at-large라 부르지 않는다", "DC-AL을 만들지 않는다", "PR은 Delegate가 아니다",
+"전량 적재는 complete로, 슬라이스 0은 incomplete로 계산된다", "`cd_number = 98` 센티널과 일치한다".
+
+`route.test.ts`: DC 케이스 1건 → **3건**. 예전 테스트는
+"CD 98이면 DB를 묻지 않는다"를 **보증**하고 있었다 — 그때는 맞았고 지금은 그게 결함이다.
+지금은 (a) DC 주소가 Norton으로 답하고 `getDistrictByGeoid('1198', 119)`를 실제로 호출하는지,
+(b) 상원 의석이 없으면 `getSittingSenators`를 **아예 호출하지 않는지**,
+(c) 주에서는 여전히 호출하는지를 고정한다.
+
+`formatDistrictLabel`은 `format.ts`에서 **제거**하고 `jurisdiction.districtLabel`로 옮겼다.
+라벨만 따로 가져다 쓰면 그에 딸린 구분을 놓치게 되고, 그게 `DC-AL`이 나온 경위다.
+
+| | |
+|---|---|
+| lint · typecheck · build | ✅ |
+| 테스트 | **71 passed** (5 파일) |
+
+## 5. 그대로 둔 것
+
+- `/districts/[geoid]` 커버리지의 "**FEC candidates are loaded for CA, NC and WY. Other states are
+  being added.**" — 이건 아직 **참이다**. FEC 전량(4단계)이 남아 있다. 1번 항목은 경계 카피이고
+  이건 후보 카피다.
+- `NotLoaded`가 존재하지 않는 GEOID(예: `1197`)를 "실재하는 지역구"라 부르는 문제 —
+  전량 적재로 실질적으로 도달 불가능해졌지만 논리는 남아 있다. 이번 6건과 다른 부류라 손대지 않았다.

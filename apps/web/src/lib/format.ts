@@ -122,24 +122,9 @@ export function formatSpeechContext(
   return `${chamberLabel} · ${section}`;
 }
 
-/**
- * "CA-11", "WY-AL" — how a congressional district is written.
- *
- * At-large seats are the reason this is a function and not a template string
- * in three places: the district number is 0, and "CA-0" is not how anyone
- * writes it. Shared between the map panel and the district page so the two
- * cannot drift into naming the same seat differently.
- */
-export function formatDistrictLabel(
-  state?: string | null,
-  cdNumber?: number | null,
-  atLarge?: boolean,
-): string {
-  const code = state ?? "??";
-  if (atLarge || cdNumber === 0) return `${code}-AL`;
-  if (cdNumber === null || cdNumber === undefined) return code;
-  return `${code}-${String(cdNumber).padStart(2, "0")}`;
-}
+// "CA-11", "WY-AL", "DC" — how a seat is written — lives in `lib/jurisdiction`
+// with the rest of what separates a state's district from a Delegate's, so a
+// caller cannot pick up the label without the distinction that goes with it.
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",

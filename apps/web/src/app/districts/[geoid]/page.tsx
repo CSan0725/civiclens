@@ -26,7 +26,14 @@ import {
   outcomePublication,
   type OutcomePublication,
 } from "@/lib/election-outcome";
-import { formatDate, formatDistrictLabel, ordinal } from "@/lib/format";
+import { formatDate, ordinal } from "@/lib/format";
+import {
+  districtLabel,
+  type Jurisdiction,
+  jurisdictionOf,
+  NON_VOTING_NOTE,
+  seatLine,
+} from "@/lib/jurisdiction";
 import { STATE_NAMES, stateFromGeoid } from "@/lib/states";
 
 // Reads Postgres per request; `next build` stays database-free (see the member
@@ -50,7 +57,7 @@ export async function generateMetadata({
   const stored = await getDistrictByGeoid(geoid, CURRENT_CONGRESS);
   if (stored) {
     return {
-      title: `${formatDistrictLabel(stored.state, stored.cdNumber, stored.atLarge)} — district`,
+      title: `${districtLabel(stored.state, stored.cdNumber, stored.atLarge)} — district`,
     };
   }
   const state = stateFromGeoid(geoid);
@@ -85,18 +92,26 @@ export default async function DistrictDetailPage({
     return <NotLoaded geoid={geoid} state={state} />;
   }
 
-  const label = formatDistrictLabel(stored.state, stored.cdNumber, stored.atLarge);
+  const label = districtLabel(stored.state, stored.cdNumber, stored.atLarge);
   const state = stored.state;
+  // What kind of jurisdiction this is decides four separate things below: how
+  // the district is described, whether Senate seats exist at all, what an
+  // empty Senator list means, and whether the member votes on final passage.
+  // One lookup, so those four cannot disagree with each other.
+  const jurisdiction = jurisdictionOf(state);
 
   const [senate, houseCandidates, senateCandidates, cycles, candidateStates] =
     await Promise.all([
-      state ? getSittingSenators(state, CURRENT_CONGRESS) : Promise.resolve([]),
+      state && jurisdiction.senateSeats > 0
+        ? getSittingSenators(state, CURRENT_CONGRESS)
+        : Promise.resolve([]),
       state
         ? getSeatCandidates({ state, office: "H", district: stored.cdNumber })
         : Promise.resolve([]),
       // FR-G5: a Senate seat has no district, so its candidates are the
-      // state's. `district IS NULL` is how the schema says that.
-      state
+      // state's. `district IS NULL` is how the schema says that. DC and the
+      // territories fill no Senate seat, so there is nothing to ask for.
+      state && jurisdiction.senateSeats > 0
         ? getSeatCandidates({ state, office: "S", district: null })
         : Promise.resolve([]),
       getOutcomeCoverageByCycle(),
@@ -120,7 +135,18 @@ export default async function DistrictDetailPage({
         <h1 className="text-2xl font-semibold tracking-tight">{label}</h1>
         <p className="text-sm text-muted-foreground">
           {state ? (STATE_NAMES[state] ?? state) : "Unknown state"}
-          {stored.atLarge ? " · at-large district" : null} · Census GEOID{" "}
+          {/*
+            An at-large STATE is one district covering the whole state, and its
+            member votes. DC's seat carries the same `at_large` flag — the
+            Census LSAD says so — but calling it "at-large district" borrows a
+            description that implies a vote it does not have.
+          */}
+          {jurisdiction.districtKind
+            ? ` · ${jurisdiction.districtKind} · non-voting`
+            : stored.atLarge
+              ? " · at-large district"
+              : null}{" "}
+          · Census GEOID{" "}
           <code className="font-mono">{stored.geoid}</code>
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -139,8 +165,9 @@ export default async function DistrictDetailPage({
             Who represents this district
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            One House member for the district, and both of the state&rsquo;s
-            Senators — the Senate has no districts (PRD FR-G5).
+            {jurisdiction.senateSeats > 0
+              ? "One House member for the district, and both of the state’s Senators — the Senate has no districts (PRD FR-G5)."
+              : `${jurisdiction.name} elects one ${jurisdiction.seatTitle} to the House and no Senators.`}
           </p>
         </div>
 
@@ -148,10 +175,11 @@ export default async function DistrictDetailPage({
           {stored.representative?.bioguideId ? (
             <RepresentativeCard
               representative={stored.representative}
-              seat={`House · ${label}`}
+              seat={seatLine(state, stored.cdNumber, stored.atLarge)}
+              note={jurisdiction.votesOnFinalPassage ? undefined : NON_VOTING_NOTE}
             />
           ) : (
-            <VacantSeatCard seat={`House · ${label}`} />
+            <VacantSeatCard seat={seatLine(state, stored.cdNumber, stored.atLarge)} />
           )}
 
           {senate.map((senator) => (
@@ -163,7 +191,19 @@ export default async function DistrictDetailPage({
           ))}
         </div>
 
-        {senate.length === 0 ? (
+        {/*
+          An empty Senator list means two different things and the page has to
+          say which. For a state it is a collection gap — every state elects
+          two, so a blank list is this site missing them. For DC or a
+          territory it is the constitutional fact: there is no seat to fill,
+          and describing that as an uncollected roster was simply false.
+        */}
+        {jurisdiction.senateSeats === 0 ? (
+          <EmptyState
+            title={`${jurisdiction.name} elects no Senators`}
+            detail={`Senators represent states. ${jurisdiction.name} is not a state, so there is no Senate seat to show — this is not missing data.`}
+          />
+        ) : senate.length === 0 ? (
           <EmptyState
             title="No sitting Senators recorded for this state"
             detail="Every state elects two. An empty list here means the roster has not been collected, not that the seats are vacant."
@@ -183,22 +223,30 @@ export default async function DistrictDetailPage({
         candidateStates={candidateStates}
       />
 
-      <CandidateSection
-        idPrefix="senate"
-        openCycle={openCycle}
-        heading={`Candidates for ${state ?? ""} Senate seats`}
-        blurb="Senate candidates are state-wide, so these are the same for every district in the state."
-        candidates={senateCandidates}
-        publicationByCycle={publicationByCycle}
-        loaded={candidatesLoaded}
-        state={state}
-        candidateStates={candidateStates}
-      />
+      {/*
+        Rendered only where the seats exist. An empty "Candidates for DC
+        Senate seats" reads as "nobody ran", when what is true is that there
+        was no election to run in.
+      */}
+      {jurisdiction.senateSeats > 0 ? (
+        <CandidateSection
+          idPrefix="senate"
+          openCycle={openCycle}
+          heading={`Candidates for ${state ?? ""} Senate seats`}
+          blurb="Senate candidates are state-wide, so these are the same for every district in the state."
+          candidates={senateCandidates}
+          publicationByCycle={publicationByCycle}
+          loaded={candidatesLoaded}
+          state={state}
+          candidateStates={candidateStates}
+        />
+      ) : null}
 
       <Coverage
         cycles={cycles}
         publicationByCycle={publicationByCycle}
         candidateStates={candidateStates}
+        jurisdiction={jurisdiction}
       />
     </div>
   );
@@ -316,10 +364,12 @@ function Coverage({
   cycles,
   publicationByCycle,
   candidateStates,
+  jurisdiction,
 }: {
   cycles: { cycle: number }[];
   publicationByCycle: Map<number, OutcomePublication>;
   candidateStates: string[];
+  jurisdiction: Jurisdiction;
 }) {
   return (
     <section className="space-y-2 border-t pt-6">
@@ -327,6 +377,16 @@ function Coverage({
         What this page does and does not cover
       </h2>
       <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+        {jurisdiction.votesOnFinalPassage ? null : (
+          <li>
+            {jurisdiction.name} sends one {jurisdiction.seatTitle} to the
+            House and elects no Senators. A {jurisdiction.seatTitle} is a
+            member of the House who may introduce legislation, speak on the
+            floor and serve on committees, but who does not vote on final
+            passage. Roll-call totals elsewhere on this site therefore do not
+            include this seat.
+          </li>
+        )}
         <li>
           Candidates come from the FEC, which only records people who
           registered federally or reported financial activity. A minor

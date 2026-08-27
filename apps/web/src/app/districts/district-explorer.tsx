@@ -27,7 +27,13 @@ import type {
   LookupResponse,
   Representatives,
 } from "@/lib/district-types";
-import { formatDistrictLabel } from "@/lib/format";
+import {
+  coverageOf,
+  districtLabel,
+  jurisdictionOf,
+  NON_VOTING_NOTE,
+  seatLine,
+} from "@/lib/jurisdiction";
 
 import { DistrictMap } from "./district-map";
 
@@ -44,7 +50,7 @@ type Panel =
   | { kind: "message"; heading: string; detail: string; candidates?: string[] };
 
 function seatLabel(district: DistrictSummary): string {
-  return formatDistrictLabel(district.state, district.cdNumber, district.atLarge);
+  return districtLabel(district.state, district.cdNumber, district.atLarge);
 }
 
 export function DistrictExplorer({
@@ -57,6 +63,7 @@ export function DistrictExplorer({
   const [address, setAddress] = useState("");
   const [panel, setPanel] = useState<Panel>({ kind: "idle" });
   const [selectedGeoid, setSelectedGeoid] = useState<string | null>(null);
+  const coverage = coverageOf(coveredStates);
 
   const showDistrict = useCallback(
     (
@@ -149,15 +156,6 @@ export function DistrictExplorer({
           );
           return;
 
-        case "non_voting_delegate":
-          setSelectedGeoid(null);
-          setPanel({
-            kind: "message",
-            heading: "Non-voting delegate district",
-            detail: body.detail,
-          });
-          return;
-
         case "ambiguous":
           setSelectedGeoid(null);
           setPanel({
@@ -230,15 +228,39 @@ export function DistrictExplorer({
               <CardContent className="py-5 text-sm text-muted-foreground">
                 <p>
                   Enter an address, or click a district on the map, to see the
-                  three seats that represent it — one House member and both of
-                  the state&rsquo;s Senators.
+                  seats that represent it — a House member, and in the 50
+                  states both of that state&rsquo;s Senators.
                 </p>
+                {/*
+                  Derived from what is actually loaded, never asserted. This
+                  said "Other states are being added" for as long as three
+                  states were loaded; the sentence outlived the condition it
+                  described, and only stopped being true when the rest landed.
+                  Computing it means the page cannot make that claim again
+                  once it is false — or drop it while it is still true.
+                */}
                 <p className="mt-3">
-                  Boundaries are loaded for{" "}
-                  <span className="font-medium text-foreground">
-                    {coveredStates.length > 0 ? coveredStates.join(", ") : "no states yet"}
-                  </span>
-                  . Other states are being added.
+                  {coverage.complete ? (
+                    <>
+                      Boundaries are loaded for{" "}
+                      <span className="font-medium text-foreground">
+                        all 50 states, the District of Columbia, and the five
+                        territories
+                      </span>{" "}
+                      that send a Delegate or Resident Commissioner — every
+                      district in the Congress.
+                    </>
+                  ) : coveredStates.length > 0 ? (
+                    <>
+                      Boundaries are loaded for{" "}
+                      <span className="font-medium text-foreground">
+                        {coveredStates.join(", ")}
+                      </span>
+                      . Still to load: {coverage.missing.join(", ")}.
+                    </>
+                  ) : (
+                    "No boundaries are loaded yet."
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -295,10 +317,25 @@ export function DistrictExplorer({
               {panel.representatives.house ? (
                 <RepresentativeCard
                   representative={panel.representatives.house}
-                  seat={`House · ${seatLabel(panel.district)}`}
+                  seat={seatLine(
+                    panel.district.state,
+                    panel.district.cdNumber,
+                    panel.district.atLarge,
+                  )}
+                  note={
+                    jurisdictionOf(panel.district.state).votesOnFinalPassage
+                      ? undefined
+                      : NON_VOTING_NOTE
+                  }
                 />
               ) : (
-                <VacantSeatCard seat={`House · ${seatLabel(panel.district)}`} />
+                <VacantSeatCard
+                  seat={seatLine(
+                    panel.district.state,
+                    panel.district.cdNumber,
+                    panel.district.atLarge,
+                  )}
+                />
               )}
 
               {panel.representatives.senate.map((senator) => (
@@ -310,11 +347,24 @@ export function DistrictExplorer({
                 />
               ))}
 
-              {panel.representatives.senate.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  This jurisdiction elects no Senators.
-                </p>
-              ) : null}
+              {/*
+                Same distinction the district page makes: for DC or a
+                territory an empty list is the fact, for a state it is a gap.
+                Saying "elects no Senators" about a state whose roster simply
+                had not loaded would be a wrong answer, not a cautious one.
+              */}
+              {panel.representatives.senate.length === 0
+                ? (() => {
+                    const j = jurisdictionOf(panel.district.state);
+                    return (
+                      <p className="text-sm text-muted-foreground">
+                        {j.senateSeats === 0
+                          ? `${j.name} is not a state and elects no Senators.`
+                          : "No sitting Senators are recorded for this state."}
+                      </p>
+                    );
+                  })()
+                : null}
 
               {/*
                 The seats are the answer to "who represents me"; the district

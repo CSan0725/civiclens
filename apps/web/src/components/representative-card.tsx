@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Representative } from "@/lib/district-types";
 
 /**
- * One of the three seats that represent an address (PRD FR-G3).
+ * One of the seats that represent an address (PRD FR-G3).
  *
  * Links into the existing member profile, where the voting record, sponsored
  * bills and floor statements already live. Party is rendered through
@@ -14,10 +14,19 @@ import type { Representative } from "@/lib/district-types";
 export function RepresentativeCard({
   representative,
   seat,
+  note,
 }: {
   representative: Representative;
-  /** e.g. "House · CA-11", "Senate · CA". Stated, never inferred by the card. */
+  /** e.g. "House · CA-11", "Delegate · DC". Stated, never inferred by the card. */
   seat: string;
+  /**
+   * A fact about the SEAT that the name alone would not convey — today, that a
+   * Delegate does not vote on final passage. Passed in for the same reason
+   * `seat` is: the card renders what it is told and works out nothing itself,
+   * so there is one place that decides what kind of seat this is
+   * (`lib/jurisdiction`) rather than one per component.
+   */
+  note?: string;
 }) {
   return (
     <Card className="transition-colors hover:border-foreground/25">
@@ -38,6 +47,11 @@ export function RepresentativeCard({
               name={representative.party}
             />
           </div>
+          {note ? (
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {note}
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

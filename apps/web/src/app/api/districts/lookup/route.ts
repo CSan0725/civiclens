@@ -23,7 +23,6 @@
  *
  *   ok                     district found, representatives attached
  *   not_covered            real district, boundaries not loaded for that state
- *   non_voting_delegate    DC and the territories: a Delegate, no district row
  *   not_found              Census matched no address
  *   ambiguous              Census matched several; caller must disambiguate
  *   congress_mismatch      geocoder's map is not the Congress we store
@@ -47,14 +46,11 @@ import {
   type GeocodedDistrict,
 } from "@/lib/census-geocoder";
 import { CURRENT_CONGRESS } from "@/lib/congress";
+import { districtLabel, jurisdictionOf } from "@/lib/jurisdiction";
 import { STATE_BY_FIPS } from "@/lib/states";
 
 /** Census is a live call and the address is per-user; nothing here is static. */
 export const dynamic = "force-dynamic";
-
-/** The CD code Census gives a Delegate or Resident Commissioner district. */
-const DELEGATE_CD = 98;
-
 
 function matchOf(d: GeocodedDistrict) {
   return {
@@ -153,36 +149,38 @@ export async function POST(request: Request) {
   const state = STATE_BY_FIPS[found.stateFips] ?? null;
 
   // DC and the territories elect a Delegate or Resident Commissioner, coded
-  // CD 98. They have no district row (the schema's cd range is 0-60) and no
-  // Senators, so saying "not found" would misdescribe a real jurisdiction.
-  if (found.cdNumber === DELEGATE_CD) {
-    return NextResponse.json({
-      status: "non_voting_delegate",
-      detail:
-        `${state ?? "This jurisdiction"} is represented by a non-voting ` +
-        "Delegate or Resident Commissioner and elects no Senators. CivicLens " +
-        "does not carry these seats yet.",
-      match: matchOf(found),
-      district: { geoid: found.geoid, state, cdNumber: found.cdNumber },
-      representatives: { house: null, senate: [] },
-    });
-  }
-
+  // CD 98. This route used to stop here and answer "CivicLens does not carry
+  // these seats yet", which was true while the schema's cd range was 0-60 and
+  // no such row could exist. Migration 0008 admits CD 98 and the boundary load
+  // carries all six, so the short-circuit had become the one thing this route
+  // is built to avoid: a confident wrong answer. It is gone — an address in
+  // Washington DC now takes the ordinary path and comes back with Norton.
+  //
+  // The seat structure is not inferred here. `lib/jurisdiction` owns it, and
+  // the client asks the same question of the same module.
   const stored = await getDistrictByGeoid(found.geoid, CURRENT_CONGRESS);
 
   // Senators come from `term`, which covers all 50 states, so they are
-  // returned even where boundaries are not loaded.
-  const senate = state ? await getSittingSenators(state, CURRENT_CONGRESS) : [];
+  // returned even where boundaries are not loaded. DC and the territories
+  // fill no Senate seat, so none is asked for — an empty answer there would
+  // be indistinguishable from a roster that had not been collected.
+  const senate =
+    state && jurisdictionOf(state).senateSeats > 0
+      ? await getSittingSenators(state, CURRENT_CONGRESS)
+      : [];
 
   if (!stored) {
     const covered = await getStatesWithBoundaries(CURRENT_CONGRESS);
     return NextResponse.json({
       status: "not_covered",
       detail:
-        `${found.matchedAddress} is in ${state ?? "an unloaded state"}-` +
-        `${String(found.cdNumber).padStart(2, "0")}, but district boundaries ` +
-        `are only loaded for ${covered.join(", ")} so far. The Senators below ` +
-        "are complete; the House seat is not yet available.",
+        `${found.matchedAddress} is in ` +
+        `${districtLabel(state, found.cdNumber)}, but district boundaries ` +
+        `are only loaded for ${covered.join(", ")} so far. ` +
+        (senate.length > 0
+          ? "The Senators below are complete; the House seat is not yet available."
+          : `${jurisdictionOf(state).name} elects no Senators, and its ` +
+            "House seat is not yet available."),
       match: matchOf(found),
       district: {
         geoid: found.geoid,

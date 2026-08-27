@@ -30,6 +30,11 @@ export type DistrictSummary = {
 export type Representatives = {
   /** NULL when the seat is vacant, or when the district is not loaded. */
   house: Representative | null;
+  /**
+   * Two for a state, and EMPTY for DC and the five territories, which fill no
+   * Senate seat. The two cases do not look alike to a reader and must not be
+   * rendered alike — `lib/jurisdiction` is what tells them apart.
+   */
   senate: Representative[];
 };
 
@@ -51,13 +56,6 @@ export type LookupResponse =
       district: DistrictSummary;
       representatives: Representatives;
       coverage: { boundariesLoadedFor: string[] };
-      detail: string;
-    }
-  | {
-      status: "non_voting_delegate";
-      match: MatchInfo;
-      district: DistrictSummary;
-      representatives: Representatives;
       detail: string;
     }
   | { status: "not_found"; detail: string }

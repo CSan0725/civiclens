@@ -239,7 +239,8 @@ describe("an address outside the loaded slice (FR-C4)", () => {
 });
 
 describe("jurisdictions that are not a voting district", () => {
-  it("names DC's Delegate and reports no Senators", async () => {
+  /** The White House, whose district is DC's Delegate seat, GEOID 1198. */
+  function dcAddress() {
     geocodeAddress.mockResolvedValue(
       geocoded({
         geoid: "1198",
@@ -249,16 +250,66 @@ describe("jurisdictions that are not a voting district", () => {
         matchedAddress: "1600 PENNSYLVANIA AVE NW, WASHINGTON, DC, 20500",
       }),
     );
+  }
+
+  it("answers with DC's Delegate now that the seat is loaded", async () => {
+    // This route used to stop at CD 98 and reply "CivicLens does not carry
+    // these seats yet" without asking the database. Migration 0008 and the
+    // full boundary load made that a confident WRONG answer, which is the one
+    // failure mode this route exists to avoid. It now takes the ordinary path.
+    dcAddress();
+    getDistrictByGeoid.mockResolvedValue(
+      storedDistrict({
+        geoid: "1198",
+        state: "DC",
+        stateFips: "11",
+        cdNumber: 98,
+        atLarge: true,
+        representative: {
+          bioguideId: "N000147",
+          name: "Eleanor Holmes Norton",
+          party: "Democratic",
+          state: "DC",
+          photoUrl: null,
+          officialUrl: null,
+        },
+      }),
+    );
 
     const response = await post({ address: "1600 Pennsylvania Ave NW" });
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.status).toBe("non_voting_delegate");
-    expect(body.detail).toContain("DC");
+    expect(body.status).toBe("ok");
+    expect(getDistrictByGeoid).toHaveBeenCalledWith("1198", 119);
+    expect(body.representatives.house.name).toBe("Eleanor Holmes Norton");
+  });
+
+  it("asks for no Senators where there is no Senate seat to fill", async () => {
+    // Not "the roster is empty" — the query is never made. Calling it and
+    // getting nothing back is indistinguishable from an uncollected roster,
+    // and the two must not look alike (FR-C4).
+    dcAddress();
+    getDistrictByGeoid.mockResolvedValue(
+      storedDistrict({ geoid: "1198", state: "DC", cdNumber: 98, atLarge: true }),
+    );
+
+    const body = await (await post({ address: "1600 Pennsylvania Ave NW" })).json();
+
     expect(body.representatives.senate).toEqual([]);
-    // No district row can hold CD 98, so the database is never asked.
-    expect(getDistrictByGeoid).not.toHaveBeenCalled();
+    expect(getSittingSenators).not.toHaveBeenCalled();
+  });
+
+  it("still asks for Senators in a state", async () => {
+    // The guard above must key on the jurisdiction, not on a missing district.
+    geocodeAddress.mockResolvedValue(geocoded());
+    getDistrictByGeoid.mockResolvedValue(storedDistrict());
+    getSittingSenators.mockResolvedValue(SENATORS.CA);
+
+    const body = await (await post({ address: "1 Dr Carlton B Goodlett Pl" })).json();
+
+    expect(getSittingSenators).toHaveBeenCalledWith("CA", 119);
+    expect(body.representatives.senate).toHaveLength(2);
   });
 });
 
