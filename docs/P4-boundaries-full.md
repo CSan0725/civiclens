@@ -176,3 +176,139 @@ Census 지오코더의 `/geographies/coordinates`(119th Congressional Districts 
 "마이그레이션 전에는 INSERT가 깨진다"였는데 0008로 해소됐다. 지금 상태에서 120대 경계를
 플래그 없이 적재하면 DC가 조용히 빠진다 — FR-G4가 막으려는 부류의 사고다.
 기본값을 켜는 쪽으로 뒤집을지는 CLI 계약 변경이라 별도 판단으로 남긴다.
+
+---
+
+# 2단계 — Neon(정본) 적용·적재·발행
+
+측정일 2026-08-27.
+
+## 1. 프리플라이트 (읽기전용)
+
+| 항목 | 값 |
+|---|---|
+| 적용된 마이그레이션 | 0001–0007, **0008 pending** |
+| 적용 전 제약 | `CHECK ((cd_number >= 0) AND (cd_number <= 60))` |
+| `district` (119대) | 67행 / 3개 주 / 전부 `aaad7416d0af` 키 |
+| 119대 하원 term | 449 (district 있음 437) — 로컬과 동일 |
+| 여섯 관할구 term | 전부 존재 |
+| Neon 스택 | PostGIS 3.6.0 · GEOS 3.12.1 · **PROJ 9.4.0** |
+
+## 2. 마이그레이션 0008
+
+`dbmate up` 842 ms. 적용 후 제약
+`CHECK (((cd_number >= 0) AND (cd_number <= 60)) OR (cd_number = 98))`,
+컬럼 코멘트 반영, `Applied: 8 / Pending: 0`.
+
+## 3. 전량 적재
+
+`boundaries --congress 119 --include-non-voting`. 441행 upsert 약 35초.
+
+| 항목 | 값 |
+|---|---:|
+| 지역구 / 관할구 | **441 / 56** |
+| 투표 435 · 비투표 6 · at-large 주 6 · `at_large` 12 | ✓ |
+| `ST_IsValid` 실패 · geom NULL · simplified NULL · provenance 결측 | **0 · 0 · 0 · 0** |
+| 멤버 링크 / 서로 다른 의원 | **441 / 441** |
+| SRID · 비-MultiPolygon · GEOID 불일치 · 내부 겹침 | 4326 · 0 · 0 · **0쌍** |
+| PIP 자체검증 (DC·PR·GU·AS·VI·MP·IL·TX·AK) | **9/9** |
+
+### PROJ 발산이 다시, 예고대로
+
+Neon이 만든 TopoJSON은 **1,697,013 B**로 로컬(1,696,962 B)보다 **51 B 크다**.
+설계 §12 발견 4가 슬라이스 0에서 1 B 차이로 잡아낸 것과 같은 원인이다
+(로컬 PROJ 7.2.1 vs Neon 9.4.0의 NAD83→WGS84 파이프라인 선택). 지문도 다르다:
+로컬 `e4659a7dd140`, **Neon `8f1627032c94`**. 정본은 Neon이고, 앱은 Neon에서 키를 읽으므로 정합적이다.
+
+## 4. R2 발행
+
+| 항목 | 값 |
+|---|---|
+| 키 | `districts/congress-119.8f1627032c94.topojson` |
+| 크기 / 타입 / 캐시 | 1,697,013 B · `application/json` · `public, max-age=31536000, immutable` |
+| `topojson_r2_key` 갱신 | **441행** (이전: 67 slice-0 + 374 NULL → 전부 새 키) |
+
+### ⚠️ CORS 규칙은 적용하지 못했다 — 그런데 필요가 없었다
+
+`ensure_public_cors()`가 `PutBucketCors`에서 **AccessDenied**로 실패했다.
+이 세션의 R2 토큰이 **오브젝트 스코프**라 버킷 설정을 못 만진다(`GetBucketCors`도 동일).
+코드는 이 경우를 이미 알고 경고만 남기고 계속한다(`r2.cors_not_applied`).
+
+**결과적으로 무해했다**: CORS는 버킷 단위 설정이고 슬라이스 0에서 이미 걸어 뒀다.
+새 오브젝트는 그 규칙을 그대로 상속한다 — §5에서 브라우저로 실측 확인했다.
+다만 **버킷을 새로 만드는 상황이었다면 이 토큰으로는 지도가 뜨지 않는다.**
+버킷 설정을 바꿔야 할 때는 Admin Read & Write 토큰이 필요하다.
+
+## 5. 공개 URL 검증 — 그리고 검증 도구가 틀렸던 이야기
+
+`https://pub-7f369302fb534a638b9dd927635079d8.r2.dev/districts/congress-119.8f1627032c94.topojson`
+
+**첫 시도는 403이었다.** Python `urllib`로 프리플라이트·GET 둘 다 403.
+자격증명이나 공개설정 문제로 결론 내리기 전에 **알려진 정상 대조군**을 찍었다 —
+2026-08-25에 204/200/지문일치로 검증됐고 그 뒤 손대지 않은 슬라이스 0 오브젝트
+`aaad7416d0af`. **그것도 똑같이 403이었다.** 그러면 원인은 이번 업로드가 아니다.
+
+응답 본문이 `error code: 1010`, `Server: cloudflare` — Cloudflare가 **클라이언트의 브라우저
+시그니처**를 보고 막은 것이다. senate.gov 403(P1 발견 7)과 같은 부류이고, 오브젝트 권한과 무관하다.
+UA 스푸핑은 하지 않는다.
+
+두 갈래로 다시 측정했다.
+
+**(a) S3 API로 저장된 바이트 자체** (CDN을 경로에서 뺀다):
+
+| 키 | 크기 | sha256[:12] | 지문 일치 | feature | 관할구 |
+|---|---:|---|---|---:|---:|
+| `aaad7416d0af` | 206,596 B | `aaad7416d0af` | ✅ | 67 | 3 |
+| `8f1627032c94` | 1,697,013 B | `8f1627032c94` | ✅ | **441** | **56** |
+
+새 문서의 비투표 feature: `AS, DC, GU, MP, PR, VI`.
+
+**(b) 실제 브라우저로 교차출처 fetch** — 로컬 http 오리진(`127.0.0.1:8731`)에서
+커스텀 헤더를 붙여 **프리플라이트를 강제**한 뒤 r2.dev를 fetch:
+
+```
+preflighted GET status 200
+bytes 1697013
+sha256[:12] 8f1627032c94        <- 키 지문과 일치
+features 441
+jurisdictions 56
+nonvoting AS,DC,GU,MP,PR,VI
+```
+
+프리플라이트가 실패했다면 fetch 자체가 예외로 끝났을 것이므로, **CORS 규칙은 살아 있다.**
+공개 읽기·CORS·지문 전부 확인 — 403은 우리 파이썬 클라이언트만의 문제였다.
+
+> 교훈은 1단계와 같은 것의 반복이다. **정상 대조군을 먼저 찍지 않았다면
+> "R2 공개설정이 깨졌다"고 보고했을 것이다.** 바뀐 것과 안 바뀐 것을 같이 측정해야
+> 원인이 어디 있는지가 나온다.
+
+## 6. 라이브 사이트 — 전량 반영 확인
+
+배포 없이 반영됐다(`/districts`는 `force-dynamic`이고 키를 DB에서 읽는다).
+
+- 페이지가 내려주는 오브젝트 URL = **`8f1627032c94`** (441 지역구 문서) ✓
+- `coveredStates` = **56개 관할구** — `AS DC GU MP PR VI` 포함 ✓
+- 지도 상태줄: **"441 districts drawn."** — 브라우저가 R2에서 받아 파싱한 결과다 ✓
+- `/districts/1198`(DC) 정상 렌더, 현직 Eleanor Holmes Norton 표시 ✓
+
+## 7. 3단계로 넘기는 것 — 라이브가 지금 하는 잘못된 진술 6가지
+
+전량 적재가 끝나자 카피가 틀린 자리가 드러났다. `/districts/1198`에서 실제로 보이는 문장들이다.
+
+1. **`/districts` 커버리지**: "Boundaries are loaded for AK, … WY. **Other states are being added.**"
+   — 더 추가될 주가 없다. 56곳 전부 실렸다.
+2. **제목 `DC-AL` · 부제 "at-large district"** — DC는 at-large 지역구가 아니라 **Delegate 지역구**다.
+   `at_large` 플래그가 true인 것은 맞지만(LSAD C4), 표기는 그 둘을 구분해야 한다.
+3. **"One House member for the district, and both of the state's Senators"**
+   — DC에는 상원의원이 없고, Norton은 본회의 표결권이 없다.
+4. **"No sitting Senators recorded for this state / Every state elects two. An empty list here means
+   the roster has not been collected, not that the seats are vacant."**
+   — **명백히 틀린 진술이다.** DC는 주가 아니고 상원의원을 뽑지 않는다. 명부가 덜 수집된 게 아니라
+   존재하지 않는 것이다. "빈 셀의 세 가지 의미"(2d)에서 **셋 중 틀린 하나**를 고르고 있다.
+5. **"Candidates for DC Senate seats"** 섹션 — 없는 의석에 대한 후보 섹션.
+6. **표결권에 대한 언급이 없다** — 여섯 관할구의 대표는 위원회에서는 표결하지만
+   본회의 최종 통과 표결에는 참여하지 못한다. 마이그레이션 0008이 "이건 경계 테이블이 아니라
+   페이지 카피의 몫"이라고 미뤄 둔 바로 그 사실이다.
+
+(3)(4)(5)는 사실관계가 틀린 진술이라 FC-1 위반에 가깝고, (1)은 낡은 진술이다.
+3단계에서 함께 고친다.
