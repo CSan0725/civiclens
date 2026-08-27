@@ -1,0 +1,143 @@
+name: collect-candidates
+
+# Weekly candidate, campaign-finance and election-result refresh into Neon.
+#
+# PRD §7 / Deployment-Architecture-Report §4 put `candidates` on a weekly
+# cadence. Nothing here moves faster than that: FEC totals are filed
+# quarterly (monthly in an election year), the roster grows only as people
+# file, and the results workbook is published once, months after the election.
+#
+# SEPARATE FROM collect-weekly.yml on purpose. That job is the Congress.gov
+# roster and holds the CONGRESS_GOV_API_KEY; this one talks to openFEC and
+# www.fec.gov, is rate-limited differently, and must be able to fail — or be
+# re-dispatched for one state — without touching the member roster the whole
+# site depends on.
+#
+# SIZING (docs/P4-candidates-verification.md): openFEC allows 60 requests a
+# minute. The listing endpoints cost roughly 20 requests per state for a
+# three-election window, so 50 states is ~1,000 requests, ~20 minutes. That
+# fits the hosted-runner cap with room to spare — which the design note's
+# one-request-per-candidate plan did not.
+
+on:
+  schedule:
+    # 07:23 UTC Sunday — after collect-weekly's 06:41 roster refresh, because
+    # the bioguide matching joins against `term`, and matching against a
+    # roster that is an hour fresher is strictly better.
+    - cron: "23 7 * * 0"
+  workflow_dispatch:
+    inputs:
+      states:
+        description: Comma-separated states (blank = every state)
+        required: false
+        default: ""
+      election_years:
+        description: Comma-separated even years (blank = the last five years)
+        required: false
+        default: ""
+      refresh:
+        description: Rewrite groups whose payload is unchanged
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: collect-candidates
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: pipelines/etl
+
+    env:
+      # Direct (unpooled) endpoint — bulk upserts must not go through
+      # PgBouncer transaction pooling.
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      ETL_LOG_LEVEL: INFO
+      STATES_ARG: ${{ inputs.states && format('--states {0}', inputs.states) || '' }}
+      YEARS_ARG: ${{ inputs.election_years && format('--election-years {0}', inputs.election_years) || '' }}
+      REFRESH_ARG: ${{ inputs.refresh && '--refresh' || '' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Exact pin: setup-uv stopped publishing major and minor tags at
+      # v8, so `@v10` does not resolve. Bump this line deliberately.
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: pipelines/etl/uv.lock
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Verify secrets are present
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL_UNPOOLED secret is not set."; exit 1
+          fi
+          if [ -z "$FEC_API_KEY" ]; then
+            echo "::error::FEC_API_KEY secret is not set. Request a key at"
+            echo "::error::https://api.open.fec.gov/developers/ and add it to repo secrets."
+            exit 1
+          fi
+
+      - name: Candidates, finance and results
+        run: uv run civiclens-etl candidates $STATES_ARG $YEARS_ARG $REFRESH_ARG
+
+      # The coverage numbers FR-C4 obliges the UI to state. Printed here as
+      # well as stored, so a run that quietly collected less than the last one
+      # is visible without opening the database.
+      - name: Report coverage
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import os, psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as c, c.cursor() as cur:
+              cur.execute("""
+                  select last_status, rows_upserted, last_success_at, message
+                  from dataset_sync_state where dataset = 'candidates'
+              """)
+              row = cur.fetchone()
+              if row:
+                  status, rows, ok_at, message = row
+                  print(f"status {status} · rows {rows or 0:,d} · last success {ok_at}")
+                  for note in (message or "").split(" | "):
+                      print(f"  {note}")
+              cur.execute("""
+                  select coalesce(bioguide_match_method, '(unmatched)'), count(*)
+                  from candidate group by 1 order by 1
+              """)
+              print("\nbioguide match method")
+              for method, n in cur.fetchall():
+                  print(f"  {method:<12}{n:>7,d}")
+              cur.execute("""
+                  select cycle,
+                         count(*),
+                         count(*) filter (where receipts is not null),
+                         count(*) filter (where election_result is not null)
+                  from campaign_finance group by cycle order by cycle
+              """)
+              print("\ncycle    rows  with money  with result")
+              for cycle, n, money, result in cur.fetchall():
+                  print(f"  {cycle}{n:>8,d}{money:>12,d}{result:>13,d}")
+          PY
+
+      - name: Open an issue on failure
+        if: failure()
+        uses: ./.github/actions/report-etl-failure
+        with:
+          job-name: candidates

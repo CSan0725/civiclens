@@ -37,6 +37,11 @@ log = get_logger(__name__)
 RETRY_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
 
 # Pause when fewer than this many requests remain in the advertised window.
+#
+# A default, not a constant: it only makes sense relative to the ceiling. It
+# suits Congress.gov's 20,000/hour, and openFEC — whose live ceiling is 60 per
+# MINUTE — passes its own floor, because a run against 60 would otherwise sit
+# below this number permanently and sleep before nearly every request.
 RATE_LIMIT_FLOOR = 50
 
 # Query parameters stripped from any URL before it is logged or stored.
@@ -99,12 +104,14 @@ class Fetcher:
         *,
         delay: float | None = None,
         max_retries: int | None = None,
+        rate_limit_floor: int = RATE_LIMIT_FLOOR,
         source_name: str = "http",
     ) -> None:
         settings = get_settings()
         self._client = client
         self._delay = settings.etl_request_delay if delay is None else delay
         self._max_retries = settings.etl_max_retries if max_retries is None else max_retries
+        self._rate_limit_floor = rate_limit_floor
         self._source_name = source_name
         self._last_request_at = 0.0
         self.request_count = 0
@@ -135,7 +142,7 @@ class Fetcher:
             remaining = int(raw)
         except ValueError:
             return
-        if remaining < RATE_LIMIT_FLOOR:
+        if remaining < self._rate_limit_floor:
             log.warning(
                 "http.rate_limit_low",
                 source=self._source_name,

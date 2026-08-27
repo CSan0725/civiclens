@@ -55,6 +55,7 @@ IMPLEMENTED = {
     "backfill-speeches",
     "reconcile",
     "boundaries",
+    "candidates",
 }
 
 
@@ -175,9 +176,33 @@ def build_parser() -> argparse.ArgumentParser:
         "--states",
         default=None,
         help=(
-            "boundaries only: comma-separated two-letter codes to load "
-            "(default: every state and territory in the file). The P4 slice-0 "
-            "run is --states WY,NC,CA"
+            "boundaries/candidates: comma-separated two-letter codes to load "
+            "(default: every state and territory in the file / every state). "
+            "The P4 slice-0 run is --states WY,NC,CA"
+        ),
+    )
+    parser.add_argument(
+        "--election-years",
+        default=None,
+        help=(
+            "candidates only: comma-separated even years to collect "
+            "(default: the federal elections inside the last five years)"
+        ),
+    )
+    parser.add_argument(
+        "--skip-results",
+        action="store_true",
+        help=(
+            "candidates only: skip the FEC results workbook, leaving "
+            "campaign_finance.election_result untouched. Finance-only runs."
+        ),
+    )
+    parser.add_argument(
+        "--skip-history-check",
+        action="store_true",
+        help=(
+            "candidates only: skip the dozen /history/ requests that re-check "
+            "openFEC's parallel election_years/election_districts arrays"
         ),
     )
     parser.add_argument(
@@ -251,11 +276,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Imported here so `--help` and the not-implemented path stay free of
     # database and network dependencies.
     from loaders.engine import get_engine
-    from sources import census_tiger, clerk_xml, govinfo, senate_xml, voteview
+    from sources import census_tiger, clerk_xml, fec, fec_results, govinfo, senate_xml, voteview
     from sources import congress_gov as cg
     from sources.census_tiger_sync import sync_boundaries
     from sources.clerk_xml_sync import backfill
     from sources.congress_gov_sync import sync_bills, sync_house_votes, sync_members
+    from sources.fec_sync import sync_candidates
     from sources.govinfo_sync import backfill_speeches, sync_speeches
     from sources.senate_xml_sync import sync_senate_votes
     from sources.voteview_sync import reconcile
@@ -372,6 +398,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                         ),
                         include_non_voting=args.include_non_voting,
                         publish=not args.no_publish,
+                        limit=args.limit,
+                    )
+
+            elif args.job == "candidates":
+                # Two upstreams, two fetchers: openFEC is rate-limited to 60
+                # requests a minute and needs a key, while the results
+                # workbook is an unauthenticated download from www.fec.gov.
+                years = (
+                    tuple(int(y) for y in args.election_years.split(",") if y.strip())
+                    if args.election_years
+                    else fec.election_years(through=date.today().year)
+                )
+                with fec.open_fetcher() as ffetcher, fec_results.open_fetcher() as rfetcher:
+                    sync_candidates(
+                        conn,
+                        ffetcher,
+                        election_years=years,
+                        states=(
+                            [s.strip() for s in args.states.split(",") if s.strip()]
+                            if args.states
+                            else None
+                        ),
+                        results_fetcher=rfetcher,
+                        collect_results=not args.skip_results,
+                        verify_history=not args.skip_history_check,
+                        refresh=args.refresh,
                         limit=args.limit,
                     )
 

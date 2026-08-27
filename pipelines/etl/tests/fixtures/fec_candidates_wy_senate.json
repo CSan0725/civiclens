@@ -1,0 +1,467 @@
+{
+ "api_version": "1.0",
+ "pagination": {
+  "count": 13,
+  "is_count_exact": true,
+  "page": 1,
+  "pages": 1,
+  "per_page": 100
+ },
+ "results": [
+  {
+   "active_through": 2026,
+   "candidate_id": "S0WY00137",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2020,
+    2022,
+    2024,
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00",
+    "00"
+   ],
+   "election_years": [
+    2020,
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2019-06-20",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "I",
+   "incumbent_challenge_full": "Incumbent",
+   "last_f2_date": "2025-10-14",
+   "last_file_date": "2025-10-14",
+   "load_date": "2025-10-14T21:00:58",
+   "name": "LUMMIS, CYNTHIA MARIE MRS.",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S4WY00162",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2024,
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00",
+    "00"
+   ],
+   "election_years": [
+    2024,
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2023-07-17",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "O",
+   "incumbent_challenge_full": "Open seat",
+   "last_f2_date": "2024-11-11",
+   "last_file_date": "2024-11-11",
+   "load_date": "2025-12-30T21:00:52",
+   "name": "RASNER, REID",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2024,
+   "candidate_id": "S4WY00170",
+   "candidate_inactive": false,
+   "candidate_status": "N",
+   "cycles": [
+    2024
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2024
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2024-05-23",
+   "has_raised_funds": false,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2024-05-23",
+   "last_file_date": "2024-06-18",
+   "load_date": "2024-06-04T21:13:18",
+   "name": "DAVIS, TONY",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "W",
+   "party_full": "WRITE-IN",
+   "state": "WY"
+  },
+  {
+   "active_through": 2024,
+   "candidate_id": "S4WY00188",
+   "candidate_inactive": false,
+   "candidate_status": "P",
+   "cycles": [
+    2024,
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2024
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2024-06-14",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2024-06-19",
+   "last_file_date": "2024-06-19",
+   "load_date": "2025-03-18T15:34:07",
+   "name": "MORROW, SCOTT D MR",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "DEM",
+   "party_full": "DEMOCRATIC PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2030,
+   "candidate_id": "S6WY00068",
+   "candidate_inactive": false,
+   "candidate_status": "F",
+   "cycles": [
+    1996,
+    1998,
+    2008,
+    2010,
+    2012,
+    2014,
+    2016,
+    2018,
+    2020,
+    2022,
+    2024,
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00",
+    "00",
+    "00",
+    "00",
+    "00",
+    "00"
+   ],
+   "election_years": [
+    1996,
+    2008,
+    2012,
+    2018,
+    2024,
+    2030
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "1996-01-02",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "I",
+   "incumbent_challenge_full": "Incumbent",
+   "last_f2_date": "2026-07-16",
+   "last_file_date": "2026-07-16",
+   "load_date": "2026-07-16T20:57:38",
+   "name": "BARRASSO, JOHN A",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00191",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2025-04-24",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "O",
+   "incumbent_challenge_full": "Open seat",
+   "last_f2_date": "2025-04-24",
+   "last_file_date": "2025-04-24",
+   "load_date": "2026-07-16T20:57:38",
+   "name": "SKOVGARD, JIMMY MR",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00209",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2025-12-24",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "O",
+   "incumbent_challenge_full": "Open seat",
+   "last_f2_date": "2026-07-15",
+   "last_file_date": "2026-07-15",
+   "load_date": "2026-07-15T21:00:09",
+   "name": "HAGEMAN, HARRIET",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00217",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2026-02-11",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2026-02-11",
+   "last_file_date": "2026-02-11",
+   "load_date": "2026-04-18T21:13:41",
+   "name": "BYRD, JAMES WILLARD MR.",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "DEM",
+   "party_full": "DEMOCRATIC PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00225",
+   "candidate_inactive": false,
+   "candidate_status": "C",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2026-04-16",
+   "has_raised_funds": true,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2026-04-16",
+   "last_file_date": "2026-04-16",
+   "load_date": "2026-07-16T20:57:38",
+   "name": "MEAD, SAMUEL",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00233",
+   "candidate_inactive": false,
+   "candidate_status": "N",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2026-06-30",
+   "has_raised_funds": false,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2026-06-30",
+   "last_file_date": "2026-07-10",
+   "load_date": "2026-07-21T20:58:46",
+   "name": "SOLOMON, GAVIN",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00241",
+   "candidate_inactive": false,
+   "candidate_status": "N",
+   "cycles": [
+    2026
+   ],
+   "district": "00",
+   "district_number": 0,
+   "election_districts": [
+    "00"
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2026-07-10",
+   "has_raised_funds": false,
+   "inactive_election_years": null,
+   "incumbent_challenge": "C",
+   "incumbent_challenge_full": "Challenger",
+   "last_f2_date": "2026-07-10",
+   "last_file_date": "2026-07-14",
+   "load_date": "2026-07-21T20:58:46",
+   "name": "CARLSON, OWEN NICHOLAS",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "IND",
+   "party_full": "INDEPENDENT",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S6WY00258",
+   "candidate_inactive": false,
+   "candidate_status": "N",
+   "cycles": [
+    2026
+   ],
+   "district": null,
+   "district_number": null,
+   "election_districts": [
+    null
+   ],
+   "election_years": [
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": "2026-08-03",
+   "has_raised_funds": false,
+   "inactive_election_years": null,
+   "incumbent_challenge": null,
+   "incumbent_challenge_full": null,
+   "last_f2_date": "2026-08-03",
+   "last_file_date": "2026-08-03",
+   "load_date": "2026-08-03T20:59:17",
+   "name": "BENAVIDEZ, BILLY ARTHUR",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "DEM",
+   "party_full": "DEMOCRATIC PARTY",
+   "state": "WY"
+  },
+  {
+   "active_through": 2026,
+   "candidate_id": "S8WY00213",
+   "candidate_inactive": false,
+   "candidate_status": "N",
+   "cycles": [
+    2018,
+    2020,
+    2024,
+    2026
+   ],
+   "district": null,
+   "district_number": null,
+   "election_districts": [
+    "00",
+    "00",
+    "00",
+    null
+   ],
+   "election_years": [
+    2018,
+    2020,
+    2024,
+    2026
+   ],
+   "federal_funds_flag": false,
+   "first_file_date": null,
+   "has_raised_funds": false,
+   "inactive_election_years": null,
+   "incumbent_challenge": null,
+   "incumbent_challenge_full": null,
+   "last_f2_date": null,
+   "last_file_date": null,
+   "load_date": "2026-06-26T20:57:15",
+   "name": "HOLTZ, JOHN",
+   "office": "S",
+   "office_full": "Senate",
+   "party": "REP",
+   "party_full": "REPUBLICAN PARTY",
+   "state": "WY"
+  }
+ ]
+}

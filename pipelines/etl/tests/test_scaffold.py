@@ -48,10 +48,19 @@ def test_p3_collector_is_implemented() -> None:
     assert govinfo.resolve_speaker_bioguide({"speakers": []}) is None
 
 
-def test_later_milestone_collectors_are_still_stubs() -> None:
-    """P4 sources stay declared-but-unimplemented until their session."""
+def test_p4_collectors_are_implemented() -> None:
+    """P4 replaced the Census and FEC stubs.
+
+    Behaviour lives in tests/test_census_tiger.py, tests/test_fec.py and
+    tests/test_fec_results.py; this only records that nothing is a stub any
+    more. The batch geocoder is the one exception — the Census batch endpoint
+    does not return the congressional-district layer at all (census_tiger
+    finding), so there is nothing for it to collect.
+    """
+    assert fec.election_years(through=2026) == (2022, 2024, 2026)
+    assert fec.OFFICES == ("H", "S")
     with pytest.raises(NotImplementedError):
-        fec.fetch_candidate_totals(fec_candidate_id="H0AL01234", cycle=2026)
+        census_tiger.geocode_batch(["1600 Pennsylvania Ave NW, Washington, DC"])
 
 
 def test_cli_parses_every_job() -> None:

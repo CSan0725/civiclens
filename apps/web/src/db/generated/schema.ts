@@ -384,6 +384,29 @@ export const speechSpeaker = pgTable("speech_speaker", {
 	primaryKey({ columns: [table.speechId, table.bioguideId], name: "speech_speaker_pkey"}),
 ]);
 
+export const candidateElection = pgTable("candidate_election", {
+	fecCandidateId: text("fec_candidate_id").notNull(),
+	electionYear: smallint("election_year").notNull(),
+	office: fecOffice().notNull(),
+	state: text(),
+	district: smallint(),
+	sourceUrl: text("source_url"),
+	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_candidate_election_seat").using("btree", table.state.asc().nullsLast().op("int2_ops"), table.office.asc().nullsLast().op("int2_ops"), table.district.asc().nullsLast().op("int2_ops"), table.electionYear.desc().nullsFirst().op("int2_ops")),
+	index("idx_candidate_election_year").using("btree", table.electionYear.desc().nullsFirst().op("int2_ops")),
+	foreignKey({
+			columns: [table.fecCandidateId],
+			foreignColumns: [candidate.fecCandidateId],
+			name: "candidate_election_fec_candidate_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.fecCandidateId, table.electionYear], name: "candidate_election_pkey"}),
+	check("candidate_election_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
+	check("candidate_election_senate_has_no_district", sql`(office <> 'S'::fec_office) OR (district IS NULL)`),
+	check("candidate_election_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
+	check("candidate_election_year_range", sql`(election_year >= 1976) AND (election_year <= 2100)`),
+]);
+
 export const sponsorship = pgTable("sponsorship", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	billId: bigint("bill_id", { mode: "number" }).notNull(),

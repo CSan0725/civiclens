@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+import { bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
 
 export const voteRelations = relations(vote, ({one, many}) => ({
 	bill: one(bill, {
@@ -77,6 +77,7 @@ export const candidateRelations = relations(candidate, ({one, many}) => ({
 		fields: [candidate.bioguideId],
 		references: [member.bioguideId]
 	}),
+	candidateElections: many(candidateElection),
 	campaignFinances: many(campaignFinance),
 }));
 
@@ -110,6 +111,13 @@ export const speechSpeakerRelations = relations(speechSpeaker, ({one}) => ({
 	speech: one(speech, {
 		fields: [speechSpeaker.speechId],
 		references: [speech.id]
+	}),
+}));
+
+export const candidateElectionRelations = relations(candidateElection, ({one}) => ({
+	candidate: one(candidate, {
+		fields: [candidateElection.fecCandidateId],
+		references: [candidate.fecCandidateId]
 	}),
 }));
 

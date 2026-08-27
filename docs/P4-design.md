@@ -342,3 +342,38 @@ vitest 하나만(jsdom·React 플러그인·path 리졸버 없음). 서버 로�
 
 `R2_PUBLIC_BASE_URL`을 Vercel에 설정해야 한다. 없으면 지도가 "No published district map to load"로 뜬다.
 비밀값이 아니다(공개 버킷 URL). 로컬 `.env`에는 추가해뒀다.
+
+## 14. 슬라이스 0 · 2c 실측 결과 — 결정 §8-A가 뒤집혔다 (2026-08-27)
+
+WY+NC+CA 후보 1,404명을 로컬 PostGIS에 적재 완료. 전체 수치·근거는
+`docs/P4-candidates-verification.md`. 이 문서의 설계 전제 중 **네 가지가 실측과 달랐다**:
+
+| 이 문서의 전제 | 실측 |
+|---|---|
+| §2.1 openFEC 1,000 req/hr | **분당 60**. 공용 `RATE_LIMIT_FLOOR`(50)가 이 상한에서는 매 요청 60초 수면을 유발 |
+| §8-A 당락은 OpenElections `fec_results` | 그 라이브러리는 **2014년까지**만 발행. 그리고 그것이 하는 일은 FEC 자신의 워크북 파싱 |
+| §3.1 후보당 `/totals/` 1요청 | `/candidates/totals/`가 명부+자금을 한 리스팅으로 준다 (2,800요청 → 60요청) |
+| §2.1 지역구 변동은 `/history/`로 | `election_years`/`election_districts`가 평행 배열. `/history/`는 이제 **표본 검증용** |
+
+### §8-A 대체 — 래퍼가 아니라 원본
+
+OpenElections `fec_results`는 **FEC의 `federalelections{year}.xlsx`를 파싱하는 Ruby 라이브러리**이고
+정적 API는 2000~2014다. 우리 창(2022·2024·2026)이 통째로 범위 밖이다.
+→ **FEC 원본 발행물을 직접 읽는다.** 소스를 바꾼 게 아니라 한 홉 가까워진 것이고, FC-1에 더 부합한다.
+워크북에 `FEC ID`가 있어 이 문서 §8-A가 걱정한 **이름 매칭 자체가 사라졌다**(정확 조인).
+
+발행 현황: 2022 = 전체 결과(W/L/N) · 2024 = 본선 **명부만**(N만 도출 가능) · 2026 = 없음(선거 전).
+→ **NULL의 의미가 cycle마다 다르다.** UI는 행 단위가 아니라 **cycle 단위로** 설명해야 한다(FR-C4).
+
+### 스키마 추가 2건
+
+- **0006 `candidate_election`** — 지역구는 후보가 아니라 **선거**에 붙는다. CA 하원 후보 889명 중
+  113명(12.7%)이 지역구를 옮겼다. `candidate.district` 한 컬럼으로는 FR-C2를 틀리게 답한다.
+  **`/districts/[geoid]`는 이 테이블을 읽어야 한다.**
+- **0007 `unaccent`** — FEC는 ASCII, Congress.gov는 발음부호. 이것만으로 현직 2명이 미연결이었다.
+  발음부호 접기는 정규화지 추측이 아니다. 애칭(Ted/Theodore)은 **접지 않는다** — 수기 큐로 간다.
+
+### §8-E(준주 전량 적재)는 여전히 미결
+
+이번 단계 무관. 전량 적재 착수 시 사용자 결정 필요.
+
