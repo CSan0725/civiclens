@@ -30,6 +30,23 @@ const USER_AGENT = "CivicLens/0.1 (open civic data; +https://github.com/)";
 /** Census answered in ~0.6s when measured; this is a ceiling, not a target. */
 const TIMEOUT_MS = 8_000;
 
+/**
+ * One retry, for a transient failure only.
+ *
+ * Measured over the M4 address sample: the geocoder answers in about 0.3s
+ * (20 timed calls, none above 0.7s), and one call out of 40 nonetheless blew
+ * through the 8-second ceiling — the same address answered immediately on the
+ * next three attempts. So the ceiling is not too tight; the upstream simply
+ * drops a request now and then, and without a retry that lands on a person as
+ * "the Census Geocoder is unavailable" on the one feature this milestone is
+ * about.
+ *
+ * Retried on a TIMEOUT OR A 5xx and nothing else. A 4xx is Census's considered
+ * answer and repeating it only doubles the wait, and a no-match is a real
+ * result rather than a failure.
+ */
+const RETRY_DELAY_MS = 400;
+
 /** Longest address we will forward. Guards the upstream, not the parser. */
 export const MAX_ADDRESS_LENGTH = 250;
 
@@ -145,29 +162,44 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult> {
   });
 
   let response: Response;
-  try {
-    response = await fetch(`${ENDPOINT}?${query}`, {
-      headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      cache: "no-store",
-    });
-  } catch (error) {
-    const timedOut = error instanceof Error && error.name === "TimeoutError";
-    const detail = timedOut
-      ? `no response within ${TIMEOUT_MS}ms`
-      : error instanceof Error
-        ? error.message
-        : "request failed";
-    return { status: "upstream_error", detail, timedOut };
+  let failure: GeocodeResult | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    try {
+      const attempted = await fetch(`${ENDPOINT}?${query}`, {
+        headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: "no-store",
+      });
+      if (attempted.ok) {
+        failure = null;
+        response = attempted;
+        break;
+      }
+      failure = {
+        status: "upstream_error",
+        detail: `Census Geocoder returned HTTP ${attempted.status}`,
+        timedOut: false,
+      };
+      // A 4xx is Census's answer, not a hiccup; only a 5xx is worth repeating.
+      if (attempted.status < 500) break;
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === "TimeoutError";
+      failure = {
+        status: "upstream_error",
+        detail: timedOut
+          ? `no response within ${TIMEOUT_MS}ms`
+          : error instanceof Error
+            ? error.message
+            : "request failed",
+        timedOut,
+      };
+    }
   }
 
-  if (!response.ok) {
-    return {
-      status: "upstream_error",
-      detail: `Census Geocoder returned HTTP ${response.status}`,
-      timedOut: false,
-    };
-  }
+  if (failure) return failure;
+  response = response!;
 
   let payload: unknown;
   try {

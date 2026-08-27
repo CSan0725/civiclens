@@ -97,11 +97,17 @@ export async function POST(request: Request) {
 
   switch (geocoded.status) {
     case "not_found":
+      // The advice has to be advice that works. This used to end "or try the
+      // full ZIP code", and the M4 sample measured that a ZIP alone NEVER
+      // matches — 0 of 3 ZIP-only and 0 of 3 city-only inputs resolved, and
+      // Census's address-only endpoint refuses them too. The geocoder needs a
+      // street number and street, so that is what it asks for.
       return NextResponse.json({
         status: "not_found",
         detail:
-          "The Census Geocoder matched no address. Check the street number, " +
-          "city and state, or try the full ZIP code.",
+          "The Census Geocoder matched no address. It needs a street number " +
+          "and street name — a ZIP code or a city on its own is not enough. " +
+          "Some real addresses are also missing from its records.",
       });
 
     case "ambiguous":

@@ -235,3 +235,78 @@ describe("upstream failure never throws", () => {
     expect(result.detail).toBe("fetch failed");
   });
 });
+
+describe("a transient failure is retried once", () => {
+  it("recovers when the first attempt times out and the second answers", async () => {
+    // Measured in the M4 sample: the geocoder answers in ~0.3s, and one call
+    // in 40 still blew through the 8s ceiling — the same address answered
+    // immediately afterwards. Without this the person typing that address is
+    // told the Census Geocoder is unavailable.
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        const error = new Error("aborted due to timeout");
+        error.name = "TimeoutError";
+        throw error;
+      })
+      .mockImplementationOnce(
+        async () =>
+          new Response(JSON.stringify(cheyenneWyAtLarge), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await geocodeAddress("2101 O'Neil Ave, Cheyenne, WY 82001");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.district.geoid).toBe("5600");
+  });
+
+  it("retries a 5xx, which is the upstream having a bad moment", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => new Response("{}", { status: 503 }))
+      .mockImplementationOnce(
+        async () =>
+          new Response(JSON.stringify(cheyenneWyAtLarge), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect((await geocodeAddress("1 Any St")).status).toBe("ok");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT retry a 4xx, which is Census's considered answer", async () => {
+    // Repeating a rejected request only doubles the person's wait.
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 400 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await geocodeAddress("1 Any St");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe("upstream_error");
+  });
+
+  it("gives up after the second attempt rather than looping", async () => {
+    const fetchMock = vi.fn(async () => {
+      const error = new Error("aborted due to timeout");
+      error.name = "TimeoutError";
+      throw error;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await geocodeAddress("1 Any St");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.status).toBe("upstream_error");
+    if (result.status !== "upstream_error") return;
+    expect(result.timedOut).toBe(true);
+  });
+});
