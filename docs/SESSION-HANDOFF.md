@@ -91,7 +91,7 @@ CivicLens: 미국 연방의회(Congress) 투명성 대시보드. 이념/평가 �
 1. `retrieved_at`이 speech 테이블 제외 전부 NULL — NFR-5 부분 미충족. 수집 시각은 `provenance` 테이블에 자연키로 존재하며, 상세 페이지는 거기서 읽어 우회한다(vote는 source_url 완전일치로 챔버 모호성 해소).
 3. PRD §18 백로그: 로비 자금 데이터 (LDA.gov LD-2/LD-203 기반, OpenSecrets는 상업적 이용 불가라 배제) — 미착수.
 4. PRD §19 백로그: 구독/수익화 아키텍처 (Neon Auth + Stripe Checkout, DB 역할 분리) — 설계만 문서화됨, 미착수.
-5. `/districts/[geoid]` 상세는 아직 ComingSoon 스텁이다(`/districts` 지도는 라이브). 다음 작업.
+5. (해소됨) `/districts/[geoid]` 상세 구현 완료 — 2d.
 6. **Neon `member`/`term`에 118대 구멍** — 슬라이스 3개 주의 118대 하원 term이 로컬 68 대 Neon 60이고,
    118대에만 재직한 5명(Steel·Duarte·Nickel·Jackson·Manning)이 Neon `member`에 아예 없다.
    그 5명의 2022년 후보 레코드가 의원 프로필로 안 이어진다. 해결은 Neon에
@@ -105,7 +105,7 @@ CivicLens: 미국 연방의회(Congress) 투명성 대시보드. 이념/평가 �
 | 2a. 지오코더 API route + 대표 3인 | ✅ |
 | 2b. `/districts` MapLibre 지도 | ✅ |
 | **2c. FEC 후보·자금·당락 (로컬 + Neon)** | ✅ **2026-08-27** |
-| 2d. `/districts/[geoid]` 상세 페이지 | ⬜ **다음** |
+| **2d. `/districts/[geoid]` 상세 페이지** | ✅ **2026-08-27** |
 | 3. 경계 전량(47개 주+DC/준주) | ⬜ (§8-E 준주 결정 선행) |
 | 4. FEC 전량(50개 주) | ⬜ |
 
@@ -122,17 +122,25 @@ OpenElections `fec_results`는 2014년까지만 발행하고, 하는 일이 FEC 
 마이그레이션 2건 추가: **0006 `candidate_election`**(지역구는 후보가 아니라 선거에 붙는다 —
 `/districts/[geoid]`는 반드시 이 테이블을 읽어야 한다) · **0007 `unaccent`**.
 
-### 2d 착수 시 알아야 할 것
+### 2d 요약
 
-- 후보 목록은 `candidate.district`가 아니라 **`candidate_election`**을 조인한다.
-- 커버리지 카피(FR-C4)에 넣을 것: FEC 미등록 군소후보 부재 · 2024 당락 미발행 · 2026 선거 전 ·
-  bioguide 미확정 매칭 표시(`bioguide_match_confirmed_at IS NULL`).
-- 상원은 지역구가 없으므로 `candidate_election.district IS NULL` + 주 단위로 조회한다.
+`/districts/[geoid]`가 스텁을 벗었다. 대표 3인 + 지역구별 최근 5년 후보(정당·자금·당락) +
+주 단위 상원 후보 + cycle 단위 커버리지 카피.
+
+- **후보는 `candidate_election` 조인**이다. 실증: Bera는 CA-06 페이지에 2022·2024로,
+  CA-03 페이지에 2026으로 뜬다. `candidate.district`(=3)를 썼다면 CA-03에 세 번 다 뜨고
+  CA-06에는 아예 안 떴다.
+- **빈 당락의 의미를 cycle이 정한다**(`lib/election-outcome.ts`). 연도를 하드코딩하지 않고
+  적재된 행에서 **도출**한다 — FEC가 2024 집계를 내면 코드 수정 없이 문구가 바뀐다.
+- `?cycle=2022`로 특정 선거를 열 수 있다(서버가 결정 → JS 없이도 동작).
+- 미적재 주(예: TX-37)는 404가 아니라 "실재하는 지역구인데 아직 안 실었다 + 적재된 주 목록".
+- **미표시 결정 1건**: `candidate.incumbent_challenge`(현직/도전자)는 후보당 1값(최신)이라
+  선거별 행 옆에 두면 틀린 진술이 된다. 표시하지 않는다 — `candidate.district`와 같은 오류 부류.
 
 ## 다음 단계 후보
 
 - (A) `vote.bill_id` NULL 원인조사 — ✅ 종료.
-- (B) P4 — 슬라이스 0의 2c까지 완료. **다음은 2d(`/districts/[geoid]` 상세 페이지).**
+- (B) P4 — 슬라이스 0의 2d까지 완료. **다음은 슬라이스 0 전체 end-to-end 검증(M4).**
 - (C) 백로그 항목(로비 데이터, 구독 아키텍처) 미착수.
 
 ## 자격증명 프로토콜 (반드시 지킬 것)

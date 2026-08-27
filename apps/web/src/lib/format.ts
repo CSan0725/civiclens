@@ -121,3 +121,85 @@ export function formatSpeechContext(
   if (chamberLabel === "—") return section;
   return `${chamberLabel} · ${section}`;
 }
+
+/**
+ * "CA-11", "WY-AL" — how a congressional district is written.
+ *
+ * At-large seats are the reason this is a function and not a template string
+ * in three places: the district number is 0, and "CA-0" is not how anyone
+ * writes it. Shared between the map panel and the district page so the two
+ * cannot drift into naming the same seat differently.
+ */
+export function formatDistrictLabel(
+  state?: string | null,
+  cdNumber?: number | null,
+  atLarge?: boolean,
+): string {
+  const code = state ?? "??";
+  if (atLarge || cdNumber === 0) return `${code}-AL`;
+  if (cdNumber === null || cdNumber === undefined) return code;
+  return `${code}-${String(cdNumber).padStart(2, "0")}`;
+}
+
+const USD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+/**
+ * A campaign-finance amount, or an em dash when the FEC has no figure.
+ *
+ * Rounded to whole dollars for reading; the exact cents are in the linked
+ * source. A MISSING value renders as "—" and a real zero renders as "$0" —
+ * "this committee reported nothing" and "the FEC has no report" are different
+ * facts and must not collapse into the same cell.
+ *
+ * The column is `numeric(16,2)`, which the driver hands over as a STRING to
+ * avoid the precision loss of a float. Parsing it here is the only place that
+ * number becomes a JS number, and it is for display only.
+ */
+export function formatMoney(value?: string | number | null): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(n) ? USD.format(n) : "—";
+}
+
+/**
+ * FEC party codes, expanded for display.
+ *
+ * The FEC writes three-letter codes ("DEM"), Congress.gov writes names
+ * ("Democratic"), and the same party chip renders both — so without this a
+ * candidate reads as a grey "DEM" on the same page where the member holding
+ * the seat reads as "D — Democratic".
+ *
+ * Expanding a code to the party's own name is not interpretation (PRD FC-1);
+ * it is the same fact spelled out. Which is why the map covers only codes with
+ * one unambiguous expansion. The FEC's own field is far messier than its
+ * documentation suggests — measured over the loaded states it also contains
+ * "GOP", "R", "UN", "UNK", "OTH", "NON", "NNE" and the literal "18" — and
+ * anything not listed here is rendered verbatim rather than guessed at.
+ */
+const FEC_PARTY: Record<string, { letter: string; name: string }> = {
+  DEM: { letter: "D", name: "Democratic" },
+  REP: { letter: "R", name: "Republican" },
+  IND: { letter: "I", name: "Independent" },
+  LIB: { letter: "L", name: "Libertarian" },
+  GRE: { letter: "G", name: "Green" },
+  CON: { letter: "C", name: "Constitution" },
+  PAF: { letter: "P", name: "Peace and Freedom" },
+  PFP: { letter: "P", name: "Peace and Freedom" },
+  AIP: { letter: "A", name: "American Independent" },
+};
+
+/** `PartyChip` props for an FEC party code, expanded where that is unambiguous. */
+export function fecParty(code?: string | null): {
+  code: string | null;
+  name: string | null;
+} {
+  if (!code) return { code: null, name: null };
+  const known = FEC_PARTY[code.toUpperCase()];
+  return known
+    ? { code: known.letter, name: known.name }
+    : { code, name: null };
+}

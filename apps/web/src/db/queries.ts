@@ -1,9 +1,12 @@
-import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
   bill,
   billAction,
+  campaignFinance,
+  candidate,
+  candidateElection,
   committee,
   committeeMembership,
   datasetSyncState,
@@ -1624,4 +1627,130 @@ export async function getDistrictTopojsonKeys(
       and(eq(district.congressNo, congressNo), isNotNull(district.topojsonR2Key)),
     );
   return rows.map((r) => r.key).filter((k): k is string => Boolean(k));
+}
+
+/**
+ * Everyone who ran for one seat, per election (PRD FR-C1/FR-C2).
+ *
+ * JOINED THROUGH `candidate_election`, NOT `candidate.district`. That column
+ * holds openFEC's "most recent district", and a person's district belongs to
+ * the ELECTION, not to the person: measured over the loaded states, 37
+ * candidates contested more than one district inside this five-year window
+ * (migration 0006). Reading `candidate.district` here would list them on the
+ * page for whichever seat they ran in last and omit them from the ones they
+ * actually contested — on the page where that error is most visible.
+ *
+ * `campaign_finance` is joined on the CYCLE, so the money shown beside a 2022
+ * candidacy is the 2022 money and not a career total. A missing row is a
+ * missing row: the FEC has no totals for that candidate in that cycle, which
+ * is not zero dollars.
+ *
+ * Ordering is election year, then winners, then name. Deliberately NOT by
+ * money: the amounts are a column the reader can read, and sorting by them
+ * would make the page rank candidates by fundraising, which is a judgement
+ * this project does not make (PRD FC-4).
+ */
+export async function getSeatCandidates({
+  state,
+  office,
+  district: districtNumber,
+}: {
+  state: string;
+  office: "H" | "S";
+  /** The district number for a House seat; null for a Senate seat, which has none. */
+  district: number | null;
+}) {
+  return getDb()
+    .select({
+      electionYear: candidateElection.electionYear,
+      district: candidateElection.district,
+      fecCandidateId: candidate.fecCandidateId,
+      name: candidate.name,
+      party: candidate.party,
+      bioguideId: candidate.bioguideId,
+      matchMethod: candidate.bioguideMatchMethod,
+      matchConfirmedAt: candidate.bioguideMatchConfirmedAt,
+      memberName: member.directOrderName,
+      receipts: campaignFinance.receipts,
+      disbursements: campaignFinance.disbursements,
+      cashOnHand: campaignFinance.cashOnHandEndPeriod,
+      coverageEndDate: campaignFinance.coverageEndDate,
+      electionResult: campaignFinance.electionResult,
+      financeSourceUrl: campaignFinance.sourceUrl,
+      candidateSourceUrl: candidate.sourceUrl,
+    })
+    .from(candidateElection)
+    .innerJoin(
+      candidate,
+      eq(candidate.fecCandidateId, candidateElection.fecCandidateId),
+    )
+    .leftJoin(
+      campaignFinance,
+      and(
+        eq(campaignFinance.fecCandidateId, candidateElection.fecCandidateId),
+        eq(campaignFinance.cycle, candidateElection.electionYear),
+      ),
+    )
+    .leftJoin(member, eq(member.bioguideId, candidate.bioguideId))
+    .where(
+      and(
+        eq(candidateElection.state, state),
+        eq(candidateElection.office, office),
+        districtNumber === null
+          ? isNull(candidateElection.district)
+          : eq(candidateElection.district, districtNumber),
+      ),
+    )
+    .orderBy(
+      desc(candidateElection.electionYear),
+      // Winner first, then everything else. `election_result` is a recorded
+      // fact, so ordering by it states nothing the data does not.
+      sql`(${campaignFinance.electionResult} IS DISTINCT FROM 'W')`,
+      asc(candidate.name),
+    );
+}
+
+/**
+ * Outcome counts per cycle, across every loaded candidate.
+ *
+ * Feeds `lib/election-outcome.ts`, which derives from these how far the FEC
+ * has got with each cycle. Counted GLOBALLY rather than per district on
+ * purpose: "has the FEC published this cycle's results" is a fact about the
+ * source, and one district's handful of candidates is too small a sample to
+ * decide it — a Senate seat not up for election in a cycle would otherwise
+ * make that whole cycle look unpublished.
+ */
+export async function getOutcomeCoverageByCycle() {
+  return getDb()
+    .select({
+      cycle: campaignFinance.cycle,
+      won: count(sql`CASE WHEN ${campaignFinance.electionResult} = 'W' THEN 1 END`),
+      lost: count(sql`CASE WHEN ${campaignFinance.electionResult} = 'L' THEN 1 END`),
+      notOnBallot: count(
+        sql`CASE WHEN ${campaignFinance.electionResult} = 'N' THEN 1 END`,
+      ),
+      withoutResult: count(
+        sql`CASE WHEN ${campaignFinance.electionResult} IS NULL THEN 1 END`,
+      ),
+    })
+    .from(campaignFinance)
+    .groupBy(campaignFinance.cycle)
+    .orderBy(desc(campaignFinance.cycle));
+}
+
+/**
+ * States whose CANDIDATES are loaded, for the coverage notice (PRD FR-C4).
+ *
+ * Separate from `getStatesWithBoundaries`: the two slices are loaded by
+ * different jobs and could legitimately differ, and a page that assumed they
+ * match would tell a reader a district has no candidates when the truth is
+ * that state's candidates have not been collected yet.
+ */
+export async function getStatesWithCandidates(): Promise<string[]> {
+  const rows = await getDb()
+    .selectDistinct({ state: candidateElection.state })
+    .from(candidateElection)
+    .where(isNotNull(candidateElection.state))
+    .orderBy(candidateElection.state);
+  return rows.map((r) => r.state).filter((s): s is string => Boolean(s));
 }

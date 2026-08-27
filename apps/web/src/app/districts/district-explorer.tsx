@@ -27,6 +27,7 @@ import type {
   LookupResponse,
   Representatives,
 } from "@/lib/district-types";
+import { formatDistrictLabel } from "@/lib/format";
 
 import { DistrictMap } from "./district-map";
 
@@ -42,11 +43,8 @@ type Panel =
     }
   | { kind: "message"; heading: string; detail: string; candidates?: string[] };
 
-/** "CA-11", "WY-AL" — how a seat is written, at-large included. */
 function seatLabel(district: DistrictSummary): string {
-  const state = district.state ?? "??";
-  if (district.atLarge || district.cdNumber === 0) return `${state}-AL`;
-  return `${state}-${String(district.cdNumber).padStart(2, "0")}`;
+  return formatDistrictLabel(district.state, district.cdNumber, district.atLarge);
 }
 
 export function DistrictExplorer({
@@ -317,6 +315,19 @@ export function DistrictExplorer({
                   This jurisdiction elects no Senators.
                 </p>
               ) : null}
+
+              {/*
+                The seats are the answer to "who represents me"; the district
+                page is where the last five years of candidates, their money
+                and their results live. Linked by GEOID, which is public — no
+                address travels in this URL.
+              */}
+              <a
+                href={`/districts/${panel.district.geoid}`}
+                className="inline-block text-sm underline underline-offset-2 hover:text-foreground"
+              >
+                Candidates and campaign finance for {seatLabel(panel.district)} →
+              </a>
             </>
           ) : null}
         </div>
