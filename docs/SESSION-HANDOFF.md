@@ -91,15 +91,49 @@ CivicLens: 미국 연방의회(Congress) 투명성 대시보드. 이념/평가 �
 1. `retrieved_at`이 speech 테이블 제외 전부 NULL — NFR-5 부분 미충족. 수집 시각은 `provenance` 테이블에 자연키로 존재하며, 상세 페이지는 거기서 읽어 우회한다(vote는 source_url 완전일치로 챔버 모호성 해소).
 3. PRD §18 백로그: 로비 자금 데이터 (LDA.gov LD-2/LD-203 기반, OpenSecrets는 상업적 이용 불가라 배제) — 미착수.
 4. PRD §19 백로그: 구독/수익화 아키텍처 (Neon Auth + Stripe Checkout, DB 역할 분리) — 설계만 문서화됨, 미착수.
-5. Districts 관련 라우트(`/districts`, `/districts/[geoid]`)는 P4(Census Geocoder + TIGER 경계) 전까지 ComingSoon 스텁 유지.
+5. `/districts/[geoid]` 상세는 아직 ComingSoon 스텁이다(`/districts` 지도는 라이브). 다음 작업.
+6. **Neon `member`/`term`에 118대 구멍** — 슬라이스 3개 주의 118대 하원 term이 로컬 68 대 Neon 60이고,
+   118대에만 재직한 5명(Steel·Duarte·Nickel·Jackson·Manning)이 Neon `member`에 아예 없다.
+   그 5명의 2022년 후보 레코드가 의원 프로필로 안 이어진다. 해결은 Neon에
+   `civiclens-etl members --congress 118` 1회 — 공용 테이블이라 사용자 결정 대기.
 
-## 다음 단계 후보 (사용자 결정 대기)
+## P4 슬라이스 0 진행 상황
 
-- (A) `vote.bill_id` NULL 원인조사 — ✅ **완전 종료.** 양원 링크 가능분 100%. 남은 건 daily `BILL_LIMIT` 상향뿐(별건).
-- (B) P4: Census Geocoder + 지역구 경계 + MapLibre 지도 + FEC 후보 데이터
-- (C) 백로그 항목(로비 데이터, 구독 아키텍처) 착수
+| 단계 | 상태 |
+|---|---|
+| 1. 경계 WY/NC/CA → PostGIS(로컬+Neon) + TopoJSON → R2 | ✅ |
+| 2a. 지오코더 API route + 대표 3인 | ✅ |
+| 2b. `/districts` MapLibre 지도 | ✅ |
+| **2c. FEC 후보·자금·당락 (로컬 + Neon)** | ✅ **2026-08-27** |
+| 2d. `/districts/[geoid]` 상세 페이지 | ⬜ **다음** |
+| 3. 경계 전량(47개 주+DC/준주) | ⬜ (§8-E 준주 결정 선행) |
+| 4. FEC 전량(50개 주) | ⬜ |
 
-A는 끝났다. 다음은 B(P4 지역구/지도) 착수를 권장한다.
+### 2c 요약 (상세: `docs/P4-candidates-verification.md`)
+
+WY+NC+CA 후보 **1,404명**(CA 1,005 / NC 355 / WY 44), 자금·당락·`candidate_election`까지
+**로컬과 Neon 양쪽 적재 완료**. 2022 당선 69명이 실제 의석수와 정확히 일치.
+
+설계문서 전제 4개가 실측과 달랐고 그중 **§8-A(당락 소스) 결정이 뒤집혔다** —
+OpenElections `fec_results`는 2014년까지만 발행하고, 하는 일이 FEC 자신의 워크북 파싱이라
+**FEC 원본을 직접 읽는다**. FEC 발행 현황상 2022만 W/L/N이 완전하고, 2024는 본선 명부뿐(부재→N),
+2026은 선거 전이다. → **NULL의 의미가 cycle마다 다르다. UI는 cycle 단위로 설명해야 한다(FR-C4).**
+
+마이그레이션 2건 추가: **0006 `candidate_election`**(지역구는 후보가 아니라 선거에 붙는다 —
+`/districts/[geoid]`는 반드시 이 테이블을 읽어야 한다) · **0007 `unaccent`**.
+
+### 2d 착수 시 알아야 할 것
+
+- 후보 목록은 `candidate.district`가 아니라 **`candidate_election`**을 조인한다.
+- 커버리지 카피(FR-C4)에 넣을 것: FEC 미등록 군소후보 부재 · 2024 당락 미발행 · 2026 선거 전 ·
+  bioguide 미확정 매칭 표시(`bioguide_match_confirmed_at IS NULL`).
+- 상원은 지역구가 없으므로 `candidate_election.district IS NULL` + 주 단위로 조회한다.
+
+## 다음 단계 후보
+
+- (A) `vote.bill_id` NULL 원인조사 — ✅ 종료.
+- (B) P4 — 슬라이스 0의 2c까지 완료. **다음은 2d(`/districts/[geoid]` 상세 페이지).**
+- (C) 백로그 항목(로비 데이터, 구독 아키텍처) 미착수.
 
 ## 자격증명 프로토콜 (반드시 지킬 것)
 
@@ -110,6 +144,12 @@ A는 끝났다. 다음은 B(P4 지역구/지도) 착수를 권장한다.
   Set-Content -Encoding utf8 -Path "<CLI가 알려준 경로>" -Value "DATABASE_URL_UNPOOLED='$u'"
   ```
 - CLI의 스크래치패드 경로(`...\Temp\claude\...\<세션ID>\scratchpad\`)는 **세션마다 바뀜** — 매번 다시 입력 필요.
+- ⚠️ **`Set-Content -Encoding utf8`은 Windows PowerShell 5.1에서 BOM을 붙인다.** dbmate는 BOM이 붙은
+  env 파일을 파싱하지 못하고 `unexpected character "»" in variable name` 에러를 내면서
+  **파일 내용(=접속 URL 전체)을 에러 메시지에 그대로 출력한다.** 2026-08-27에 실제로 그렇게 노출됐다.
+  → `Set-Content -Encoding utf8NoBOM`(PS7) 또는
+  `[IO.File]::WriteAllText($path, "DATABASE_URL_UNPOOLED='$u'`n")`으로 쓸 것.
+  psycopg는 BOM에 영향받지 않으므로 ETL만 쓸 때는 드러나지 않는다 — dbmate를 태울 때만 터진다.
 - **제안했지만 아직 미실행**: `%USERPROFILE%\.civiclens-secrets\neon.env`에 pooled+unpooled URL을 영구 저장해두면 매번 재입력 안 해도 됨 (트레이드오프: 평문 파일이 디스크에 계속 남음). 원하면 이 방법으로 전환 가능.
 - 로컬 `.env` / `pipelines/etl/.env`의 `DATABASE_URL`은 항상 `localhost:55432`(Docker)를 가리켜야 함 — 절대 Neon으로 바꾸지 말 것.
 
