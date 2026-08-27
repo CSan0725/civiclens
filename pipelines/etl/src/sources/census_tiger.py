@@ -42,12 +42,15 @@ Four findings that contradicted the P4 design note:
    CONUS and this PostGIS build's 4269->4326 transform is numerically a no-op,
    but the load states the source datum anyway rather than mislabelling it.
 
-4. DELEGATE DISTRICTS DO NOT FIT `district_cd_range`. DC, AS, GU, MP, VI use
+4. DELEGATE DISTRICTS DID NOT FIT `district_cd_range`. DC, AS, GU, MP, VI use
    CD119FP '98' and PR uses '98' as well (LSAD C3/C4), while the `district`
-   table's CHECK constraint allows 0-60. They are excluded by default and
-   counted, pending the schema decision at the full-boundary step. The 441
-   records break down as: 429 numbered (LSAD C2), 6 at-large states (C1),
-   1 Resident Commissioner (C3), 5 Delegate at-large (C4).
+   table's CHECK constraint allowed 0-60. Migration 0008 admits '98' — P4
+   design §8-E resolved to carry the six rather than answer "no district" for
+   an address in Washington DC — and they are still opt-in behind
+   `--include-non-voting` so the loader fails loudly rather than silently on a
+   database that has not been migrated. The 441 records break down as: 429
+   numbered (LSAD C2), 6 at-large states (C1), 1 Resident Commissioner (C3),
+   5 Delegate at-large (C4).
 """
 
 from __future__ import annotations

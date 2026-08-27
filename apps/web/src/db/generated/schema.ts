@@ -508,7 +508,7 @@ export const district = pgTable("district", {
 			name: "district_current_member_bioguide_id_fkey"
 		}).onDelete("set null"),
 	primaryKey({ columns: [table.geoid, table.congressNo], name: "district_pkey"}),
-	check("district_cd_range", sql`(cd_number >= 0) AND (cd_number <= 60)`),
+	check("district_cd_range", sql`((cd_number >= 0) AND (cd_number <= 60)) OR (cd_number = 98)`),
 	check("district_congress_range", sql`(congress_no >= 1) AND (congress_no <= 200)`),
 	check("district_state_fips_len", sql`char_length(state_fips) = 2`),
 	check("district_state_len", sql`char_length(state) = 2`),

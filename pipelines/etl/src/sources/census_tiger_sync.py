@@ -48,13 +48,21 @@ SOURCE = SourceSystem.CENSUS
 
 # The sitting Representative for each district, chosen from `term`.
 #
-# Two facts about the live roster make the naive join wrong:
+# Three facts about the live roster make the naive join wrong:
 #   * At-large and delegate seats store `term.district` as NULL, not 0, while
 #     the shapefile calls them CD '00'. Measured over the 119th: all 12 such
 #     rows are NULL. Hence COALESCE(district, 0).
 #   * A district can have more than one term in a Congress. CA-01 has two —
 #     LaMalfa (ended 2026-01-03) and Gallagher (current) — so the join has to
 #     pick the seat's CURRENT holder, not an arbitrary one.
+#   * The shapefile does NOT call every single-seat jurisdiction '00'. The six
+#     that send a non-voting member — DC, AS, GU, MP, VI, PR — are CD '98'
+#     (migration 0008). `term` draws no such distinction: all six store NULL,
+#     the same as Wyoming. So the district side is normalised too, 98 -> 0,
+#     and the join is really "the one seat this jurisdiction has". Without it
+#     all six load with a NULL member while their Delegate sits in `term` —
+#     measured before the fix: 6 of 441 districts unlinked, all of them the
+#     ones the migration had just made loadable.
 _LINK_CURRENT_MEMBER = """
     UPDATE district AS d
     SET current_member_bioguide_id = t.bioguide_id
@@ -73,7 +81,7 @@ _LINK_CURRENT_MEMBER = """
     ) AS t
     WHERE d.congress_no = :congress
       AND d.state = t.state
-      AND d.cd_number = t.cd_number
+      AND CASE WHEN d.cd_number = 98 THEN 0 ELSE d.cd_number END = t.cd_number
       AND (:all_states OR d.state = ANY(:states))
       AND d.current_member_bioguide_id IS DISTINCT FROM t.bioguide_id
 """

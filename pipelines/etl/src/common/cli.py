@@ -224,8 +224,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "boundaries only: also load Delegate and Resident Commissioner "
-            "districts. They use CD code '98', which the district_cd_range "
-            "CHECK (0-60) rejects, so this needs a migration first."
+            "districts (DC, AS, GU, MP, VI, PR). They use CD code '98', which "
+            "the district_cd_range CHECK admits only since migration 0008 — "
+            "without it applied, these six rows fail the INSERT."
         ),
     )
     parser.add_argument(
