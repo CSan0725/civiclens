@@ -198,6 +198,16 @@ def _sync_roster(
 
     if unchanged_pages:
         log.info("candidates.pages_unchanged", group=group, pages=unchanged_pages)
+    refused = [
+        (c.fec_candidate_id, y, d) for c in seen.values() for y, d in c.districts_out_of_range
+    ]
+    if refused:
+        log.warning(
+            "candidates.districts_out_of_range",
+            group=group,
+            rows=len(refused),
+            sample=refused[:5],
+        )
     log.info("candidates.roster_loaded", group=group, candidates=len(seen))
     return seen
 
@@ -478,6 +488,16 @@ def _candidates_in_election(
 # what makes a name comparison safe. Comparing names across the whole roster
 # would match the two unrelated Richard Browns in different states.
 #
+# THE SEAT IS THE STATE, where the state has one seat. `term.district` is NULL
+# for a Delegate and openFEC prints 00, 01 or nothing for the same seat, so
+# comparing the numbers drops the anchor rather than tightening it: measured
+# 2026-08-28, `COALESCE(t.district, 0) = ce.district` failed for the Northern
+# Marianas, whose Delegate the FEC files under district 01, and left the
+# jurisdiction's only member unlinked. Relaxing it there loosens nothing —
+# `d.cd_number = 98` identifies jurisdictions with exactly one House seat, so
+# "this state, this Congress" already names a single seat, and it is the same
+# rule `/districts/[geoid]` uses to list the same people.
+#
 # Only `bioguide_match_confirmed_at IS NULL` rows are ever rewritten, so a
 # human confirmation is final.
 
@@ -498,7 +518,10 @@ _MATCH_EXACT = """
           ON t.congress_no = (ce.election_year + 1 - 1789) / 2 + 1
          AND t.chamber = CASE ce.office WHEN 'H' THEN 'house'::chamber ELSE 'senate'::chamber END
          AND t.state = ce.state
-         AND (ce.office = 'S' OR COALESCE(t.district, 0) = ce.district)
+         AND (ce.office = 'S'
+              OR EXISTS (SELECT 1 FROM district d
+                          WHERE d.state = ce.state AND d.cd_number = 98)
+              OR COALESCE(t.district, 0) = ce.district)
         JOIN member m ON m.bioguide_id = t.bioguide_id
         WHERE (:all_states OR ce.state = ANY(:states))
           AND ce.election_year = ANY(:years)
@@ -549,7 +572,10 @@ _MATCH_FUZZY = """
           ON t.congress_no = (ce.election_year + 1 - 1789) / 2 + 1
          AND t.chamber = CASE ce.office WHEN 'H' THEN 'house'::chamber ELSE 'senate'::chamber END
          AND t.state = ce.state
-         AND (ce.office = 'S' OR COALESCE(t.district, 0) = ce.district)
+         AND (ce.office = 'S'
+              OR EXISTS (SELECT 1 FROM district d
+                          WHERE d.state = ce.state AND d.cd_number = 98)
+              OR COALESCE(t.district, 0) = ce.district)
         JOIN member m ON m.bioguide_id = t.bioguide_id
         WHERE (:all_states OR ce.state = ANY(:states))
           AND ce.election_year = ANY(:years)
@@ -735,6 +761,27 @@ def sync_candidates(
                 if results_fetcher is None:
                     owned.close()
 
+        # §5-A. A district number openFEC prints that is not a district was
+        # dropped to NULL by the parser (`fec.MAX_DISTRICT`). The seat itself
+        # was kept. Counted here rather than left as an indistinguishable NULL,
+        # because a reader cannot otherwise tell "the FEC said nothing" from
+        # "the FEC said 92".
+        refused = [
+            (c.fec_candidate_id, year, printed)
+            for c in roster.values()
+            for year, printed in c.districts_out_of_range
+            if year in set(election_years)
+        ]
+        if refused:
+            shown = ", ".join(f"{c}:{y}={d}" for c, y, d in sorted(refused)[:5])
+            tally.note(
+                f"{len(refused)} seat(s) across {len({c for c, _, _ in refused})} candidate(s) "
+                f"kept with a NULL district: openFEC printed a number above "
+                f"{fec.MAX_DISTRICT}, which is not a district ({shown}"
+                f"{', ...' if len(refused) > 5 else ''})"
+            )
+            log.warning("candidates.districts_refused", rows=len(refused))
+
         methods = match_to_bioguide(conn, states=codes, years=election_years)
 
         if verify_history:
@@ -821,10 +868,74 @@ def _report_coverage(
         ).bindparams(**params)
     ).all()
 
+    # §5-B and §5-E: two ways a row lands correctly and still reaches no page.
+    # Both are FR-C4 numbers — the point is to state the limit, not to hide it
+    # by dropping the rows or to pretend the pages show them.
+    #
+    # `reachable` mirrors what `/districts/[geoid]` asks, exactly: a
+    # jurisdiction whose only district row is the Census sentinel 98 has ONE
+    # House seat, so every House candidate there contested it whatever number
+    # openFEC printed (00, 01, or nothing). Anywhere else the numbers must
+    # match. Keeping the two definitions identical is the point — a coverage
+    # number computed by a different rule than the page uses is not a coverage
+    # number, it is a second opinion.
+    unreachable = conn.execute(
+        text(
+            """
+            SELECT count(*) FILTER (WHERE ce.district IS NULL)            AS no_district,
+                   count(*) FILTER (WHERE ce.district IS NOT NULL
+                                     AND NOT EXISTS (
+                                       SELECT 1 FROM district d
+                                       WHERE d.state = ce.state
+                                         AND (d.cd_number = 98
+                                              OR d.cd_number = ce.district)))
+                                                                          AS no_such_district,
+                   count(*)                                               AS house_rows
+            FROM candidate_election ce
+            WHERE ce.office = 'H'
+              AND (:all_states OR ce.state = ANY(:states))
+              AND ce.election_year = ANY(:years)
+            """
+        ).bindparams(**params)
+    ).one()
+
+    # §5-E. DC and the five territories send a non-voting member and fill no
+    # Senate seat, yet people register with the FEC as Senate candidates there
+    # — DC alone has eight in this window. The rows are real filings and are
+    # stored as such; no page shows them, because `lib/jurisdiction.ts` gives
+    # those jurisdictions no Senate section to show them in. Counted, not
+    # deleted: the FEC disclosed them, and deleting a disclosure to make a
+    # number tidy is the opposite of FC-1.
+    phantom_senate = conn.execute(
+        text(
+            """
+            SELECT count(*) AS rows, count(DISTINCT ce.fec_candidate_id) AS candidates
+            FROM candidate_election ce
+            WHERE ce.office = 'S'
+              AND (:all_states OR ce.state = ANY(:states))
+              AND ce.election_year = ANY(:years)
+              AND EXISTS (SELECT 1 FROM district d
+                          WHERE d.state = ce.state AND d.cd_number = 98)
+            """
+        ).bindparams(**params)
+    ).one()
+
     tally.note(
         f"{row.candidates} candidates in {', '.join(states) if states else 'all states'} "
         f"for {', '.join(str(y) for y in years)} (roster fetched {roster_size})"
     )
+    reached = unreachable.house_rows - unreachable.no_district - unreachable.no_such_district
+    tally.note(
+        f"district pages reach {reached} of {unreachable.house_rows} House candidacies; "
+        f"{unreachable.no_such_district} name a district this Congress does not have, "
+        f"{unreachable.no_district} carry no district at all"
+    )
+    if phantom_senate.rows:
+        tally.note(
+            f"{phantom_senate.rows} Senate candidacies in {phantom_senate.candidates} "
+            f"non-voting jurisdictions stored and not shown: those jurisdictions "
+            f"fill no Senate seat"
+        )
     tally.note(
         f"bioguide: {row.linked} linked ({row.exact} exact / {row.fuzzy} fuzzy / "
         f"{row.manual} manual), {row.unconfirmed} unconfirmed, "

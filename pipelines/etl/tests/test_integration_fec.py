@@ -80,6 +80,10 @@ def _truncate(connection: Connection) -> None:
             "provenance, dataset_sync_state RESTART IDENTITY CASCADE"
         )
     )
+    # `district` is not in the TRUNCATE above because the boundaries job owns
+    # it, but the matcher now reads it (a jurisdiction with `cd_number = 98`
+    # has exactly one House seat), so a test that seeds a row clears its own.
+    connection.execute(text("DELETE FROM district WHERE congress_no = 119 AND state = 'MP'"))
     connection.commit()
 
 
@@ -440,3 +444,193 @@ def _snapshot(conn: Connection) -> dict[str, Any]:
             )
         ).all(),
     }
+
+
+# --- the single-seat jurisdictions ------------------------------------------
+
+
+def _seed_marianas(connection: Connection) -> None:
+    """The Northern Marianas: one House seat, and no district number for it.
+
+    `district.cd_number` is the Census sentinel 98, `term.district` is NULL,
+    and the FEC files the Delegate under district '01'. Three conventions for
+    one seat; seeding all three is the point of the fixture.
+    """
+    connection.execute(
+        text(
+            "INSERT INTO district (geoid, congress_no, state, state_fips, cd_number, at_large) "
+            "VALUES ('6998', 119, 'MP', '69', 98, true) ON CONFLICT DO NOTHING"
+        )
+    )
+    connection.execute(
+        text(
+            "INSERT INTO member (bioguide_id, direct_order_name, first_name, last_name, "
+            "state, chamber, party) VALUES "
+            "('K000404', 'Kimberlyn King-Hinds', 'Kimberlyn', 'King-Hinds', 'MP', "
+            "'house', 'Republican')"
+        )
+    )
+    connection.execute(
+        text(
+            "INSERT INTO term (bioguide_id, congress_no, chamber, state, district, start_date) "
+            "VALUES ('K000404', 119, 'house', 'MP', NULL, DATE '2025-01-03')"
+        )
+    )
+    connection.commit()
+
+
+def _one_house_candidate(**overrides: Any) -> dict[str, Any]:
+    """A single-row `/candidates/` page, built from the captured WY payload."""
+    payload = load_json("fec_candidates_wy_house.json")
+    payload["pagination"] = {"pages": 1, "count": 1}
+    payload["results"] = [dict(payload["results"][0])]
+    payload["results"][0].update(**overrides)
+    return payload
+
+
+def _mock_one_roster(payload: dict[str, Any]) -> None:
+    """Serve `payload` for the House roster and nothing for the Senate."""
+
+    def roster(request: httpx.Request, route: Any = None) -> httpx.Response:
+        if request.url.params.get("office") == "H":
+            return httpx.Response(200, json=payload)
+        return httpx.Response(200, json={"pagination": {"pages": 1}, "results": []})
+
+    respx.get(f"{OPENFEC}/candidates/").mock(side_effect=roster)
+    respx.get(f"{OPENFEC}/candidates/totals/").mock(
+        return_value=httpx.Response(200, json={"pagination": {"pages": 1}, "results": []})
+    )
+    respx.get(fec_results.RESULTS_URL_BY_YEAR[2022]).mock(
+        return_value=httpx.Response(
+            200, content=load_bytes("fec_federalelections2022_trimmed.xlsx")
+        )
+    )
+    respx.get(fec_results.BALLOT_URL_BY_YEAR[2024]).mock(
+        return_value=httpx.Response(200, content=load_bytes("fec_generalballot2024_trimmed.xlsx"))
+    )
+
+
+@respx.mock
+def test_a_delegate_links_though_three_sources_number_the_seat_three_ways(
+    conn: Connection,
+) -> None:
+    """The Northern Marianas Delegate went unlinked on the first national run.
+
+    `COALESCE(t.district, 0) = ce.district` is 0 = 1 here, so the anchor never
+    joined and the jurisdiction's only member stayed unmatched — the same
+    98-vs-00-vs-01 disagreement that emptied the district page's candidate
+    list, showing up a second time inside the matcher.
+
+    Relaxing the district condition where `cd_number = 98` loosens nothing:
+    such a jurisdiction has one House seat, so "this state, this Congress"
+    already names it. This is the assertion that the page and the matcher read
+    the seat the same way.
+    """
+    _seed_marianas(conn)
+    _mock_one_roster(
+        _one_house_candidate(
+            candidate_id="H4MP00016",
+            name="KING-HINDS, KIMBERLYN KAY",
+            state="MP",
+            district="01",
+            election_years=[2024],
+            election_districts=["01"],
+        )
+    )
+
+    with fec.open_fetcher(delay=0) as fetcher:
+        sync_candidates(conn, fetcher, election_years=(2024,), states=["MP"], verify_history=False)
+
+    linked = conn.execute(
+        text(
+            "SELECT bioguide_id, bioguide_match_method FROM candidate "
+            "WHERE fec_candidate_id = 'H4MP00016'"
+        )
+    ).one()
+    assert linked.bioguide_id == "K000404"
+    assert linked.bioguide_match_method == "exact"
+
+    # The district openFEC printed is stored as printed. Nothing here rewrites
+    # the source — what changed is how the seat is read back.
+    assert (
+        conn.execute(
+            text("SELECT district FROM candidate_election WHERE fec_candidate_id = 'H4MP00016'")
+        ).scalar_one()
+        == 1
+    )
+
+
+@respx.mock
+def test_the_relaxation_does_not_reach_a_state_with_numbered_districts(
+    conn: Connection,
+) -> None:
+    """Wyoming has no `cd_number = 98` row, so its seat is still matched on 0.
+
+    The guard that keeps the fix above from becoming "ignore the district
+    everywhere", which in a 52-seat state would link a member to whoever ran
+    in some other district under the same surname.
+    """
+    _mock_one_roster(
+        _one_house_candidate(
+            candidate_id="H2WY00777",
+            name="HAGEMAN, HARRIET",
+            state="WY",
+            district="07",
+            election_years=[2022],
+            election_districts=["07"],
+        )
+    )
+
+    with fec.open_fetcher(delay=0) as fetcher:
+        sync_candidates(conn, fetcher, election_years=(2022,), states=["WY"], verify_history=False)
+
+    assert (
+        conn.execute(
+            text("SELECT bioguide_id FROM candidate WHERE fec_candidate_id = 'H2WY00777'")
+        ).scalar_one()
+        is None
+    )
+
+
+# --- a district number that is not a district -------------------------------
+
+
+@respx.mock
+def test_an_impossible_district_is_nulled_kept_and_counted(conn: Connection) -> None:
+    """openFEC prints numbers up to 92; the column is bounded at 60.
+
+    Measured over the national roster, 20 candidates carry one. Until this,
+    the INSERT failed and took the run with it — invisible from WY, NC and CA,
+    which carry none of them.
+
+    The seat survives with a NULL district, and the count reaches
+    `dataset_sync_state.message`: a bare NULL cannot be told apart from
+    openFEC simply not saying, and those two are different facts.
+    """
+    _mock_one_roster(
+        _one_house_candidate(
+            candidate_id="H2WY92001",
+            name="IMPOSSIBLE, DISTRICT",
+            election_years=[2022],
+            election_districts=["92"],
+            district="92",
+        )
+    )
+
+    with fec.open_fetcher(delay=0) as fetcher:
+        tally = sync_candidates(
+            conn, fetcher, election_years=(2022,), states=["WY"], verify_history=False
+        )
+
+    row = conn.execute(
+        text(
+            "SELECT c.district AS scalar, ce.district AS seat, ce.election_year AS year "
+            "FROM candidate c JOIN candidate_election ce USING (fec_candidate_id) "
+            "WHERE c.fec_candidate_id = 'H2WY92001'"
+        )
+    ).one()
+    assert row.scalar is None
+    assert row.seat is None
+    assert row.year == 2022
+
+    assert any("kept with a NULL district" in note for note in tally.notes)

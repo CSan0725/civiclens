@@ -1654,11 +1654,21 @@ export async function getSeatCandidates({
   state,
   office,
   district: districtNumber,
+  anyDistrict = false,
 }: {
   state: string;
   office: "H" | "S";
   /** The district number for a House seat; null for a Senate seat, which has none. */
   district: number | null;
+  /**
+   * Match every House candidate in the state regardless of the district
+   * number recorded against them (`hasSingleHouseSeat`). For DC and the five
+   * territories that is not a loosening of the filter — it is the filter,
+   * because the jurisdiction has one House seat and the three sources that
+   * describe it number it 98, 00, 01 and null. Ignored for Senate seats,
+   * which are already matched on `district IS NULL`.
+   */
+  anyDistrict?: boolean;
 }) {
   return getDb()
     .select({
@@ -1698,7 +1708,9 @@ export async function getSeatCandidates({
         eq(candidateElection.office, office),
         districtNumber === null
           ? isNull(candidateElection.district)
-          : eq(candidateElection.district, districtNumber),
+          : anyDistrict
+            ? undefined
+            : eq(candidateElection.district, districtNumber),
       ),
     )
     .orderBy(

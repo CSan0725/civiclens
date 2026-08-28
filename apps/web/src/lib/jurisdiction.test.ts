@@ -24,6 +24,7 @@ import {
   coverageOf,
   DELEGATE_CD,
   districtLabel,
+  hasSingleHouseSeat,
   isNonVotingSeat,
   jurisdictionOf,
   seatLine,
@@ -89,6 +90,32 @@ describe("which jurisdictions fill which seats", () => {
     expect(DELEGATE_CD).toBe(98);
     expect(NON_VOTING.filter(isNonVotingSeat).sort()).toEqual([...NON_VOTING].sort());
     expect(["CA", "WY", "NC"].some(isNonVotingSeat)).toBe(false);
+  });
+});
+
+describe("hasSingleHouseSeat", () => {
+  it("covers exactly the jurisdictions whose seat has no number", () => {
+    expect(NON_VOTING.filter(hasSingleHouseSeat).sort()).toEqual([...NON_VOTING].sort());
+  });
+
+  it("does not extend to an at-large STATE, whose district number is real", () => {
+    // Wyoming's seat IS district 0, the FEC prints 0 for it, and `cd_number`
+    // is 0. Nothing disagrees, so nothing needs relaxing — and relaxing it
+    // would drop a filter that is doing real work everywhere else.
+    for (const code of ["WY", "AK", "DE", "ND", "SD", "VT", "CA", "NC"]) {
+      expect(hasSingleHouseSeat(code)).toBe(false);
+    }
+  });
+
+  it("is what makes the DC and territory candidate lists non-empty", () => {
+    // Measured 2026-08-28 on the national roster: the FEC records MP's seven
+    // House candidates under districts 00 AND 01, one Guam candidate under no
+    // district at all, and `district.cd_number` is 98 for all six
+    // jurisdictions. Matching on the number returns nothing for any of them,
+    // and returns it silently — the page renders with an empty list.
+    expect(hasSingleHouseSeat("MP")).toBe(true);
+    expect(hasSingleHouseSeat("GU")).toBe(true);
+    expect(hasSingleHouseSeat("DC")).toBe(true);
   });
 });
 

@@ -81,6 +81,24 @@ REQUEST_DELAY = 1.05
 # enum so the schema does not need changing later, but is out of MVP scope.
 OFFICES = ("H", "S")
 
+# The highest district number that is a district.
+#
+# California's 52nd is the largest seat in the country, and `candidate.district`
+# and `candidate_election.district` are both bounded at 60 (migration 0001).
+# Migration 0008 widened only `district.cd_number`, and only to admit the
+# Census sentinel 98 — the candidate tables kept the narrow bound.
+#
+# Measured 2026-08-28 over the national roster (docs/P4-candidates-full.md):
+# openFEC prints district numbers up to 92 — CT-81, IN-90, TN-92 — for 20
+# candidates in 14 states. None of them is a district; no state has more than
+# 52 seats. WY, NC and CA carry none of these, which is why slice 0 loaded
+# clean and a national load would have failed on the first page it hit.
+#
+# Such a number is dropped to NULL rather than stored, and counted. The
+# alternative — widening the CHECK — would make the schema agree that a 92nd
+# district exists, and would admit 61..97 for every future typo as well.
+MAX_DISTRICT = 60
+
 
 def open_fetcher(*, delay: float | None = None) -> Fetcher:
     """A fetcher for api.open.fec.gov, paced for its 60-per-minute window.
@@ -281,18 +299,37 @@ def _date(value: object) -> date | None:
 
 
 def _district(office: str, value: object) -> int | None:
-    """The district number, or None where the office has no district.
+    """The district number, or None where there is not one to record.
 
-    Senate candidates carry '00' — a placeholder, not a district — which would
-    otherwise be indistinguishable from an at-large House seat, where 0 is the
-    real number.
+    Three ways this returns None, and they mean different things:
+
+      * the office is Senate. openFEC prints '00' there too, and storing it
+        would make a Senate seat indistinguishable from an at-large House
+        seat, where 0 is the real number.
+      * openFEC printed nothing, or something that is not a number.
+      * openFEC printed a number that is not a district (`MAX_DISTRICT`).
+        That one is logged, because it is the source contradicting itself
+        rather than the source having nothing to say.
     """
     if office == "S":
+        return None
+    number = _district_number(value)
+    if number is None:
+        return None
+    if not 0 <= number <= MAX_DISTRICT:
+        log.warning("fec.district_out_of_range", district=number, limit=MAX_DISTRICT)
+        return None
+    return number
+
+
+def _district_number(value: object) -> int | None:
+    """The district exactly as openFEC printed it, range unchecked."""
+    if isinstance(value, bool):
         return None
     if isinstance(value, int):
         return value
     if isinstance(value, str) and value.strip().isdigit():
-        return int(value)
+        return int(value.strip())
     return None
 
 
@@ -311,8 +348,15 @@ class Candidate:
     first_file_date: date | None
     last_file_date: date | None
     # (election_year, district) for every election the candidate contested,
-    # from the parallel arrays. District is None for Senate.
+    # from the parallel arrays. District is None for Senate, and None for a
+    # House seat whose district openFEC printed out of range — the seat is
+    # kept either way, because "this person ran in this state in this year" is
+    # true even when the district number attached to it is not.
     seats: tuple[tuple[int, int | None], ...]
+    # (election_year, the number openFEC printed) for each seat above whose
+    # district was refused by `MAX_DISTRICT`. Carried so the job can count
+    # them for FR-C4 instead of leaving a silent NULL.
+    districts_out_of_range: tuple[tuple[int, int], ...] = ()
 
 
 def parse_candidates(result: FetchResult) -> Iterator[Candidate]:
@@ -327,6 +371,7 @@ def parse_candidates(result: FetchResult) -> Iterator[Candidate]:
 
         years = [y for y in (row.get("election_years") or []) if isinstance(y, int)]
         districts = row.get("election_districts") or []
+        seats, refused = _seats(office, years, districts)
         yield Candidate(
             fec_candidate_id=candidate_id,
             name=" ".join(name.split()),
@@ -338,14 +383,17 @@ def parse_candidates(result: FetchResult) -> Iterator[Candidate]:
             election_years=tuple(sorted(years)),
             first_file_date=_date(row.get("first_file_date")),
             last_file_date=_date(row.get("last_file_date")),
-            seats=_seats(office, years, districts),
+            seats=seats,
+            districts_out_of_range=refused,
         )
 
 
 def _seats(
     office: str, years: Sequence[int], districts: Sequence[Any]
-) -> tuple[tuple[int, int | None], ...]:
+) -> tuple[tuple[tuple[int, int | None], ...], tuple[tuple[int, int], ...]]:
     """Zip the parallel `election_years` / `election_districts` arrays.
+
+    Returns `(seats, districts_out_of_range)`.
 
     Finding 3. When the two disagree in length the pairing is not knowable, so
     nothing is emitted rather than guessing which years the districts belong
@@ -353,14 +401,24 @@ def _seats(
     is precisely the failure `candidate_election` exists to prevent. Measured
     over 889 California House candidates the arrays never disagreed, so this
     is a guard, not a routine path.
+
+    A district past `MAX_DISTRICT` keeps its seat and loses its number. The
+    year is a fact openFEC states plainly; the district is a fact it states
+    impossibly, and dropping the whole seat would also drop the candidate out
+    of that year's roster — which is what decides whether the 2024 ballot list
+    can say anything about them at all.
     """
     if len(years) != len(districts):
         log.warning("fec.election_arrays_disagree", years=len(years), districts=len(districts))
-        return ()
+        return (), ()
     seen: dict[int, int | None] = {}
+    refused: dict[int, int] = {}
     for year, raw in zip(years, districts, strict=True):
         seen[year] = _district(office, raw)
-    return tuple(sorted(seen.items()))
+        number = _district_number(raw)
+        if office != "S" and number is not None and not 0 <= number <= MAX_DISTRICT:
+            refused[year] = number
+    return tuple(sorted(seen.items())), tuple(sorted(refused.items()))
 
 
 @dataclass(frozen=True, slots=True)

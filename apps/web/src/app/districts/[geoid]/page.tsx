@@ -28,7 +28,9 @@ import {
 } from "@/lib/election-outcome";
 import { formatDate, ordinal } from "@/lib/format";
 import {
+  coverageOf,
   districtLabel,
+  hasSingleHouseSeat,
   type Jurisdiction,
   jurisdictionOf,
   NON_VOTING_NOTE,
@@ -105,8 +107,17 @@ export default async function DistrictDetailPage({
       state && jurisdiction.senateSeats > 0
         ? getSittingSenators(state, CURRENT_CONGRESS)
         : Promise.resolve([]),
+      // `cdNumber` is 98 for a Delegate or Resident Commissioner district and
+      // the FEC prints 00, 01 or nothing for the same seat, so these six
+      // jurisdictions are matched on the state alone — they have one House
+      // seat, and every House candidate in them contested it.
       state
-        ? getSeatCandidates({ state, office: "H", district: stored.cdNumber })
+        ? getSeatCandidates({
+            state,
+            office: "H",
+            district: stored.cdNumber,
+            anyDistrict: hasSingleHouseSeat(state),
+          })
         : Promise.resolve([]),
       // FR-G5: a Senate seat has no district, so its candidates are the
       // state's. `district IS NULL` is how the schema says that. DC and the
@@ -410,8 +421,10 @@ function Coverage({
           often than not.
         </li>
         <li>
-          FEC candidates are loaded for {listStates(candidateStates)}. Other
-          states are being added.
+          FEC candidates are loaded for {listStates(candidateStates)}.
+          {coverageOf(candidateStates).complete
+            ? " Coverage is limited by what the FEC discloses, not by which states have been collected."
+            : " Other states are being added."}
         </li>
         <li>
           CivicLens publishes no rating, score or ranking of any candidate.
@@ -474,8 +487,25 @@ async function NotLoaded({ geoid, state }: { geoid: string; state: string }) {
   );
 }
 
+/**
+ * How to say which jurisdictions are loaded, at any size of that list.
+ *
+ * A bare join was right for three states and is wrong for fifty-six: it
+ * prints a 56-item wall, and the sentence it sat in — "Other states are being
+ * added" — becomes false the moment the last one lands. That is the same
+ * failure the boundary load hit (`coverageOf`), so it is answered the same
+ * way: derive the sentence from what is loaded, so it stops being true and
+ * starts being false without anyone editing a string.
+ */
 function listStates(states: string[]): string {
+  const coverage = coverageOf(states);
   if (states.length === 0) return "no states yet";
+  if (coverage.complete) {
+    return "all 50 states, the District of Columbia, and the five territories";
+  }
+  if (coverage.missing.length <= 5) {
+    return `every jurisdiction except ${coverage.missing.join(", ")}`;
+  }
   if (states.length === 1) return states[0];
   return `${states.slice(0, -1).join(", ")} and ${states.at(-1)}`;
 }

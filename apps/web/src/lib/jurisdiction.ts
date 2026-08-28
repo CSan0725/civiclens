@@ -109,6 +109,31 @@ export function isNonVotingSeat(code: string | null | undefined): boolean {
 }
 
 /**
+ * True where the jurisdiction's House seat cannot be identified by its number.
+ *
+ * Three sources number the same seat three ways, measured 2026-08-28 over the
+ * national FEC roster:
+ *
+ *   the Census    `cd_number = 98`, the sentinel for "one non-voting seat"
+ *   the FEC       `00` — and for the Northern Marianas, `01` on four of its
+ *                 seven candidates, and nothing at all on one Guam candidate
+ *   this codebase  0, wherever a district number is expected
+ *
+ * None of them is wrong; they are three conventions for a seat that has no
+ * number because there is only one of it. Comparing them fails in every
+ * direction — 98 = 0 is false, and so is 0 = 1 — and the failure is silent: a
+ * district page renders, and its candidate list is simply empty.
+ *
+ * So these jurisdictions are not matched on the number at all. DC has exactly
+ * one House seat; every House candidate whose state is DC contested it,
+ * whatever any of the three sources printed. That is a stronger statement than
+ * any normalisation, and it is the one that is actually true.
+ */
+export function hasSingleHouseSeat(code: string | null | undefined): boolean {
+  return isNonVotingSeat(code);
+}
+
+/**
  * What a non-voting member cannot do, stated once.
  *
  * Deliberately the narrow, stable fact. A Delegate introduces legislation,

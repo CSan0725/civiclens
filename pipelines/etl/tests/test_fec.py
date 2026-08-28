@@ -75,6 +75,77 @@ def test_senate_has_no_district_despite_the_00_placeholder() -> None:
     assert {d for c in candidates for _, d in c.seats} == {None}
 
 
+def test_a_district_number_that_is_not_a_district_is_refused_and_counted() -> None:
+    """§5-A. openFEC prints district numbers up to 92; no state has 92 seats.
+
+    Measured 2026-08-28 over the national roster: 20 candidates in 14 states
+    carry a number above `MAX_DISTRICT`, and `candidate.district` /
+    `candidate_election.district` are both bounded at 60. Slice 0 (WY, NC, CA)
+    contains none of them, so the whole class was invisible until the load went
+    national — where it would have failed the INSERT on the first page it hit.
+
+    The number is dropped. The SEAT is not: the candidate still ran in that
+    state in that year, and dropping the seat would also drop them out of the
+    year's roster, which is what decides whether the 2024 ballot list can say
+    anything about them at all.
+    """
+    payload = load_json("fec_candidates_wy_house.json")
+    payload["results"] = [payload["results"][0]]
+    row = payload["results"][0]
+    row["election_years"] = [2022, 2024, 2026]
+    row["election_districts"] = ["00", "92", "00"]
+    row["district"] = "92"
+    result = FetchResult(
+        source_url="https://api.open.fec.gov/v1/candidates/",
+        retrieved_at=RETRIEVED_AT,
+        payload=json.dumps(payload).encode(),
+        content_type="application/json",
+    )
+
+    candidate = next(iter(fec.parse_candidates(result)))
+    assert candidate.district is None
+    assert candidate.seats == ((2022, 0), (2024, None), (2026, 0))
+    assert candidate.districts_out_of_range == ((2024, 92),)
+
+
+def test_the_bound_admits_the_largest_real_district_and_nothing_past_it() -> None:
+    """California's 52nd is the largest seat there is; 61 is not a district.
+
+    Pinned because the tempting fix for the test above is to widen the CHECK,
+    which would make the schema agree that a 92nd district exists and would
+    admit every future typo in 61..97 alongside it.
+    """
+    assert fec.MAX_DISTRICT == 60
+    assert fec._district("H", "52") == 52
+    assert fec._district("H", "60") == 60
+    assert fec._district("H", "61") is None
+
+
+def test_a_refused_district_is_distinguishable_from_one_never_given() -> None:
+    """Both store NULL; only one is the source contradicting itself.
+
+    Twelve House rows in the national window carry no district at all, which
+    is openFEC having nothing to say. A district of 92 is openFEC saying
+    something impossible. `districts_out_of_range` is what tells the two apart
+    afterwards, and it is why the job can report a number instead of a silence.
+    """
+    payload = load_json("fec_candidates_wy_house.json")
+    payload["results"] = [payload["results"][0]]
+    row = payload["results"][0]
+    row["election_years"] = [2022]
+    row["election_districts"] = [None]
+    result = FetchResult(
+        source_url="https://api.open.fec.gov/v1/candidates/",
+        retrieved_at=RETRIEVED_AT,
+        payload=json.dumps(payload).encode(),
+        content_type="application/json",
+    )
+
+    candidate = next(iter(fec.parse_candidates(result)))
+    assert candidate.seats == ((2022, None),)
+    assert candidate.districts_out_of_range == ()
+
+
 def test_election_years_and_districts_are_paired_per_election() -> None:
     """Finding 3: the two arrays are parallel, one district per election."""
     candidates = list(fec.parse_candidates(result_for("fec_candidates_wy_house.json")))
