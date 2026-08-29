@@ -147,3 +147,60 @@ docker compose -f infra/docker/docker-compose.dev.yml up -d
 cp .env.example .env    # the defaults already point at that container
 pnpm db:up
 ```
+
+## Roles: giving `webapp` and `etl_writer` a way to connect
+
+`0010_role_split.sql` creates both roles `NOLOGIN` and grants them their
+privileges. It never sets a password, because it runs unchanged against a
+developer's container, ci-db's throwaway Postgres and Neon, and those three
+must not share a credential. Making a role able to connect is therefore a
+manual, once-per-environment step.
+
+| | public data (member, bill, vote, …) | identity (`"user"`, session, account, verification) |
+|---|---|---|
+| `webapp` | `SELECT` | `SELECT INSERT UPDATE DELETE` |
+| `etl_writer` | `SELECT INSERT UPDATE DELETE` | **no access** |
+
+`webapp` writes identity because a session row is written on every sign-in and
+deleted on every sign-out. `etl_writer` is denied even `SELECT` there: a
+collector credential lives in GitHub Actions secrets and is handed to
+third-party HTTP libraries for twenty minutes at a time, and it should not be
+able to read `account.password`.
+
+### Per environment, once
+
+Generate each password with a password manager or `openssl rand -base64 24` —
+never reuse one between environments, and never write one into this repo:
+
+```sql
+ALTER ROLE webapp     WITH LOGIN PASSWORD '<generated>';
+ALTER ROLE etl_writer WITH LOGIN PASSWORD '<generated>';
+```
+
+On Neon these are ordinary SQL statements run as `neondb_owner` (SQL Editor, or
+`psql` against the direct endpoint). Roles created this way do not appear in the
+console's **Roles** tab, which lists only console-provisioned roles; `\du` and
+`select rolname from pg_roles` are the source of truth.
+
+Then repoint the connection strings, and only those:
+
+| Consumer | Connection string | Role |
+|---|---|---|
+| Vercel (`DATABASE_URL`) | pooled, `-pooler` host | `webapp` |
+| GitHub Actions (`DATABASE_URL_UNPOOLED`) | direct | `etl_writer` |
+| local ETL, local `pnpm dev` | either | whatever the container uses |
+| **dbmate migrations** | direct | **still the owner** |
+
+Migrations keep using the owner role on purpose. `webapp` and `etl_writer` hold
+no DDL rights, which is the property that makes them worth having: a runtime
+credential cannot alter the schema it reads.
+
+### Verifying
+
+Privileges are worth measuring rather than assuming:
+
+```sql
+select has_table_privilege('etl_writer', '"user"', 'SELECT');   -- must be false
+select has_table_privilege('webapp',     'member', 'INSERT');   -- must be false
+select has_table_privilege('webapp',     'session', 'INSERT');  -- must be true
+```
