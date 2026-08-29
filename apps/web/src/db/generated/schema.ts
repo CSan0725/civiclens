@@ -1,4 +1,4 @@
-import { pgTable, index, foreignKey, unique, check, bigint, smallint, integer, date, timestamp, text, boolean, uniqueIndex, time, primaryKey, numeric, geometry, doublePrecision, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, unique, text, boolean, timestamp, index, foreignKey, check, bigint, smallint, integer, date, uniqueIndex, time, primaryKey, numeric, geometry, doublePrecision, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tsvector } from "../types";
 
@@ -9,6 +9,63 @@ export const memberStatus = pgEnum("member_status", ['current', 'former', 'candi
 export const sponsorshipRole = pgEnum("sponsorship_role", ['sponsor', 'cosponsor'])
 export const votePosition = pgEnum("vote_position", ['Yea', 'Nay', 'Present', 'NotVoting'])
 
+
+export const user = pgTable("user", {
+	id: text().primaryKey().notNull(),
+	name: text().notNull(),
+	email: text().notNull(),
+	emailVerified: boolean("email_verified").default(false).notNull(),
+	image: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("user_email_key").on(table.email),
+]);
+
+export const session = pgTable("session", {
+	id: text().primaryKey().notNull(),
+	userId: text("user_id").notNull(),
+	token: text().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	ipAddress: text("ip_address"),
+	userAgent: text("user_agent"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_session_expires").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_session_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "session_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("session_token_key").on(table.token),
+]);
+
+export const account = pgTable("account", {
+	id: text().primaryKey().notNull(),
+	userId: text("user_id").notNull(),
+	issuer: text().notNull(),
+	accountId: text("account_id").notNull(),
+	providerId: text("provider_id").notNull(),
+	accessToken: text("access_token"),
+	refreshToken: text("refresh_token"),
+	idToken: text("id_token"),
+	accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true, mode: 'string' }),
+	refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true, mode: 'string' }),
+	scope: text(),
+	password: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_account_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "account_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("account_issuer_account_id_key").on(table.issuer, table.accountId),
+]);
 
 export const vote = pgTable("vote", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
@@ -53,6 +110,17 @@ export const vote = pgTable("vote", {
 	check("vote_congress_range", sql`(congress_no >= 1) AND (congress_no <= 200)`),
 	check("vote_roll_positive", sql`roll_number > 0`),
 	check("vote_session_range", sql`(session >= 1) AND (session <= 3)`),
+]);
+
+export const verification = pgTable("verification", {
+	id: text().primaryKey().notNull(),
+	identifier: text().notNull(),
+	value: text().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_verification_identifier").using("btree", table.identifier.asc().nullsLast().op("text_ops")),
 ]);
 
 export const committee = pgTable("committee", {

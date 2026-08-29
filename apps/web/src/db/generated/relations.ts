@@ -1,5 +1,24 @@
 import { relations } from "drizzle-orm/relations";
-import { bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+import { user, session, account, bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+
+export const sessionRelations = relations(session, ({one}) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	}),
+}));
+
+export const userRelations = relations(user, ({many}) => ({
+	sessions: many(session),
+	accounts: many(account),
+}));
+
+export const accountRelations = relations(account, ({one}) => ({
+	user: one(user, {
+		fields: [account.userId],
+		references: [user.id]
+	}),
+}));
 
 export const voteRelations = relations(vote, ({one, many}) => ({
 	bill: one(bill, {
