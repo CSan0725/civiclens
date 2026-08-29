@@ -11,10 +11,13 @@
  * THREE RULES THIS FILE EXISTS TO ENFORCE:
  *
  * 1. It does not own the schema. `packages/db/migrations/0009_auth.sql` does,
- *    like every other table. `npx auth generate` may be run to see what this
- *    config implies, but `migrate` must NEVER be run — it would write DDL
- *    behind dbmate's back and split the source of truth in two. After changing
- *    anything here, regenerate, diff against 0009, and write a NEW migration.
+ *    like every other table, and `auth migrate` must NEVER be run — it would
+ *    write DDL behind dbmate's back and split the source of truth in two.
+ *    After changing anything here, dump the tables with
+ *    `getAuthTables(getAuth().options)` (better-auth/db), diff against 0009,
+ *    and write a NEW migration. The `auth generate` CLI cannot read this file
+ *    — it insists on a module-scope `auth` export, which is exactly what rule
+ *    3's laziness rules out. 0009's header records why.
  *
  * 2. Columns are snake_case. Better Auth's defaults are camelCase, which would
  *    have put `emailVerified` next to `bioguide_id` and forced quoted

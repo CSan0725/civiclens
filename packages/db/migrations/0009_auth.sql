@@ -23,11 +23,21 @@
 -- diff against this file, and write a NEW migration for the difference. Never
 -- edit this one after it has been applied anywhere.
 --
--- (The published route is `npx auth@latest generate`. On this repo's Node it
--- crashes before emitting anything — the CLI eagerly loads a Prisma parser
--- whose chevrotain dependency requires Node >= 22, and .nvmrc pins lower. The
--- programmatic call above is what that CLI uses internally, so the output is
--- the same schema by a route that runs.)
+-- The published route is `npx auth@latest generate`, and it does not work
+-- here. Two separate reasons, both measured:
+--
+--   Node < 22   the CLI eagerly loads a Prisma parser whose chevrotain
+--               dependency needs Node >= 22 and dies on ERR_REQUIRE_ESM
+--               before emitting anything. Fixed by aligning to .nvmrc.
+--   any Node    "Couldn't read your auth config ... export as a variable
+--               named auth". The CLI wants a module-scope `auth`; auth.ts
+--               deliberately exports `getAuth()` instead, because eager
+--               construction reads DATABASE_URL at import time and breaks
+--               the database-free `next build` that ci-web depends on.
+--
+-- The second reason does not go away with a newer Node, so the programmatic
+-- call above is the supported path here, not a workaround for an old runtime.
+-- It is what the CLI runs internally, so the schema is the same.
 --
 -- WHY THE COLUMNS ARE snake_case
 -- ------------------------------
