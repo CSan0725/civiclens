@@ -10,8 +10,22 @@ name: migrate
 # Prerequisites:
 #   - Repository environment `production` (or `staging`) exists, ideally with a
 #     required reviewer.
-#   - Secret DATABASE_URL_UNPOOLED is set on that environment. Use the DIRECT
-#     Neon endpoint: DDL must not go through PgBouncer transaction pooling.
+#   - Secret DATABASE_URL_UNPOOLED_OWNER is set. Use the DIRECT Neon endpoint:
+#     DDL must not go through PgBouncer transaction pooling.
+#
+# WHY A SECOND SECRET NAME
+# ------------------------
+# 0010 split the single owner connection into `webapp` and `etl_writer`, and
+# the point of that split is that a runtime credential cannot alter the schema
+# it reads. This job is the exception that must keep DDL rights — so it must
+# NOT share a credential with collect-daily, collect-weekly, collect-speeches
+# and collect-candidates, all four of which read `secrets.DATABASE_URL_UNPOOLED`
+# at repository scope and should be carrying etl_writer.
+#
+# Until DATABASE_URL_UNPOOLED_OWNER exists this falls back to the old secret, so
+# nothing breaks in the meantime; the `Verify target` step below says out loud
+# which one it got. Once the owner secret is set, repoint the repository-scoped
+# DATABASE_URL_UNPOOLED at etl_writer and the separation is real.
 
 # The run list is where someone checks whether the database was migrated, so the
 # run's own title has to answer that. A dry run and a real one are otherwise
@@ -44,7 +58,11 @@ jobs:
     environment: ${{ inputs.environment }}
 
     env:
-      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      # The OWNER credential (see WHY A SECOND SECRET NAME above). The variable
+      # name on the left is fixed: packages/db passes --env DATABASE_URL_UNPOOLED
+      # to dbmate.
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED_OWNER || secrets.DATABASE_URL_UNPOOLED }}
+      OWNER_SECRET_SET: ${{ secrets.DATABASE_URL_UNPOOLED_OWNER != '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -62,8 +80,13 @@ jobs:
       - name: Verify target is configured
         run: |
           if [ -z "$DATABASE_URL_UNPOOLED" ]; then
-            echo "::error::Secret DATABASE_URL_UNPOOLED is not set on environment '${{ inputs.environment }}'."
+            echo "::error::Neither DATABASE_URL_UNPOOLED_OWNER nor DATABASE_URL_UNPOOLED is set for environment '${{ inputs.environment }}'."
             exit 1
+          fi
+          if [ "$OWNER_SECRET_SET" = "true" ]; then
+            echo "Using DATABASE_URL_UNPOOLED_OWNER."
+          else
+            echo "::warning title=Sharing the collectors' credential::DATABASE_URL_UNPOOLED_OWNER is not set, so this run fell back to DATABASE_URL_UNPOOLED — the same secret collect-daily, collect-weekly, collect-speeches and collect-candidates use. Migrations therefore run on whatever role those jobs carry, and if that role is etl_writer this run will fail on the first CREATE TABLE. Set the owner secret."
           fi
 
       - name: Provide empty dotenv
