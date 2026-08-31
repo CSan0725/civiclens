@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
+import { AuthNav } from "./auth-nav";
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -62,6 +64,7 @@ export default function RootLayout({
                   ))}
                 </ul>
               </nav>
+              <AuthNav />
             </div>
           </header>
 
