@@ -1,8 +1,8 @@
 name: ci-web
 
 # Path-filtered per Deployment-Architecture-Report §4: only the affected
-# workspace runs. Deployment is NOT wired up yet — that lands with the Vercel
-# connection in a later step.
+# workspace runs. Deployment is Vercel's own job — it builds and promotes from
+# the repo directly, so nothing here pushes to production.
 #
 # The build step exists to catch static-generation failures at PR time. Most of
 # this app's pages are prerendered (`next build` runs them), so a broken
