@@ -1,4 +1,4 @@
-import { pgTable, unique, text, boolean, timestamp, index, foreignKey, check, bigint, smallint, integer, date, uniqueIndex, time, primaryKey, numeric, geometry, doublePrecision, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, check, text, timestamp, unique, bigint, smallint, integer, date, boolean, uniqueIndex, time, primaryKey, numeric, geometry, doublePrecision, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tsvector } from "../types";
 
@@ -10,61 +10,24 @@ export const sponsorshipRole = pgEnum("sponsorship_role", ['sponsor', 'cosponsor
 export const votePosition = pgEnum("vote_position", ['Yea', 'Nay', 'Present', 'NotVoting'])
 
 
-export const user = pgTable("user", {
-	id: text().primaryKey().notNull(),
-	name: text().notNull(),
-	email: text().notNull(),
-	emailVerified: boolean("email_verified").default(false).notNull(),
-	image: text(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	unique("user_email_key").on(table.email),
-]);
-
-export const session = pgTable("session", {
-	id: text().primaryKey().notNull(),
+export const subscription = pgTable("subscription", {
+	stripeSubscriptionId: text("stripe_subscription_id").primaryKey().notNull(),
 	userId: text("user_id").notNull(),
-	token: text().notNull(),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
-	ipAddress: text("ip_address"),
-	userAgent: text("user_agent"),
+	stripeCustomerId: text("stripe_customer_id").notNull(),
+	plan: text(),
+	status: text().notNull(),
+	currentPeriodEnd: timestamp("current_period_end", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_session_expires").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_session_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	index("idx_subscription_customer").using("btree", table.stripeCustomerId.asc().nullsLast().op("text_ops")),
+	index("idx_subscription_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],
-			name: "session_user_id_fkey"
+			name: "subscription_user_id_fkey"
 		}).onDelete("cascade"),
-	unique("session_token_key").on(table.token),
-]);
-
-export const account = pgTable("account", {
-	id: text().primaryKey().notNull(),
-	userId: text("user_id").notNull(),
-	issuer: text().notNull(),
-	accountId: text("account_id").notNull(),
-	providerId: text("provider_id").notNull(),
-	accessToken: text("access_token"),
-	refreshToken: text("refresh_token"),
-	idToken: text("id_token"),
-	accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true, mode: 'string' }),
-	refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true, mode: 'string' }),
-	scope: text(),
-	password: text(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("idx_account_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "account_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("account_issuer_account_id_key").on(table.issuer, table.accountId),
+	check("subscription_status_check", sql`status = ANY (ARRAY['trialing'::text, 'active'::text, 'past_due'::text, 'canceled'::text, 'unpaid'::text, 'incomplete'::text])`),
 ]);
 
 export const vote = pgTable("vote", {
@@ -112,15 +75,69 @@ export const vote = pgTable("vote", {
 	check("vote_session_range", sql`(session >= 1) AND (session <= 3)`),
 ]);
 
-export const verification = pgTable("verification", {
+export const user = pgTable("user", {
 	id: text().primaryKey().notNull(),
-	identifier: text().notNull(),
-	value: text().notNull(),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	name: text().notNull(),
+	email: text().notNull(),
+	emailVerified: boolean("email_verified").default(false).notNull(),
+	image: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("idx_verification_identifier").using("btree", table.identifier.asc().nullsLast().op("text_ops")),
+	unique("user_email_key").on(table.email),
+]);
+
+export const session = pgTable("session", {
+	id: text().primaryKey().notNull(),
+	userId: text("user_id").notNull(),
+	token: text().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	ipAddress: text("ip_address"),
+	userAgent: text("user_agent"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_session_expires").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_session_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "session_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("session_token_key").on(table.token),
+]);
+
+export const candidate = pgTable("candidate", {
+	fecCandidateId: text("fec_candidate_id").primaryKey().notNull(),
+	name: text().notNull(),
+	office: fecOffice().notNull(),
+	state: text(),
+	district: smallint(),
+	party: text(),
+	incumbentChallenge: text("incumbent_challenge"),
+	electionYears: smallint("election_years").array().default([]).notNull(),
+	firstFileDate: date("first_file_date"),
+	lastFileDate: date("last_file_date"),
+	bioguideId: text("bioguide_id"),
+	bioguideMatchMethod: text("bioguide_match_method"),
+	bioguideMatchConfirmedAt: timestamp("bioguide_match_confirmed_at", { withTimezone: true, mode: 'string' }),
+	sourceUrl: text("source_url"),
+	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_candidate_bioguide").using("btree", table.bioguideId.asc().nullsLast().op("text_ops")),
+	index("idx_candidate_election_years").using("gin", table.electionYears.asc().nullsLast().op("array_ops")),
+	index("idx_candidate_name_trgm").using("gin", table.name.asc().nullsLast().op("gin_trgm_ops")),
+	index("idx_candidate_office_state_district").using("btree", table.office.asc().nullsLast().op("int2_ops"), table.state.asc().nullsLast().op("int2_ops"), table.district.asc().nullsLast().op("enum_ops")),
+	foreignKey({
+			columns: [table.bioguideId],
+			foreignColumns: [member.bioguideId],
+			name: "candidate_bioguide_id_fkey"
+		}).onDelete("set null"),
+	check("candidate_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
+	check("candidate_match_method", sql`(bioguide_match_method IS NULL) OR (bioguide_match_method = ANY (ARRAY['exact'::text, 'fuzzy'::text, 'manual'::text]))`),
+	check("candidate_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
 ]);
 
 export const committee = pgTable("committee", {
@@ -335,39 +352,6 @@ export const datasetSyncState = pgTable("dataset_sync_state", {
 	check("dataset_sync_state_status", sql`(last_status IS NULL) OR (last_status = ANY (ARRAY['ok'::text, 'partial'::text, 'failed'::text, 'running'::text]))`),
 ]);
 
-export const candidate = pgTable("candidate", {
-	fecCandidateId: text("fec_candidate_id").primaryKey().notNull(),
-	name: text().notNull(),
-	office: fecOffice().notNull(),
-	state: text(),
-	district: smallint(),
-	party: text(),
-	incumbentChallenge: text("incumbent_challenge"),
-	electionYears: smallint("election_years").array().default([]).notNull(),
-	firstFileDate: date("first_file_date"),
-	lastFileDate: date("last_file_date"),
-	bioguideId: text("bioguide_id"),
-	bioguideMatchMethod: text("bioguide_match_method"),
-	bioguideMatchConfirmedAt: timestamp("bioguide_match_confirmed_at", { withTimezone: true, mode: 'string' }),
-	sourceUrl: text("source_url"),
-	retrievedAt: timestamp("retrieved_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("idx_candidate_bioguide").using("btree", table.bioguideId.asc().nullsLast().op("text_ops")),
-	index("idx_candidate_election_years").using("gin", table.electionYears.asc().nullsLast().op("array_ops")),
-	index("idx_candidate_name_trgm").using("gin", table.name.asc().nullsLast().op("gin_trgm_ops")),
-	index("idx_candidate_office_state_district").using("btree", table.office.asc().nullsLast().op("int2_ops"), table.state.asc().nullsLast().op("int2_ops"), table.district.asc().nullsLast().op("enum_ops")),
-	foreignKey({
-			columns: [table.bioguideId],
-			foreignColumns: [member.bioguideId],
-			name: "candidate_bioguide_id_fkey"
-		}).onDelete("set null"),
-	check("candidate_district_range", sql`(district IS NULL) OR ((district >= 0) AND (district <= 60))`),
-	check("candidate_match_method", sql`(bioguide_match_method IS NULL) OR (bioguide_match_method = ANY (ARRAY['exact'::text, 'fuzzy'::text, 'manual'::text]))`),
-	check("candidate_state_len", sql`(state IS NULL) OR (char_length(state) = 2)`),
-]);
-
 export const newsMention = pgTable("news_mention", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "news_mention_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
@@ -430,6 +414,42 @@ export const voteReconciliationFlag = pgTable("vote_reconciliation_flag", {
 			name: "vote_reconciliation_flag_vote_id_fkey"
 		}).onDelete("cascade"),
 	check("vote_reconciliation_flag_status", sql`status = ANY (ARRAY['open'::text, 'resolved'::text, 'ignored'::text])`),
+]);
+
+export const account = pgTable("account", {
+	id: text().primaryKey().notNull(),
+	userId: text("user_id").notNull(),
+	issuer: text().notNull(),
+	accountId: text("account_id").notNull(),
+	providerId: text("provider_id").notNull(),
+	accessToken: text("access_token"),
+	refreshToken: text("refresh_token"),
+	idToken: text("id_token"),
+	accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true, mode: 'string' }),
+	refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true, mode: 'string' }),
+	scope: text(),
+	password: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_account_user").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "account_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("account_issuer_account_id_key").on(table.issuer, table.accountId),
+]);
+
+export const verification = pgTable("verification", {
+	id: text().primaryKey().notNull(),
+	identifier: text().notNull(),
+	value: text().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_verification_identifier").using("btree", table.identifier.asc().nullsLast().op("text_ops")),
 ]);
 
 export const speechSpeaker = pgTable("speech_speaker", {

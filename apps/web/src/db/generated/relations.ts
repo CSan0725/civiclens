@@ -1,23 +1,17 @@
 import { relations } from "drizzle-orm/relations";
-import { user, session, account, bill, vote, committee, member, speech, billAction, term, candidate, newsMention, voteReconciliationFlag, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+import { user, subscription, bill, vote, session, member, candidate, committee, speech, billAction, term, newsMention, voteReconciliationFlag, account, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
 
-export const sessionRelations = relations(session, ({one}) => ({
+export const subscriptionRelations = relations(subscription, ({one}) => ({
 	user: one(user, {
-		fields: [session.userId],
+		fields: [subscription.userId],
 		references: [user.id]
 	}),
 }));
 
 export const userRelations = relations(user, ({many}) => ({
+	subscriptions: many(subscription),
 	sessions: many(session),
 	accounts: many(account),
-}));
-
-export const accountRelations = relations(account, ({one}) => ({
-	user: one(user, {
-		fields: [account.userId],
-		references: [user.id]
-	}),
 }));
 
 export const voteRelations = relations(vote, ({one, many}) => ({
@@ -37,6 +31,35 @@ export const billRelations = relations(bill, ({one, many}) => ({
 	}),
 	newsMentions: many(newsMention),
 	sponsorships: many(sponsorship),
+}));
+
+export const sessionRelations = relations(session, ({one}) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	}),
+}));
+
+export const candidateRelations = relations(candidate, ({one, many}) => ({
+	member: one(member, {
+		fields: [candidate.bioguideId],
+		references: [member.bioguideId]
+	}),
+	candidateElections: many(candidateElection),
+	campaignFinances: many(campaignFinance),
+}));
+
+export const memberRelations = relations(member, ({many}) => ({
+	candidates: many(candidate),
+	speeches: many(speech),
+	bills: many(bill),
+	terms: many(term),
+	newsMentions: many(newsMention),
+	voteReconciliationFlags: many(voteReconciliationFlag),
+	speechSpeakers: many(speechSpeaker),
+	sponsorships: many(sponsorship),
+	committeeMemberships: many(committeeMembership),
+	districts: many(district),
 }));
 
 export const committeeRelations = relations(committee, ({one, many}) => ({
@@ -60,19 +83,6 @@ export const speechRelations = relations(speech, ({one, many}) => ({
 	speechSpeakers: many(speechSpeaker),
 }));
 
-export const memberRelations = relations(member, ({many}) => ({
-	speeches: many(speech),
-	bills: many(bill),
-	terms: many(term),
-	candidates: many(candidate),
-	newsMentions: many(newsMention),
-	voteReconciliationFlags: many(voteReconciliationFlag),
-	speechSpeakers: many(speechSpeaker),
-	sponsorships: many(sponsorship),
-	committeeMemberships: many(committeeMembership),
-	districts: many(district),
-}));
-
 export const billActionRelations = relations(billAction, ({one}) => ({
 	bill: one(bill, {
 		fields: [billAction.billId],
@@ -89,15 +99,6 @@ export const termRelations = relations(term, ({one}) => ({
 		fields: [term.bioguideId],
 		references: [member.bioguideId]
 	}),
-}));
-
-export const candidateRelations = relations(candidate, ({one, many}) => ({
-	member: one(member, {
-		fields: [candidate.bioguideId],
-		references: [member.bioguideId]
-	}),
-	candidateElections: many(candidateElection),
-	campaignFinances: many(campaignFinance),
 }));
 
 export const newsMentionRelations = relations(newsMention, ({one}) => ({
@@ -119,6 +120,13 @@ export const voteReconciliationFlagRelations = relations(voteReconciliationFlag,
 	vote: one(vote, {
 		fields: [voteReconciliationFlag.voteId],
 		references: [vote.id]
+	}),
+}));
+
+export const accountRelations = relations(account, ({one}) => ({
+	user: one(user, {
+		fields: [account.userId],
+		references: [user.id]
 	}),
 }));
 
