@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -284,8 +284,13 @@ def test_unchanged_package_does_not_refetch_text(conn: Connection) -> None:
     assert second["granules"] == 3
     assert second["fetched"] == 0, "nothing upstream moved, so no text should be re-fetched"
 
-    # ...and a NEWER upstream modification brings the text back.
-    third = _load(conn, tally=SyncTally(), last_modified=datetime(2026, 9, 1, tzinfo=UTC))
+    # ...and a NEWER upstream modification brings the text back. The granule
+    # just stored carries this test run's wall clock as its `retrieved_at`, so
+    # "newer upstream" has to be later than THAT, not later than some date that
+    # was in the future when the test was written. Pinned to a literal, this
+    # assertion passes until the calendar reaches it and fails every day after.
+    newer = datetime.now(UTC) + timedelta(days=1)
+    third = _load(conn, tally=SyncTally(), last_modified=newer)
     conn.commit()
     assert third["fetched"] == 3
 
