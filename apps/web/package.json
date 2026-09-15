@@ -27,6 +27,7 @@
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "stripe": "22.6.2",
     "tailwind-merge": "3.6.0",
     "topojson-client": "^3.1.0"
   },
