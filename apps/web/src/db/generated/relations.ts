@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { user, subscription, bill, vote, session, member, candidate, committee, speech, billAction, term, newsMention, voteReconciliationFlag, account, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
+import { user, subscription, bill, vote, session, member, candidate, committee, speech, billAction, term, newsMention, voteReconciliationFlag, account, savedMember, savedBill, speechSpeaker, candidateElection, sponsorship, committeeMembership, campaignFinance, district } from "./schema";
 
 export const subscriptionRelations = relations(subscription, ({one}) => ({
 	user: one(user, {
@@ -12,6 +12,8 @@ export const userRelations = relations(user, ({many}) => ({
 	subscriptions: many(subscription),
 	sessions: many(session),
 	accounts: many(account),
+	savedMembers: many(savedMember),
+	savedBills: many(savedBill),
 }));
 
 export const voteRelations = relations(vote, ({one, many}) => ({
@@ -30,6 +32,7 @@ export const billRelations = relations(bill, ({one, many}) => ({
 		references: [member.bioguideId]
 	}),
 	newsMentions: many(newsMention),
+	savedBills: many(savedBill),
 	sponsorships: many(sponsorship),
 }));
 
@@ -56,6 +59,7 @@ export const memberRelations = relations(member, ({many}) => ({
 	terms: many(term),
 	newsMentions: many(newsMention),
 	voteReconciliationFlags: many(voteReconciliationFlag),
+	savedMembers: many(savedMember),
 	speechSpeakers: many(speechSpeaker),
 	sponsorships: many(sponsorship),
 	committeeMemberships: many(committeeMembership),
@@ -126,6 +130,28 @@ export const voteReconciliationFlagRelations = relations(voteReconciliationFlag,
 export const accountRelations = relations(account, ({one}) => ({
 	user: one(user, {
 		fields: [account.userId],
+		references: [user.id]
+	}),
+}));
+
+export const savedMemberRelations = relations(savedMember, ({one}) => ({
+	member: one(member, {
+		fields: [savedMember.bioguideId],
+		references: [member.bioguideId]
+	}),
+	user: one(user, {
+		fields: [savedMember.userId],
+		references: [user.id]
+	}),
+}));
+
+export const savedBillRelations = relations(savedBill, ({one}) => ({
+	bill: one(bill, {
+		fields: [savedBill.billId],
+		references: [bill.id]
+	}),
+	user: one(user, {
+		fields: [savedBill.userId],
 		references: [user.id]
 	}),
 }));

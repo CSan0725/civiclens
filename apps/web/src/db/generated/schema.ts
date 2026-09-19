@@ -452,6 +452,43 @@ export const verification = pgTable("verification", {
 	index("idx_verification_identifier").using("btree", table.identifier.asc().nullsLast().op("text_ops")),
 ]);
 
+export const savedMember = pgTable("saved_member", {
+	userId: text("user_id").notNull(),
+	bioguideId: text("bioguide_id").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.bioguideId],
+			foreignColumns: [member.bioguideId],
+			name: "saved_member_bioguide_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "saved_member_user_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.userId, table.bioguideId], name: "saved_member_pkey"}),
+]);
+
+export const savedBill = pgTable("saved_bill", {
+	userId: text("user_id").notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	billId: bigint("bill_id", { mode: "number" }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.billId],
+			foreignColumns: [bill.id],
+			name: "saved_bill_bill_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "saved_bill_user_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.userId, table.billId], name: "saved_bill_pkey"}),
+]);
+
 export const speechSpeaker = pgTable("speech_speaker", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	speechId: bigint("speech_id", { mode: "number" }).notNull(),
